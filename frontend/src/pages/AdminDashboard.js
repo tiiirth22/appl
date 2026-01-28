@@ -56,8 +56,8 @@ export default function AdminDashboard({ user, onLogout }) {
       <div className="container">
         <div className="dashboard-header">
           <div>
-            <h1 data-testid="dashboard-title">Admin Dashboard</h1>
-            <p>Manage system, users, and all appliance manuals</p>
+            <h1>Admin Control Panel</h1>
+            <p>Monitor system activity and manage resources</p>
           </div>
           <Link to="/upload" className="btn btn-primary" data-testid="new-manual-btn">
             <Upload size={20} />
@@ -202,11 +202,10 @@ export default function AdminDashboard({ user, onLogout }) {
         }
 
         .navbar-brand {
-          font-size: 1.5rem;
+          font-size: 1.25rem;
           font-weight: 800;
-          background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
+          color: #0f172a;
+          letter-spacing: -0.025em;
         }
 
         .navbar-links {
@@ -303,8 +302,8 @@ export default function AdminDashboard({ user, onLogout }) {
         }
 
         .stat-icon {
-          color: #10b981;
-          background: #ecfdf5;
+          color: #2563eb;
+          background: #eff6ff;
           padding: 0.75rem;
           border-radius: 0.75rem;
         }
@@ -355,7 +354,7 @@ export default function AdminDashboard({ user, onLogout }) {
         }
 
         .user-card:hover, .manual-card:hover {
-          border-color: #10b981;
+          border-color: #2563eb;
           background: #f8fafc;
         }
 
@@ -421,13 +420,13 @@ export default function AdminDashboard({ user, onLogout }) {
         }
 
         .btn-primary {
-          background: #10b981;
+          background: #2563eb;
           color: white;
         }
 
         .btn-primary:hover {
-          background: #059669;
-          transform: translateY(-2px);
+          background: #1d4ed8;
+          transform: translateY(-1px);
         }
 
         @media (max-width: 768px) {
