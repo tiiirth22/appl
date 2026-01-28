@@ -40,7 +40,6 @@ export default function AdminDashboard({ user, onLogout }) {
             <Link to="/dashboard" className="navbar-link">Dashboard</Link>
             <Link to="/upload" className="navbar-link" data-testid="upload-link">Upload Manual</Link>
             <Link to="/analytics" className="navbar-link">Analytics</Link>
-            <Link to="/admin/users" className="navbar-link">Users</Link>
           </div>
           <div className="navbar-user">
             <img src={user.picture || 'https://via.placeholder.com/40'} alt={user.name} />
