@@ -272,10 +272,8 @@ async def get_manuals(current_user: dict = Depends(get_db_business_user)):
 async def get_manual(manual_id: str, current_user: dict = Depends(get_db_business_user)):
     """Get specific manual."""
     if current_user.get("role") == "admin":
-        # Admins can access any manual
         manual = await db.manuals.find_one({"id": manual_id}, {"_id": 0})
     else:
-        # Business owners can only access their own manuals
         manual = await db.manuals.find_one(
             {"id": manual_id, "user_id": current_user["id"]},
             {"_id": 0}
@@ -285,6 +283,35 @@ async def get_manual(manual_id: str, current_user: dict = Depends(get_db_busines
         raise HTTPException(status_code=404, detail="Manual not found")
     
     return manual
+
+@api_router.get("/manuals/{manual_id}/qr")
+async def get_manual_qr(manual_id: str, current_user: dict = Depends(get_db_business_user)):
+    """Get QR code image for a manual."""
+    if current_user.get("role") == "admin":
+        manual = await db.manuals.find_one({"id": manual_id}, {"_id": 0})
+    else:
+        manual = await db.manuals.find_one(
+            {"id": manual_id, "user_id": current_user["id"]},
+            {"_id": 0}
+        )
+    
+    if not manual:
+        raise HTTPException(status_code=404, detail="Manual not found")
+    
+    if not manual.get("qr_code_id"):
+        raise HTTPException(status_code=404, detail="QR code not assigned to this manual")
+    
+    qr_code = await db.qr_codes.find_one({"id": manual["qr_code_id"]}, {"_id": 0})
+    if not qr_code:
+        raise HTTPException(status_code=404, detail="QR code record not found")
+    
+    qr_data = qr_handler.generate_qr_code(manual_id, manual["version"])
+    
+    return {
+        "qr_id": manual["qr_code_id"],
+        "url": qr_code["short_url"],
+        "image": qr_data["image_base64"]
+    }
 
 @api_router.get("/admin/users")
 async def get_users(current_user: dict = Depends(get_db_admin_user)):
@@ -351,6 +378,7 @@ async def chat(request: ChatRequest):
     await db.queries.insert_one(query_dict)
     
     return ChatResponse(
+        query_id=query.id,
         answer=result["answer"],
         sources=result["sources"],
         manual_info={
@@ -359,23 +387,42 @@ async def chat(request: ChatRequest):
         }
     )
 
-# ============= QR REDIRECT =============
-@api_router.get("/device/{qr_id}")
-async def redirect_to_chat(qr_id: str):
-    """Redirect from QR code to chat interface."""
+# ============= QR DETAILS & REDIRECT =============
+@api_router.get("/qr-details/{qr_id}")
+async def get_qr_details(qr_id: str):
+    """Get manual details for a QR code."""
     qr_code = await db.qr_codes.find_one({"id": qr_id}, {"_id": 0})
     
     if not qr_code:
         raise HTTPException(status_code=404, detail="QR code not found")
     
     # Verify signature
-    payload = qr_code["payload"]
+    payload = qr_code["payload"].copy()
     signature = payload.pop("sig", "")
     
     if not qr_handler.verify_signature(payload, signature):
         raise HTTPException(status_code=400, detail="Invalid QR code signature")
     
-    # Redirect to chat interface
+    # Get manual info
+    manual = await db.manuals.find_one({"id": qr_code["manual_id"]}, {"_id": 0})
+    if not manual:
+        raise HTTPException(status_code=404, detail="Manual not found")
+    
+    return {
+        "manual_id": qr_code["manual_id"],
+        "model_name": manual["model_name"],
+        "version": manual["version"],
+        "qr_id": qr_id
+    }
+
+@api_router.get("/device/{qr_id}")
+async def redirect_to_chat(qr_id: str):
+    """Redirect from QR code to chat interface (deprecated, frontend handles /device/:qrId)."""
+    qr_code = await db.qr_codes.find_one({"id": qr_id}, {"_id": 0})
+    
+    if not qr_code:
+        raise HTTPException(status_code=404, detail="QR code not found")
+    
     manual_id = qr_code["manual_id"]
     return RedirectResponse(url=f"/chat?manual_id={manual_id}")
 
