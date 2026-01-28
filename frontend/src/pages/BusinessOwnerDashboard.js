@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { Upload, BarChart, LogOut, FileText, QrCode, Loader, Eye } from 'lucide-react';
+import { Upload, BarChart, LogOut, FileText, QrCode, Loader, Eye, MessageSquare } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -9,6 +9,8 @@ const API = `${BACKEND_URL}/api`;
 export default function BusinessOwnerDashboard({ user, onLogout }) {
   const [manuals, setManuals] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedQR, setSelectedQR] = useState(null);
+  const [loadingQR, setLoadingQR] = useState(false);
 
   useEffect(() => {
     fetchManuals();
@@ -24,6 +26,21 @@ export default function BusinessOwnerDashboard({ user, onLogout }) {
       console.error('Error fetching manuals:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleViewQR = async (manualId) => {
+    setLoadingQR(true);
+    try {
+      const response = await axios.get(`${API}/manuals/${manualId}/qr`, {
+        withCredentials: true
+      });
+      setSelectedQR(response.data);
+    } catch (error) {
+      console.error('Error fetching QR:', error);
+      alert('Failed to fetch QR code');
+    } finally {
+      setLoadingQR(false);
     }
   };
 
@@ -129,10 +146,22 @@ export default function BusinessOwnerDashboard({ user, onLogout }) {
                         <div className="qr-display">
                           <QrCode size={32} />
                           <span>{manual.qr_code_id}</span>
-                          <button className="btn btn-secondary btn-sm">
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => handleViewQR(manual.id)}
+                            disabled={loadingQR}
+                          >
                             <Eye size={16} />
-                            View QR
+                            {loadingQR && selectedQR?.qr_id === manual.qr_code_id ? 'Loading...' : 'View QR'}
                           </button>
+                          <Link
+                            to={`/chat?manual_id=${manual.id}`}
+                            className="btn btn-primary btn-sm"
+                            style={{ marginTop: '0.5rem' }}
+                          >
+                            <MessageSquare size={16} />
+                            Test Assistant
+                          </Link>
                         </div>
                       </div>
                     )}
@@ -142,25 +171,121 @@ export default function BusinessOwnerDashboard({ user, onLogout }) {
             </div>
           )}
         </div>
+
+        {/* QR Modal */}
+        {selectedQR && (
+          <div className="modal-overlay" onClick={() => setSelectedQR(null)}>
+            <div className="modal-content" onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>QR Code for {manuals.find(m => m.id === selectedQR.manual_id)?.model_name}</h2>
+                <button className="btn-close" onClick={() => setSelectedQR(null)}>&times;</button>
+              </div>
+              <div className="modal-body">
+                <div className="qr-image-container">
+                  <img src={selectedQR.image} alt="QR Code" />
+                </div>
+                <div className="qr-info">
+                  <p><strong>Short URL:</strong> {selectedQR.url}</p>
+                  <p className="qr-hint">Scan this code with a mobile device to open the Chat Assistant.</p>
+                </div>
+                <div className="modal-actions">
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => {
+                      const link = document.createElement('a');
+                      link.href = selectedQR.image;
+                      link.download = `qr-${selectedQR.qr_id}.png`;
+                      link.click();
+                    }}
+                  >
+                    Download PNG
+                  </button>
+                  <button className="btn btn-secondary" onClick={() => setSelectedQR(null)}>Close</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <style jsx>{`
-        .dashboard {
-          min-height: 100vh;
-          background: #f7fafc;
+        .modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.7);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          backdrop-filter: blur(4px);
         }
 
-        .dashboard-header {
+        .modal-content {
+          background: white;
+          border-radius: 1rem;
+          width: 90%;
+          max-width: 500px;
+          padding: 2rem;
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .modal-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 2rem;
-          padding: 2rem 0;
+          margin-bottom: 1.5rem;
+        }
+
+        .modal-header h2 {
+          font-size: 1.5rem;
+          margin: 0;
+          color: #2d3748;
+        }
+
+        .btn-close {
+          background: none;
+          border: none;
+          font-size: 1.5rem;
+          cursor: pointer;
+          color: #a0aec0;
+        }
+
+        .qr-image-container {
+          text-align: center;
+          margin-bottom: 1.5rem;
+          background: #f7fafc;
+          padding: 2rem;
+          border-radius: 0.5rem;
+        }
+
+        .qr-image-container img {
+          max-width: 200px;
+          height: auto;
+        }
+
+        .qr-info {
+          margin-bottom: 1.5rem;
+          text-align: center;
+        }
+
+        .qr-hint {
+          font-size: 0.875rem;
+          color: #718096;
+          margin-top: 0.5rem;
+        }
+        .dashboard {
+          min-height: 100vh;
+          background: #f8fafc;
+          color: #1e293b;
         }
 
         .navbar {
-          background: white;
-          border-bottom: 1px solid #e2e8f0;
+          background: rgba(255, 255, 255, 0.8);
+          backdrop-filter: blur(12px);
+          border-bottom: 1px solid rgba(226, 232, 240, 0.8);
           padding: 1rem 0;
           position: sticky;
           top: 0;
@@ -178,25 +303,27 @@ export default function BusinessOwnerDashboard({ user, onLogout }) {
 
         .navbar-brand {
           font-size: 1.5rem;
-          font-weight: bold;
-          color: #2d3748;
-          margin: 0;
+          font-weight: 800;
+          background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
         }
 
         .navbar-links {
           display: flex;
-          gap: 2rem;
+          gap: 2.5rem;
         }
 
         .navbar-link {
-          color: #4a5568;
+          color: #64748b;
           text-decoration: none;
-          font-weight: 500;
+          font-weight: 600;
+          font-size: 0.95rem;
           transition: color 0.2s;
         }
 
         .navbar-link:hover {
-          color: #2d3748;
+          color: #6366f1;
         }
 
         .navbar-user {
@@ -206,222 +333,304 @@ export default function BusinessOwnerDashboard({ user, onLogout }) {
         }
 
         .navbar-user img {
-          width: 40px;
-          height: 40px;
+          width: 38px;
+          height: 38px;
           border-radius: 50%;
+          border: 2px solid #e2e8f0;
         }
 
         .btn-logout {
-          background: none;
+          background: #f1f5f9;
           border: none;
-          color: #4a5568;
+          color: #64748b;
           cursor: pointer;
           padding: 0.5rem;
-          border-radius: 0.375rem;
-          transition: background-color 0.2s;
+          border-radius: 0.5rem;
+          transition: all 0.2s;
         }
 
         .btn-logout:hover {
-          background: #f7fafc;
+          background: #fee2e2;
+          color: #ef4444;
         }
 
         .container {
           max-width: 1200px;
           margin: 0 auto;
-          padding: 2rem;
+          padding: 3rem 2rem;
+        }
+
+        .dashboard-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-end;
+          margin-bottom: 3rem;
+        }
+
+        .dashboard-header h1 {
+          font-size: 2.5rem;
+          font-weight: 800;
+          letter-spacing: -0.025em;
+          margin-bottom: 0.5rem;
+        }
+
+        .dashboard-header p {
+          color: #64748b;
+          font-size: 1.125rem;
         }
 
         .stats-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
           gap: 1.5rem;
-          margin-bottom: 3rem;
+          margin-bottom: 4rem;
         }
 
         .stat-card {
           background: white;
-          padding: 1.5rem;
-          border-radius: 0.5rem;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          padding: 2rem;
+          border-radius: 1.5rem;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
           display: flex;
           align-items: center;
-          gap: 1rem;
+          gap: 1.5rem;
+          transition: transform 0.3s;
+          border: 1px solid #f1f5f9;
+        }
+
+        .stat-card:hover {
+          transform: translateY(-5px);
+          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
         }
 
         .stat-icon {
-          color: #4299e1;
-          background: #ebf8ff;
-          padding: 0.75rem;
-          border-radius: 0.5rem;
+          color: #6366f1;
+          background: #eef2ff;
+          padding: 1rem;
+          border-radius: 1rem;
         }
 
         .stat-value {
-          font-size: 2rem;
-          font-weight: bold;
-          color: #2d3748;
+          font-size: 2.25rem;
+          font-weight: 800;
+          color: #0f172a;
+          line-height: 1;
           margin-bottom: 0.25rem;
         }
 
         .stat-label {
-          color: #718096;
+          color: #64748b;
+          font-weight: 600;
           font-size: 0.875rem;
-        }
-
-        .manuals-section {
-          background: white;
-          padding: 2rem;
-          border-radius: 0.5rem;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-          margin-bottom: 2rem;
+          text-transform: uppercase;
+          letter-spacing: 0.025em;
         }
 
         .manuals-section h2 {
-          margin-bottom: 1.5rem;
-          color: #2d3748;
+          font-size: 1.875rem;
+          font-weight: 800;
+          margin-bottom: 2rem;
         }
 
         .manuals-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-          gap: 1rem;
+          gap: 2rem;
         }
 
         .manual-card {
-          border: 1px solid #e2e8f0;
-          border-radius: 0.5rem;
-          padding: 1.5rem;
-          transition: box-shadow 0.2s;
+          background: white;
+          border-radius: 1.25rem;
+          padding: 2rem;
+          border: 1px solid #f1f5f9;
+          transition: all 0.3s;
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
         }
 
         .manual-card:hover {
-          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05);
+          border-color: #6366f1;
         }
 
         .manual-header {
           display: flex;
           justify-content: space-between;
-          align-items: center;
-          margin-bottom: 1rem;
+          align-items: flex-start;
         }
 
         .manual-header h3 {
+          font-size: 1.25rem;
+          font-weight: 700;
           margin: 0;
-          color: #2d3748;
         }
 
         .badge {
-          padding: 0.25rem 0.75rem;
+          padding: 0.375rem 0.875rem;
           border-radius: 9999px;
           font-size: 0.75rem;
-          font-weight: 500;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
         }
 
-        .badge-success {
-          background: #48bb78;
-          color: white;
-        }
-
-        .badge-warning {
-          background: #ed8936;
-          color: white;
-        }
-
-        .badge-error {
-          background: #f56565;
-          color: white;
-        }
+        .badge-success { background: #dcfce7; color: #166534; }
+        .badge-warning { background: #fef9c3; color: #854d0e; }
+        .badge-error { background: #fee2e2; color: #991b1b; }
 
         .manual-details {
-          color: #718096;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 1rem;
+          color: #64748b;
           font-size: 0.875rem;
         }
 
-        .manual-details p {
-          margin: 0.5rem 0;
-        }
+        .manual-details p { margin: 0; }
+        .manual-details strong { color: #475569; }
 
         .qr-section {
-          margin-top: 1rem;
-          padding-top: 1rem;
-          border-top: 1px solid #e2e8f0;
+          padding-top: 1.5rem;
+          border-top: 1px solid #f1f5f9;
         }
 
         .qr-display {
           display: flex;
           align-items: center;
-          gap: 0.5rem;
-          margin-top: 0.5rem;
+          gap: 1rem;
+          background: #f8fafc;
+          padding: 1rem;
+          border-radius: 1rem;
         }
 
         .qr-display span {
-          font-family: monospace;
-          background: #f7fafc;
-          padding: 0.25rem 0.5rem;
-          border-radius: 0.25rem;
+          flex: 1;
+          font-family: 'JetBrains Mono', monospace;
           font-size: 0.75rem;
-        }
-
-        .loading-container {
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          padding: 3rem;
-        }
-
-        .spinner {
-          animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-
-        .empty-state {
-          text-align: center;
-          padding: 3rem;
-          color: #718096;
-        }
-
-        .empty-state h3 {
-          margin: 1rem 0;
-          color: #4a5568;
+          color: #6366f1;
         }
 
         .btn {
           display: inline-flex;
           align-items: center;
-          gap: 0.5rem;
-          padding: 0.75rem 1.5rem;
-          border-radius: 0.375rem;
-          font-weight: 500;
-          text-decoration: none;
+          gap: 0.75rem;
+          padding: 0.875rem 1.75rem;
+          border-radius: 0.75rem;
+          font-weight: 700;
           transition: all 0.2s;
           border: none;
           cursor: pointer;
+          text-decoration: none;
         }
 
         .btn-primary {
-          background: #4299e1;
+          background: #6366f1;
           color: white;
+          box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.2);
         }
 
         .btn-primary:hover {
-          background: #3182ce;
+          background: #4f46e5;
+          transform: translateY(-2px);
+          box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.3);
         }
 
         .btn-secondary {
-          background: #e2e8f0;
-          color: #4a5568;
+          background: #f1f5f9;
+          color: #475569;
         }
 
-        .btn-secondary:hover {
-          background: #cbd5e0;
+        .btn-secondary:hover:not(:disabled) {
+          background: #e2e8f0;
+          color: #1e293b;
         }
 
         .btn-sm {
-          padding: 0.5rem 1rem;
+          padding: 0.625rem 1.25rem;
           font-size: 0.875rem;
+        }
+
+        .modal-overlay {
+          position: fixed;
+          top: 0; left: 0; right: 0; bottom: 0;
+          background: rgba(15, 23, 42, 0.8);
+          backdrop-filter: blur(8px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+        }
+
+        .modal-content {
+          background: white;
+          border-radius: 2rem;
+          width: 90%;
+          max-width: 480px;
+          padding: 2.5rem;
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+          animation: modalPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes modalPop {
+          from { transform: scale(0.9); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
+
+        .modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 2rem;
+        }
+
+        .modal-header h2 { font-size: 1.5rem; font-weight: 800; margin: 0; }
+
+        .btn-close {
+          background: #f1f5f9;
+          border: none;
+          width: 36px; height: 36px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center; justify-content: center;
+          cursor: pointer;
+          color: #64748b;
+          font-size: 1.25rem;
+        }
+
+        .qr-image-container {
+          background: #f8fafc;
+          padding: 2.5rem;
+          border-radius: 1.5rem;
+          display: flex;
+          justify-content: center;
+          margin-bottom: 2rem;
+          border: 2px dashed #e2e8f0;
+        }
+
+        .qr-image-container img {
+          max-width: 100%;
+          height: auto;
+          border-radius: 0.75rem;
+        }
+
+        .qr-info { text-align: center; margin-bottom: 2rem; }
+        .qr-info p { margin: 0.5rem 0; color: #475569; }
+        .qr-hint { font-size: 0.875rem; color: #64748b; }
+
+        .modal-actions {
+          display: flex;
+          gap: 1rem;
+        }
+
+        .modal-actions .btn { flex: 1; }
+
+        .spinner { animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        @media (max-width: 768px) {
+          .dashboard-header { flex-direction: column; align-items: flex-start; gap: 1.5rem; }
+          .manual-details { grid-template-columns: 1fr; }
         }
       `}</style>
     </div>
