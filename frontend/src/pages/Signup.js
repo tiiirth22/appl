@@ -202,7 +202,7 @@ export default function Signup({ onLogin }) {
           display: flex;
           align-items: center;
           justify-content: center;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: #f8fafc;
           padding: 2rem;
         }
 
@@ -309,12 +309,12 @@ export default function Signup({ onLogin }) {
         }
 
         .btn-primary {
-          background: #4299e1;
+          background: #2563eb;
           color: white;
         }
 
         .btn-primary:hover:not(:disabled) {
-          background: #3182ce;
+          background: #1d4ed8;
         }
 
         .btn-primary:disabled {
@@ -353,7 +353,7 @@ export default function Signup({ onLogin }) {
         }
 
         .auth-footer a {
-          color: #4299e1;
+          color: #2563eb;
           text-decoration: none;
           font-weight: 500;
         }
