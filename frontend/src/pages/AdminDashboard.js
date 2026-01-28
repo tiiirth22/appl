@@ -178,20 +178,14 @@ export default function AdminDashboard({ user, onLogout }) {
       <style jsx>{`
         .dashboard {
           min-height: 100vh;
-          background: #f7fafc;
-        }
-
-        .dashboard-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 2rem;
-          padding: 2rem 0;
+          background: #f8fafc;
+          color: #1e293b;
         }
 
         .navbar {
-          background: white;
-          border-bottom: 1px solid #e2e8f0;
+          background: rgba(255, 255, 255, 0.8);
+          backdrop-filter: blur(12px);
+          border-bottom: 1px solid rgba(226, 232, 240, 0.8);
           padding: 1rem 0;
           position: sticky;
           top: 0;
@@ -209,9 +203,10 @@ export default function AdminDashboard({ user, onLogout }) {
 
         .navbar-brand {
           font-size: 1.5rem;
-          font-weight: bold;
-          color: #2d3748;
-          margin: 0;
+          font-weight: 800;
+          background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
         }
 
         .navbar-links {
@@ -220,14 +215,15 @@ export default function AdminDashboard({ user, onLogout }) {
         }
 
         .navbar-link {
-          color: #4a5568;
+          color: #64748b;
           text-decoration: none;
-          font-weight: 500;
+          font-weight: 600;
+          font-size: 0.9rem;
           transition: color 0.2s;
         }
 
         .navbar-link:hover {
-          color: #2d3748;
+          color: #10b981;
         }
 
         .navbar-user {
@@ -237,143 +233,161 @@ export default function AdminDashboard({ user, onLogout }) {
         }
 
         .navbar-user img {
-          width: 40px;
-          height: 40px;
+          width: 36px;
+          height: 36px;
           border-radius: 50%;
+          border: 2px solid #10b981;
         }
 
         .btn-logout {
-          background: none;
+          background: #f1f5f9;
           border: none;
-          color: #4a5568;
-          cursor: pointer;
+          color: #64748b;
           padding: 0.5rem;
-          border-radius: 0.375rem;
-          transition: background-color 0.2s;
+          border-radius: 0.5rem;
+          cursor: pointer;
+          transition: all 0.2s;
         }
 
         .btn-logout:hover {
-          background: #f7fafc;
+          background: #fee2e2;
+          color: #ef4444;
         }
 
         .container {
           max-width: 1200px;
           margin: 0 auto;
-          padding: 2rem;
+          padding: 3rem 2rem;
+        }
+
+        .dashboard-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-end;
+          margin-bottom: 3rem;
+        }
+
+        .dashboard-header h1 {
+          font-size: 2.5rem;
+          font-weight: 800;
+          margin-bottom: 0.5rem;
+          letter-spacing: -0.025em;
+        }
+
+        .dashboard-header p {
+          color: #64748b;
+          font-size: 1.125rem;
         }
 
         .stats-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
           gap: 1.5rem;
-          margin-bottom: 3rem;
+          margin-bottom: 4rem;
         }
 
         .stat-card {
           background: white;
           padding: 1.5rem;
-          border-radius: 0.5rem;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          border-radius: 1.25rem;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
           display: flex;
           align-items: center;
           gap: 1rem;
+          border: 1px solid #f1f5f9;
+          transition: transform 0.3s;
+        }
+
+        .stat-card:hover {
+          transform: translateY(-5px);
         }
 
         .stat-icon {
-          color: #4299e1;
-          background: #ebf8ff;
+          color: #10b981;
+          background: #ecfdf5;
           padding: 0.75rem;
-          border-radius: 0.5rem;
+          border-radius: 0.75rem;
         }
 
         .stat-value {
-          font-size: 2rem;
-          font-weight: bold;
-          color: #2d3748;
+          font-size: 1.875rem;
+          font-weight: 800;
+          color: #0f172a;
+          line-height: 1;
           margin-bottom: 0.25rem;
         }
 
         .stat-label {
-          color: #718096;
-          font-size: 0.875rem;
+          color: #64748b;
+          font-size: 0.75rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
         }
 
         .users-section, .manuals-section {
           background: white;
-          padding: 2rem;
-          border-radius: 0.5rem;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-          margin-bottom: 2rem;
+          padding: 2.5rem;
+          border-radius: 1.5rem;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+          margin-bottom: 3rem;
+          border: 1px solid #f1f5f9;
         }
 
         .users-section h2, .manuals-section h2 {
-          margin-bottom: 1.5rem;
-          color: #2d3748;
+          font-size: 1.5rem;
+          font-weight: 800;
+          margin-bottom: 2rem;
+          color: #0f172a;
         }
 
         .users-grid, .manuals-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-          gap: 1rem;
+          gap: 1.5rem;
         }
 
         .user-card, .manual-card {
-          border: 1px solid #e2e8f0;
-          border-radius: 0.5rem;
+          border: 1px solid #f1f5f9;
+          border-radius: 1rem;
           padding: 1.5rem;
-          transition: box-shadow 0.2s;
+          transition: all 0.2s;
         }
 
         .user-card:hover, .manual-card:hover {
-          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+          border-color: #10b981;
+          background: #f8fafc;
         }
 
         .user-header, .manual-header {
           display: flex;
           justify-content: space-between;
-          align-items: center;
+          align-items: flex-start;
           margin-bottom: 1rem;
         }
 
         .user-header h3, .manual-header h3 {
+          font-size: 1.125rem;
+          font-weight: 700;
           margin: 0;
-          color: #2d3748;
         }
 
         .badge {
           padding: 0.25rem 0.75rem;
           border-radius: 9999px;
-          font-size: 0.75rem;
-          font-weight: 500;
+          font-size: 0.7rem;
+          font-weight: 700;
+          text-transform: uppercase;
         }
 
-        .badge-primary {
-          background: #4299e1;
-          color: white;
-        }
-
-        .badge-secondary {
-          background: #e2e8f0;
-          color: #4a5568;
-        }
-
-        .badge-success {
-          background: #48bb78;
-          color: white;
-        }
-
-        .badge-warning {
-          background: #ed8936;
-          color: white;
-        }
-
-        .badge-error {
-          background: #f56565;
-          color: white;
-        }
+        .badge-primary { background: #dbeafe; color: #1e40af; }
+        .badge-secondary { background: #f1f5f9; color: #475569; }
+        .badge-success { background: #dcfce7; color: #166534; }
+        .badge-warning { background: #fef9c3; color: #854d0e; }
+        .badge-error { background: #fee2e2; color: #991b1b; }
 
         .user-details, .manual-details {
-          color: #718096;
+          color: #64748b;
           font-size: 0.875rem;
         }
 
@@ -384,7 +398,6 @@ export default function AdminDashboard({ user, onLogout }) {
         .loading-container {
           display: flex;
           justify-content: center;
-          align-items: center;
           padding: 3rem;
         }
 
@@ -392,51 +405,33 @@ export default function AdminDashboard({ user, onLogout }) {
           animation: spin 1s linear infinite;
         }
 
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-
-        .empty-state {
-          text-align: center;
-          padding: 3rem;
-          color: #718096;
-        }
-
-        .empty-state h3 {
-          margin: 1rem 0;
-          color: #4a5568;
-        }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
         .btn {
           display: inline-flex;
           align-items: center;
           gap: 0.5rem;
           padding: 0.75rem 1.5rem;
-          border-radius: 0.375rem;
-          font-weight: 500;
-          text-decoration: none;
+          border-radius: 0.75rem;
+          font-weight: 700;
           transition: all 0.2s;
           border: none;
           cursor: pointer;
+          text-decoration: none;
         }
 
         .btn-primary {
-          background: #4299e1;
+          background: #10b981;
           color: white;
         }
 
         .btn-primary:hover {
-          background: #3182ce;
+          background: #059669;
+          transform: translateY(-2px);
         }
 
-        .btn-secondary {
-          background: #e2e8f0;
-          color: #4a5568;
-        }
-
-        .btn-secondary:hover {
-          background: #cbd5e0;
+        @media (max-width: 768px) {
+          .dashboard-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
         }
       `}</style>
     </div>
