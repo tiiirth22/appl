@@ -83,6 +83,7 @@ class ChatRequest(BaseModel):
     question: str
 
 class ChatResponse(BaseModel):
+    query_id: str
     answer: str
     sources: List[Dict[str, Any]]
     manual_info: Dict[str, Any]
