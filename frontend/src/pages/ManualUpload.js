@@ -189,14 +189,13 @@ export default function ManualUpload({ user, onLogout }) {
       <style jsx>{`
         .upload-page {
           min-height: 100vh;
-          background: radial-gradient(circle at top right, #fdfcfb 0%, #e2d1c3 100%);
-          color: #2d3748;
+          background: #f8fafc;
+          color: #1a202c;
         }
 
         .navbar {
-          background: rgba(255, 255, 255, 0.8);
-          backdrop-filter: blur(10px);
-          border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+          background: #ffffff;
+          border-bottom: 1px solid #e2e8f0;
           padding: 1rem 0;
           position: sticky;
           top: 0;
@@ -213,39 +212,27 @@ export default function ManualUpload({ user, onLogout }) {
         }
 
         .navbar-brand {
-          font-size: 1.5rem;
+          font-size: 1.25rem;
           font-weight: 800;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
+          color: #0f172a;
+          letter-spacing: -0.025em;
         }
 
         .navbar-links {
           display: flex;
-          gap: 2rem;
+          gap: 2.5rem;
         }
 
         .navbar-link {
-          color: #4a5568;
+          color: #64748b;
           text-decoration: none;
           font-weight: 600;
-          transition: all 0.3s;
-          position: relative;
+          font-size: 0.9rem;
+          transition: all 0.2s;
         }
 
-        .navbar-link:after {
-          content: '';
-          position: absolute;
-          width: 0;
-          height: 2px;
-          bottom: -4px;
-          left: 0;
-          background: #667eea;
-          transition: width 0.3s;
-        }
-
-        .navbar-link:hover:after {
-          width: 100%;
+        .navbar-link:hover {
+          color: #2563eb;
         }
 
         .navbar-user {
@@ -255,69 +242,68 @@ export default function ManualUpload({ user, onLogout }) {
         }
 
         .navbar-user img {
-          width: 36px;
-          height: 36px;
+          width: 32px;
+          height: 32px;
           border-radius: 50%;
-          border: 2px solid #667eea;
+          border: 1px solid #e2e8f0;
         }
 
         .btn-logout {
-          background: rgba(255, 255, 255, 0.5);
-          border: 1px solid rgba(0, 0, 0, 0.05);
-          color: #4a5568;
+          background: #f1f5f9;
+          border: none;
+          color: #64748b;
           cursor: pointer;
           padding: 0.5rem;
           border-radius: 0.5rem;
-          transition: all 0.3s;
+          transition: all 0.2s;
         }
 
         .btn-logout:hover {
-          background: #feb2b2;
-          color: #c53030;
+          background: #fee2e2;
+          color: #ef4444;
         }
 
         .container {
           max-width: 1200px;
           margin: 0 auto;
-          padding: 3rem 2rem;
+          padding: 4rem 2rem;
         }
 
         .upload-container {
-          max-width: 700px;
+          max-width: 640px;
           margin: 0 auto;
         }
 
         .upload-form-wrapper {
-          background: rgba(255, 255, 255, 0.7);
-          backdrop-filter: blur(20px);
-          border-radius: 24px;
+          background: #ffffff;
+          border-radius: 1.5rem;
           padding: 3rem;
-          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.5);
+          box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+          border: 1px solid #e2e8f0;
         }
 
         .upload-header {
           text-align: center;
-          margin-bottom: 3rem;
+          margin-bottom: 3.5rem;
         }
 
         .upload-header svg {
-          color: #667eea;
-          margin-bottom: 1.5rem;
-          filter: drop-shadow(0 4px 6px rgba(102, 126, 234, 0.3));
+          color: #2563eb;
+          margin-bottom: 2rem;
         }
 
         .upload-header h1 {
-          font-size: 2.5rem;
+          font-size: 2.25rem;
           font-weight: 800;
           margin-bottom: 1rem;
-          color: #1a202c;
+          color: #0f172a;
           letter-spacing: -0.025em;
         }
 
         .upload-header p {
-          color: #718096;
+          color: #64748b;
           font-size: 1.125rem;
+          line-height: 1.6;
         }
 
         .form-group {
@@ -401,27 +387,29 @@ export default function ManualUpload({ user, onLogout }) {
         }
 
         .btn-primary {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: #2563eb;
           color: white;
-          box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+          box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.1), 0 2px 4px -1px rgba(37, 99, 235, 0.06);
         }
 
         .btn-primary:hover:not(:disabled) {
-          transform: translateY(-4px);
-          box-shadow: 0 15px 30px rgba(102, 126, 234, 0.4);
+          background: #1d4ed8;
+          transform: translateY(-2px);
+          box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.2);
         }
 
         .btn-primary:disabled {
-          opacity: 0.7;
+          background: #94a3b8;
           cursor: not-allowed;
         }
 
         .success-message {
           background: white;
-          border-radius: 24px;
+          border-radius: 1.5rem;
           padding: 4rem;
           text-align: center;
-          box-shadow: 0 30px 60px rgba(0, 0, 0, 0.1);
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+          border: 1px solid #e2e8f0;
           animation: slideIn 0.5s ease-out;
         }
 
@@ -431,16 +419,16 @@ export default function ManualUpload({ user, onLogout }) {
         }
 
         .success-icon {
-          width: 100px;
-          height: 100px;
-          background: #c6f6d5;
+          width: 80px;
+          height: 80px;
+          background: #f0fdf4;
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
-          margin: 0 auto 2rem;
-          color: #2f855a;
-          box-shadow: 0 8px 20px rgba(72, 187, 120, 0.2);
+          margin: 0 auto 2.5rem;
+          color: #16a34a;
+          border: 1px solid #dcfce7;
         }
 
         .qr-preview {
