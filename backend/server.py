@@ -25,13 +25,15 @@ try:
     from ingestion import DocumentProcessor
     from rag import RAGEngine
     from qr_handler import QRHandler
-    doc_processor_available = True
-except (ImportError, ValueError) as e:
-    print(f"Warning: Some ML services not available: {e}")
+    ml_imports_available = True
+    ml_import_error = None
+except Exception as e:
+    print(f"Warning: Some ML services not available for import: {e}")
     DocumentProcessor = None
     RAGEngine = None
     QRHandler = None
-    doc_processor_available = False
+    ml_imports_available = False
+    ml_import_error = str(e)
 
 # Dependency injection helpers
 async def get_db_current_user(session_token: Optional[str] = Cookie(None), authorization: Optional[str] = Header(None)):
@@ -72,6 +74,7 @@ qdrant_client = None
 doc_processor = None
 rag_engine = None
 qr_handler = None
+initialization_error = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -93,16 +96,25 @@ async def lifespan(app: FastAPI):
             mongo_available = False
     
     # Initialize ML Services
-    if doc_processor_available:
+    if ml_imports_available:
         qr_handler = QRHandler()
         if qdrant_url and qdrant_api_key:
             try:
                 qdrant_client = QdrantClient(url=qdrant_url, api_key=qdrant_api_key, timeout=30.0)
+                # Check connection
+                qdrant_client.get_collections()
+                
                 doc_processor = DocumentProcessor(qdrant_client, qdrant_collection)
                 rag_engine = RAGEngine(qdrant_client, qdrant_collection)
                 print("✅ Qdrant services initialized")
             except Exception as e:
-                print(f"❌ Qdrant initialization failed: {e}")
+                initialization_error = f"Qdrant initialization failed: {e}"
+                print(f"❌ {initialization_error}")
+        else:
+            initialization_error = "Qdrant URL or API Key missing in .env"
+            print(f"❌ {initialization_error}")
+    else:
+        initialization_error = f"ML dependencies missing: {ml_import_error}"
     
     yield
     
@@ -171,7 +183,10 @@ async def upload_manual(
 ):
     """Upload a manual file."""
     if not doc_processor:
-        raise HTTPException(status_code=503, detail="Ingestion service not available - ML dependencies not installed")
+        detail = "Ingestion service not available"
+        if initialization_error:
+            detail += f": {initialization_error}"
+        raise HTTPException(status_code=503, detail=detail)
     
     # Validate file type
     file_ext = file.filename.split('.')[-1].lower()
