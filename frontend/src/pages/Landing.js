@@ -8,7 +8,7 @@ export default function Landing() {
       {/* Hero Section */}
       <section className="hero">
         <div className="hero-content">
-          <div className="hero-badge">🚀 Production-Ready RAG Platform</div>
+          <div className="hero-badge">Production-Ready RAG Platform</div>
           <h1 className="hero-title" data-testid="hero-title">
             ApplianceIQ
           </h1>
@@ -102,7 +102,8 @@ export default function Landing() {
       <style jsx>{`
         .landing {
           min-height: 100vh;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: #fdfdfd;
+          color: #1a202c;
         }
 
         .hero {
@@ -113,18 +114,7 @@ export default function Landing() {
           text-align: center;
           padding: 2rem;
           position: relative;
-          overflow: hidden;
-        }
-
-        .hero::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
-          pointer-events: none;
+          background: #ffffff;
         }
 
         .hero-content {
@@ -134,37 +124,39 @@ export default function Landing() {
 
         .hero-badge {
           display: inline-block;
-          background: rgba(255, 255, 255, 0.2);
-          backdrop-filter: blur(10px);
+          background: #f1f5f9;
           padding: 0.5rem 1.5rem;
           border-radius: 50px;
-          color: white;
-          font-weight: 600;
+          color: #2563eb;
+          font-weight: 700;
           margin-bottom: 2rem;
-          border: 1px solid rgba(255, 255, 255, 0.3);
+          border: 1px solid #e2e8f0;
+          font-size: 0.875rem;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
         }
 
         .hero-title {
           font-size: 4.5rem;
-          font-weight: 800;
-          color: white;
-          margin-bottom: 1rem;
-          line-height: 1.1;
-          text-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+          font-weight: 900;
+          color: #0f172a;
+          margin-bottom: 1.5rem;
+          line-height: 1;
+          letter-spacing: -0.025em;
         }
 
         .hero-subtitle {
           font-size: 1.75rem;
-          color: rgba(255, 255, 255, 0.95);
-          margin-bottom: 1rem;
+          color: #334155;
+          margin-bottom: 1.5rem;
           font-weight: 600;
         }
 
         .hero-description {
           font-size: 1.125rem;
-          color: rgba(255, 255, 255, 0.85);
-          margin-bottom: 2.5rem;
-          line-height: 1.6;
+          color: #64748b;
+          margin-bottom: 3rem;
+          line-height: 1.7;
         }
 
         .hero-buttons {
@@ -215,14 +207,14 @@ export default function Landing() {
         }
 
         .feature-icon {
-          width: 64px;
-          height: 64px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          width: 56px;
+          height: 56px;
+          background: #eff6ff;
           border-radius: 12px;
           display: flex;
           align-items: center;
           justify-content: center;
-          color: white;
+          color: #2563eb;
           margin-bottom: 1.5rem;
         }
 
@@ -239,9 +231,10 @@ export default function Landing() {
         }
 
         .cta-section {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          padding: 5rem 2rem;
+          background: #0f172a;
+          padding: 6rem 2rem;
           text-align: center;
+          color: white;
         }
 
         .cta-content {
@@ -251,15 +244,16 @@ export default function Landing() {
 
         .cta-section h2 {
           font-size: 2.5rem;
-          font-weight: 700;
+          font-weight: 800;
           color: white;
-          margin-bottom: 1rem;
+          margin-bottom: 1.5rem;
+          letter-spacing: -0.025em;
         }
 
         .cta-section p {
           font-size: 1.125rem;
-          color: rgba(255, 255, 255, 0.9);
-          margin-bottom: 2rem;
+          color: #94a3b8;
+          margin-bottom: 3rem;
         }
 
         @media (max-width: 768px) {
