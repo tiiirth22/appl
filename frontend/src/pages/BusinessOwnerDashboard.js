@@ -69,7 +69,7 @@ export default function BusinessOwnerDashboard({ user, onLogout }) {
       <div className="container">
         <div className="dashboard-header">
           <div>
-            <h1 data-testid="dashboard-title">Welcome back, {user.name}!</h1>
+            <h1 data-testid="dashboard-title">Welcome back, {user.name}</h1>
             <p>Manage your appliance manuals and view QR codes</p>
           </div>
           <Link to="/upload" className="btn btn-primary" data-testid="new-manual-btn">
@@ -302,11 +302,10 @@ export default function BusinessOwnerDashboard({ user, onLogout }) {
         }
 
         .navbar-brand {
-          font-size: 1.5rem;
+          font-size: 1.25rem;
           font-weight: 800;
-          background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
+          color: #0f172a;
+          letter-spacing: -0.025em;
         }
 
         .navbar-links {
@@ -404,8 +403,8 @@ export default function BusinessOwnerDashboard({ user, onLogout }) {
         }
 
         .stat-icon {
-          color: #6366f1;
-          background: #eef2ff;
+          color: #2563eb;
+          background: #eff6ff;
           padding: 1rem;
           border-radius: 1rem;
         }
@@ -421,37 +420,38 @@ export default function BusinessOwnerDashboard({ user, onLogout }) {
         .stat-label {
           color: #64748b;
           font-weight: 600;
-          font-size: 0.875rem;
+          font-size: 0.75rem;
           text-transform: uppercase;
-          letter-spacing: 0.025em;
+          letter-spacing: 0.05em;
         }
 
         .manuals-section h2 {
-          font-size: 1.875rem;
+          font-size: 1.5rem;
           font-weight: 800;
-          margin-bottom: 2rem;
+          margin-bottom: 2.5rem;
+          color: #0f172a;
         }
 
         .manuals-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+          grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
           gap: 2rem;
         }
 
         .manual-card {
           background: white;
-          border-radius: 1.25rem;
+          border-radius: 1rem;
           padding: 2rem;
-          border: 1px solid #f1f5f9;
-          transition: all 0.3s;
+          border: 1px solid #e2e8f0;
+          transition: all 0.2s;
           display: flex;
           flex-direction: column;
           gap: 1.5rem;
         }
 
         .manual-card:hover {
-          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05);
-          border-color: #6366f1;
+          border-color: #2563eb;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
 
         .manual-header {
@@ -508,15 +508,15 @@ export default function BusinessOwnerDashboard({ user, onLogout }) {
           flex: 1;
           font-family: 'JetBrains Mono', monospace;
           font-size: 0.75rem;
-          color: #6366f1;
+          color: #2563eb;
         }
 
         .btn {
           display: inline-flex;
           align-items: center;
           gap: 0.75rem;
-          padding: 0.875rem 1.75rem;
-          border-radius: 0.75rem;
+          padding: 0.75rem 1.5rem;
+          border-radius: 0.5rem;
           font-weight: 700;
           transition: all 0.2s;
           border: none;
@@ -525,15 +525,12 @@ export default function BusinessOwnerDashboard({ user, onLogout }) {
         }
 
         .btn-primary {
-          background: #6366f1;
+          background: #2563eb;
           color: white;
-          box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.2);
         }
 
         .btn-primary:hover {
-          background: #4f46e5;
-          transform: translateY(-2px);
-          box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.3);
+          background: #1d4ed8;
         }
 
         .btn-secondary {
@@ -543,11 +540,11 @@ export default function BusinessOwnerDashboard({ user, onLogout }) {
 
         .btn-secondary:hover:not(:disabled) {
           background: #e2e8f0;
-          color: #1e293b;
+          color: #0f172a;
         }
 
         .btn-sm {
-          padding: 0.625rem 1.25rem;
+          padding: 0.5rem 1rem;
           font-size: 0.875rem;
         }
 
