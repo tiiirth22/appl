@@ -49,7 +49,7 @@ export default function ChatBot() {
       if (manualId || qrId) {
         setMessages([{
           type: 'bot',
-          text: 'Hello! I\'m your appliance manual assistant. Ask me anything about your device!'
+          text: 'Hello, I am your appliance assistant. How can I help you with your device today?'
         }]);
       }
     };
@@ -136,11 +136,11 @@ export default function ChatBot() {
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #f8fafc;
           }
           .loading-state {
             text-align: center;
-            color: white;
+            color: #0f172a;
           }
           .spinner {
             animation: spin 1s linear infinite;
@@ -169,12 +169,12 @@ export default function ChatBot() {
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #f8fafc;
           }
 
           .error-state {
             text-align: center;
-            color: white;
+            color: #0f172a;
             padding: 2rem;
           }
 
@@ -315,15 +315,15 @@ export default function ChatBot() {
         }
 
         .header-icon {
-          width: 48px;
-          height: 48px;
-          background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-          border-radius: 1rem;
+          width: 40px;
+          height: 40px;
+          background: #eff6ff;
+          border-radius: 0.75rem;
           display: flex;
           align-items: center;
           justify-content: center;
-          color: white;
-          box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+          color: #2563eb;
+          border: 1px solid #dbeafe;
         }
 
         .header-info h2 {
@@ -412,9 +412,8 @@ export default function ChatBot() {
         }
 
         .message.user .message-content {
-          background: #6366f1;
+          background: #0f172a;
           color: white;
-          box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
           border-top-right-radius: 0.25rem;
         }
 
@@ -429,7 +428,7 @@ export default function ChatBot() {
 
         .source-tag {
           font-size: 0.75rem;
-          color: #6366f1;
+          color: #2563eb;
           font-weight: 600;
           display: inline-flex;
           align-items: center;
@@ -468,19 +467,19 @@ export default function ChatBot() {
         .chat-input:focus {
           outline: none;
           background: white;
-          border-color: #6366f1;
-          box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+          border-color: #2563eb;
+          box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.05);
         }
 
         .send-btn {
           position: absolute;
-          right: 0.625rem;
-          width: 3rem;
-          height: 3rem;
-          background: #6366f1;
+          right: 0.75rem;
+          width: 2.75rem;
+          height: 2.75rem;
+          background: #0f172a;
           color: white;
           border: none;
-          border-radius: 0.875rem;
+          border-radius: 0.75rem;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -489,8 +488,8 @@ export default function ChatBot() {
         }
 
         .send-btn:hover:not(:disabled) {
-          background: #4f46e5;
-          transform: scale(1.05);
+          background: #1e293b;
+          transform: translateY(-1px);
         }
 
         .send-btn:disabled {
