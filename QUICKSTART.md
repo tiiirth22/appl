@@ -130,6 +130,12 @@ MONGO_URL=mongodb://localhost:27017
 DB_NAME=applianceiq_db
 ```
 
+#### Using MongoDB Atlas Cloud (Recommended):
+1. Sign up at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
+2. Create a cluster and a database user
+3. Allow access from your IP in Network Access
+4. Use connection string: `MONGO_URL="mongodb+srv://user:pass@cluster.mongodb.net/dbname"`
+
 ### Issue: Backend won't start
 **Solution**: Check if port 8000 is in use:
 ```bash
