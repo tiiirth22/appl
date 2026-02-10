@@ -136,6 +136,11 @@ DB_NAME=applianceiq_db
 3. Allow access from your IP in Network Access
 4. Use connection string: `MONGO_URL="mongodb+srv://user:pass@cluster.mongodb.net/dbname"`
 
+#### Using Local MongoDB:
+1. Install MongoDB Community Edition
+2. Start the service: `net start MongoDB` (Windows)
+3. Use connection string: `MONGO_URL="mongodb://localhost:27017"`
+
 ### Issue: Backend won't start
 **Solution**: Check if port 8000 is in use:
 ```bash
