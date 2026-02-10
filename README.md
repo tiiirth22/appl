@@ -161,6 +161,23 @@ We welcome contributions! Please follow these steps:
 
 ---
 
+## Key Contacts
+
+- **Maintainer**: Tiirth Patel (tiirth22)
+- **Email**: support@applianceiq.ai
+- **Project Link**: [https://github.com/tiirth22/Appliance_IQ](https://github.com/tiirth22/Appliance_IQ)
+
+---
+
+## Maintenance
+
+To keep the platform running smoothly:
+- Regularly update dependencies in both `backend` and `frontend`.
+- Monitor MongoDB and Qdrant performance.
+- Clear temporary files in the `backend/tmp` directory periodically.
+
+---
+
 ## License
 
 Distributed under the MIT License. See `LICENSE` for more information.
