@@ -34,18 +34,18 @@ def test_imports():
     for name, import_func in tests:
         try:
             import_func()
-            print(f"✅ {name:20} - OK")
+            print(f"[OK] {name:20}")
             passed += 1
         except (ImportError, ValueError) as e:
             if "sentence_transformers" in str(e) or "Keras" in str(e):
-                print(f"⚠️  {name:20} - OPTIONAL SERVICE UNAVAILABLE")
+                print(f"[OPTIONAL] {name:20} - SERVICE UNAVAILABLE")
                 print(f"   └─ {str(e)[:60]}")
             else:
-                print(f"❌ {name:20} - FAILED")
+                print(f"[FAILED] {name:20}")
                 print(f"   └─ {e}")
                 failed += 1
         except Exception as e:
-            print(f"❌ {name:20} - ERROR: {e}")
+            print(f"[ERROR] {name:20}: {e}")
             failed += 1
     
     print("=" * 60)
@@ -53,11 +53,11 @@ def test_imports():
     print("=" * 60)
     
     if failed == 0:
-        print("✅ All critical components imported successfully!")
+        print("All critical components imported successfully!")
         print("   System is ready for testing.")
         return True
     else:
-        print("❌ Some components failed to import.")
+        print("Some components failed to import.")
         return False
 
 if __name__ == '__main__':
