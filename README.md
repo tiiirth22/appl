@@ -24,7 +24,7 @@
 
 ---
 
-## 🌟 Overview
+## Overview
 
 **ApplianceIQ** is a state-of-the-art AI platform designed to revolutionize how users interact with appliance manuals. By leveraging **Retrieval-Augmented Generation (RAG)** and advanced NLP, ApplianceIQ turns static PDFs into dynamic, conversational interfaces. 
 
@@ -34,16 +34,16 @@ No more flipping through hundreds of pages—just ask a question, and get an ins
 
 ---
 
-## ✨ Key Features
+## Key Features
 
-- 🔐 **Role-Based Access Control**: Secure login and signup for both **Administrators** and **Business Owners**.
-- 📊 **Dynamic Dashboards**:
+- **Role-Based Access Control**: Secure login and signup for both **Administrators** and **Business Owners**.
+- **Dynamic Dashboards**:
   - **Admin**: Oversee the entire ecosystem, manage users, and monitor system-wide manual uploads.
   - **Business Owner**: Manage individual appliance manuals, generate QR codes, and track user queries.
-- 💬 **AI-Powered Chatbot**: Instant answers to technical questions using indexed manual data.
-- 📂 **Smart Manual Ingestion**: Seamlessly upload and process PDF manuals with automated embedding generation.
-- 📱 **QR Code Integration**: Generate unique QR codes for appliances that directly link customers to the interactive manual.
-- 🛡️ **Graceful Degradation**: Robust architecture that remains functional even if secondary ML services are offline.
+- **AI-Powered Chatbot**: Instant answers to technical questions using indexed manual data.
+- **Smart Manual Ingestion**: Seamlessly upload and process PDF manuals with automated embedding generation.
+- **QR Code Integration**: Generate unique QR codes for appliances that directly link customers to the interactive manual.
+- **Graceful Degradation**: Robust architecture that remains functional even if secondary ML services are offline.
 
 ---
 
