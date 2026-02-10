@@ -14,6 +14,16 @@
 
 ---
 
+## 🔗 Quick Links
+- [🚀 Getting Started](#-getting-started)
+- [✨ Key Features](#-key-features)
+- [🛠️ Tech Stack](#️-tech-stack)
+- [📁 Project Structure](#-project-structure)
+- [📄 API Documentation](#-api-documentation)
+- [🤝 Contributing](#-contributing)
+
+---
+
 ## 🌟 Overview
 
 **ApplianceIQ** is a state-of-the-art AI platform designed to revolutionize how users interact with appliance manuals. By leveraging **Retrieval-Augmented Generation (RAG)** and advanced NLP, ApplianceIQ turns static PDFs into dynamic, conversational interfaces. 
