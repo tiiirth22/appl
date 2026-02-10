@@ -47,7 +47,7 @@ No more flipping through hundreds of pages—just ask a question, and get an ins
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 ### Backend
 - **Framework**: [FastAPI](https://fastapi.tiangolo.com/) (Python)
@@ -64,7 +64,7 @@ No more flipping through hundreds of pages—just ask a question, and get an ins
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 - Python 3.9+
@@ -100,7 +100,7 @@ npm start
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```text
 .
