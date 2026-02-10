@@ -107,13 +107,18 @@ npm start
 ├── backend/               # FastAPI Server logic
 │   ├── auth.py            # JWT & Authentication
 │   ├── models.py          # Pydantic & DB Models
+│   ├── ingestion.py       # Document processing (optional)
 │   ├── rag.py             # RAG Engine (Vector search)
+│   ├── qr_handler.py      # QR code generation
 │   └── server.py          # API Entry point
 ├── frontend/              # React Application
 │   ├── src/pages/         # Dashboard & Auth views
-│   └── src/components/    # Reusable UI components
+│   ├── src/components/    # Reusable UI components
+│   ├── src/hooks/         # Custom React hooks
+│   └── src/lib/           # Utility functions
 ├── assets/                # README images & logos
-└── docs/                  # Detailed documentation
+├── tests/                 # API & Unit tests
+└── docs/                  # Detailed documentation (deprecated)
 ```
 
 ---
