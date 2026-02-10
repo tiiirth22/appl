@@ -131,6 +131,11 @@ npm start
 - [x] Environment configuration
 - [x] CORS & Middleware setup
 
+### Authentication & Authorization (100%)
+- [x] First-party signup/login
+- [x] JWT Session tokens
+- [x] Role-based access control (Admin/Business Owner)
+
 ### 📄 API Documentation
 
 The backend provides a comprehensive API with Swagger documentation. Once the server is running, visit:
