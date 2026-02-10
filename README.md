@@ -1,4 +1,4 @@
-# 🚀 ApplianceIQ: AI-Powered Smart Manual Management
+# ApplianceIQ: AI-Powered Smart Manual Management
 
 <div align="center">
   <img src="assets/logo.png" alt="ApplianceIQ Logo" width="200"/>
