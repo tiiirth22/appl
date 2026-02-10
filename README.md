@@ -123,7 +123,7 @@ npm start
 
 ---
 
-## ✅ Implementation Status
+## Implementation Status
 
 ### Backend (100%)
 - [x] FastAPI server structure
@@ -142,7 +142,7 @@ npm start
 - [x] Manual Upload & Management
 - [x] Secure Auth Flow integration
 
-### 📄 API Documentation
+### API Documentation
 
 The backend provides a comprehensive API with Swagger documentation. Once the server is running, visit:
 - **Swagger UI**: `http://localhost:8000/docs`
@@ -150,7 +150,7 @@ The backend provides a comprehensive API with Swagger documentation. Once the se
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! Please follow these steps:
 1. Fork the Project.
@@ -161,10 +161,10 @@ We welcome contributions! Please follow these steps:
 
 ---
 
-## 📜 License
+## License
 
 Distributed under the MIT License. See `LICENSE` for more information.
 
 ---
 
-<p align="center">Made with ❤️ for a smarter home experience.</p>
+<p align="center">Made for a smarter home experience.</p>
