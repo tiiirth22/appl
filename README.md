@@ -14,13 +14,13 @@
 
 ---
 
-## 🔗 Quick Links
-- [🚀 Getting Started](#-getting-started)
-- [✨ Key Features](#-key-features)
-- [🛠️ Tech Stack](#️-tech-stack)
-- [📁 Project Structure](#-project-structure)
-- [📄 API Documentation](#-api-documentation)
-- [🤝 Contributing](#-contributing)
+## Quick Links
+- [Getting Started](#getting-started)
+- [Key Features](#key-features)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [API Documentation](#api-documentation)
+- [Contributing](#contributing)
 
 ---
 
