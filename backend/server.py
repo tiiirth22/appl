@@ -90,9 +90,9 @@ async def lifespan(app: FastAPI):
             await client.admin.command('ping')
             db = client[db_name]
             mongo_available = True
-            print(f"✅ MongoDB connected to {db_name}")
+            print(f"MongoDB connected to {db_name}")
         except Exception as e:
-            print(f"❌ MongoDB connection failed: {e}")
+            print(f"MongoDB connection failed: {e}")
             mongo_available = False
     
     # Initialize ML Services
@@ -106,13 +106,13 @@ async def lifespan(app: FastAPI):
                 
                 doc_processor = DocumentProcessor(qdrant_client, qdrant_collection)
                 rag_engine = RAGEngine(qdrant_client, qdrant_collection)
-                print("✅ Qdrant services initialized")
+                print("Qdrant services initialized")
             except Exception as e:
                 initialization_error = f"Qdrant initialization failed: {e}"
-                print(f"❌ {initialization_error}")
+                print(f"{initialization_error}")
         else:
             initialization_error = "Qdrant URL or API Key missing in .env"
-            print(f"❌ {initialization_error}")
+            print(f"{initialization_error}")
     else:
         initialization_error = f"ML dependencies missing: {ml_import_error}"
     
