@@ -144,7 +144,7 @@ Testing:
 
 ---
 
-## 🔄 Data Flow Diagram
+## Data Flow Diagram
 
 ```
 User Registration & Login
@@ -201,7 +201,7 @@ Manual Upload Flow
 
 ---
 
-## 📦 Deployment Architecture
+## Deployment Architecture
 
 ```
 Local Development:
@@ -253,30 +253,30 @@ Production Deployment:
 
 ---
 
-## 🧪 Testing Phases
+## Testing Phases
 
 ```
-Phase 1: Component Testing (Current) ✅
-├─ Backend import test ..................... PASS ✅
+Phase 1: Component Testing (Current) [DONE]
+├─ Backend import test ..................... PASS [DONE]
 ├─ Frontend compilation ................... READY
-├─ Model definitions ...................... PASS ✅
+├─ Model definitions ...................... PASS [DONE]
 └─ API endpoint structure ................. READY
 
-Phase 2: Auth Flow Testing (Next) ⏳
+Phase 2: Auth Flow Testing (Next) [PENDING]
 ├─ Signup endpoint functionality
 ├─ Login endpoint functionality
 ├─ Token generation & validation
 ├─ Role-based routing
 └─ Session persistence
 
-Phase 3: Integration Testing ⏳
+Phase 3: Integration Testing [PENDING]
 ├─ Admin dashboard data flow
 ├─ Business owner data isolation
 ├─ Manual upload & storage
 ├─ Chat functionality
 └─ QR code assignment
 
-Phase 4: Production Testing ⏳
+Phase 4: Production Testing [PENDING]
 ├─ Performance under load
 ├─ Error recovery
 ├─ Security validation
@@ -285,7 +285,7 @@ Phase 4: Production Testing ⏳
 
 ---
 
-## 🚀 Ready-to-Run Commands
+## Ready-to-Run Commands
 
 ```bash
 # Terminal 1 - Backend
