@@ -25,7 +25,7 @@ pip install -r requirements.txt
 python test_imports.py
 
 # Expected output:
-# ✅ All critical components imported successfully!
+# All critical components imported successfully!
 # System is ready for testing.
 ```
 
