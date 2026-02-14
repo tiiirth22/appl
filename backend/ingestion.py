@@ -82,17 +82,28 @@ class DocumentProcessor:
             raise
     
     def chunk_text(self, text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]:
-        """Chunk text into overlapping segments."""
-        chunks = []
-        words = text.split()
-        
-        for i in range(0, len(words), chunk_size - overlap):
-            chunk_words = words[i:i + chunk_size]
-            chunk = ' '.join(chunk_words)
-            if chunk.strip():
-                chunks.append(chunk)
-        
-        return chunks
+        """Chunk text into overlapping segments using LangChain's splitter."""
+        try:
+            from langchain.text_splitter import RecursiveCharacterTextSplitter
+            
+            splitter = RecursiveCharacterTextSplitter(
+                chunk_size=chunk_size,
+                chunk_overlap=overlap,
+                length_function=len,
+                separators=["\n\n", "\n", " ", ""]
+            )
+            return splitter.split_text(text)
+        except ImportError:
+            # Fallback to simple splitting if langchain is not available
+            logger.warning("LangChain not available, falling back to simple chunking")
+            chunks = []
+            words = text.split()
+            for i in range(0, len(words), chunk_size - overlap):
+                chunk_words = words[i:i + chunk_size]
+                chunk = ' '.join(chunk_words)
+                if chunk.strip():
+                    chunks.append(chunk)
+            return chunks
     
     def generate_embeddings(self, texts: List[str]) -> List[List[float]]:
         """Generate embeddings for text chunks."""
