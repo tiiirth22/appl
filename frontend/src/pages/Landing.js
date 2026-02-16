@@ -8,21 +8,21 @@ export default function Landing() {
       {/* Hero Section */}
       <section className="hero">
         <div className="hero-content">
-          <div className="hero-badge">Production-Ready RAG Platform</div>
+          <div className="hero-badge">Manual Management System</div>
           <h1 className="hero-title" data-testid="hero-title">
             ApplianceIQ
           </h1>
           <p className="hero-subtitle">
-            Empower Your Customers with Instant Answers from Appliance Manuals
+            Interactive Manual Access
           </p>
           <p className="hero-description">
-            A B2B SaaS platform that transforms static manuals into interactive, AI-powered chatbots.
-            Just scan a QR code and get instant answers.
+            Upload manuals, generate QR codes, and enable users to query content.
+            Scan a QR code to access the manual's query interface.
           </p>
           <div className="hero-buttons">
             <Link to="/signup" className="btn btn-primary btn-large" data-testid="signup-btn">
               <UserPlus size={20} />
-              Sign Up Free
+              Sign Up
             </Link>
             <Link to="/login" className="btn btn-secondary btn-large" data-testid="login-btn">
               <LogIn size={20} />
@@ -35,54 +35,54 @@ export default function Landing() {
       {/* Features Section */}
       <section className="features">
         <div className="container">
-          <h2 className="section-title">Why Choose ApplianceIQ?</h2>
+          <h2 className="section-title">System Features</h2>
           <div className="features-grid">
             <div className="feature-card" data-testid="feature-upload">
               <div className="feature-icon">
                 <BookOpen size={32} />
               </div>
-              <h3>Easy Manual Upload</h3>
-              <p>Upload PDFs or images of appliance manuals. Our OCR and AI extract text automatically.</p>
+              <h3>Manual Upload</h3>
+              <p>Upload PDF files for indexing.</p>
             </div>
 
             <div className="feature-card" data-testid="feature-qr">
               <div className="feature-icon">
                 <Scan size={32} />
               </div>
-              <h3>Smart QR Codes</h3>
-              <p>Generate secure, signed QR codes for each appliance. Customers scan and access the chatbot instantly.</p>
+              <h3>QR Codes</h3>
+              <p>Generate secure, signed QR codes for access.</p>
             </div>
 
             <div className="feature-card" data-testid="feature-rag">
               <div className="feature-icon">
                 <MessageSquare size={32} />
               </div>
-              <h3>RAG-Powered Chatbot</h3>
-              <p>Llama 3.1 + Qdrant vector search ensures accurate answers grounded in your manuals.</p>
+              <h3>RAG Query Engine</h3>
+              <p>Uses vector search (Qdrant) and LLMs (Llama 3.1) to answer questions based on manual content.</p>
             </div>
 
             <div className="feature-card" data-testid="feature-security">
               <div className="feature-icon">
                 <Shield size={32} />
               </div>
-              <h3>Enterprise Security</h3>
-              <p>HMAC-signed QR codes, secure authentication, and encrypted data storage.</p>
+              <h3>Security</h3>
+              <p>HMAC signatures and secure authentication.</p>
             </div>
 
             <div className="feature-card" data-testid="feature-analytics">
               <div className="feature-icon">
                 <Globe size={32} />
               </div>
-              <h3>Analytics Dashboard</h3>
-              <p>Track queries, monitor feedback, and understand customer needs better.</p>
+              <h3>Analytics</h3>
+              <p>Monitor query count and user feedback.</p>
             </div>
 
             <div className="feature-card" data-testid="feature-pwa">
               <div className="feature-icon">
                 <Zap size={32} />
               </div>
-              <h3>PWA Ready</h3>
-              <p>Works offline, installable, and provides app-like experience on any device.</p>
+              <h3>PWA Capable</h3>
+              <p>Installable as a Progressive Web App.</p>
             </div>
           </div>
         </div>
@@ -91,10 +91,10 @@ export default function Landing() {
       {/* CTA Section */}
       <section className="cta-section">
         <div className="cta-content">
-          <h2>Ready to Transform Your Manuals?</h2>
-          <p>Join manufacturers worldwide using ApplianceIQ to enhance customer experience</p>
+          <h2>Get Started</h2>
+          <p>Create an account to begin uploading manuals.</p>
           <Link to="/signup" className="btn btn-primary btn-large" data-testid="cta-btn">
-            Start Free Trial
+            Sign Up
           </Link>
         </div>
       </section>
