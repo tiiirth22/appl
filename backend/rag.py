@@ -3,6 +3,11 @@ import logging
 from typing import List, Dict, Any
 import httpx
 import importlib
+try:
+    from groq import Groq
+    groq_available = True
+except ImportError:
+    groq_available = False
 
 # Optional import for sentence transformers
 SentenceTransformer = None
@@ -37,6 +42,19 @@ class RAGEngine:
         
         self.ollama_base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
         self.ollama_model = os.getenv("OLLAMA_MODEL", "llama3.1")
+
+        # Initialize Groq client if available and API key is present
+        self.groq_api_key = os.getenv("GROQ_API_KEY")
+        self.groq_model = os.getenv("GROQ_MODEL", "llama3-70b-8192")
+        self.groq_client = None
+        
+        if groq_available and self.groq_api_key:
+            try:
+                self.groq_client = Groq(api_key=self.groq_api_key)
+                logger.info(f"Initialized Groq client with model: {self.groq_model}")
+            except Exception as e:
+                logger.error(f"Failed to initialize Groq client: {e}")
+
     
     def retrieve_relevant_chunks(self, query: str, manual_id: str, top_k: int = 5) -> List[Dict[str, Any]]:
         """Retrieve relevant chunks from Qdrant."""
@@ -80,7 +98,7 @@ class RAGEngine:
             return []
     
     async def generate_answer(self, question: str, context_chunks: List[Dict[str, Any]]) -> str:
-        """Generate answer using Llama 3.1 via Ollama."""
+        """Generate answer using Groq (if available) or Ollama."""
         try:
             # Prepare context from chunks
             context = "\n\n".join([
@@ -88,22 +106,49 @@ class RAGEngine:
                 for chunk in context_chunks
             ])
             
-            # Construct prompt
-            prompt = f"""You are an expert assistant answering questions about appliance manuals. Answer ONLY using the provided context.
+            # System prompt for instruction
+            system_prompt = """You are an expert assistant answering questions about appliance manuals. Answer ONLY using the provided context.
 
 IMPORTANT INSTRUCTIONS:
 1. Answer questions exclusively using the retrieved context
 2. If the context does not contain information to answer the question, state: "I don't have sufficient information in this manual to answer that question."
 3. Always cite which section/chunk you're referencing
 4. Provide clear, concise, well-structured answers
-5. Do not make up information
+5. Do not make up information"""
 
-RETRIEVED CONTEXT:
+            # User prompt with data
+            user_msg_content = f"""RETRIEVED CONTEXT:
 {context}
 
-QUESTION: {question}
+QUESTION: {question}"""
 
-ANSWER:"""
+            # Option 1: Use Groq if available
+            if self.groq_client:
+                try:
+                    chat_completion = self.groq_client.chat.completions.create(
+                        messages=[
+                            {
+                                "role": "system",
+                                "content": system_prompt
+                            },
+                            {
+                                "role": "user",
+                                "content": user_msg_content
+                            }
+                        ],
+                        model=self.groq_model,
+                        temperature=0.0,
+                        max_tokens=1024,
+                    )
+                    return chat_completion.choices[0].message.content
+                except Exception as e:
+                    logger.error(f"Groq API error: {e}. Falling back to Ollama.")
+                    # Fallthrough to Ollama on error
+            
+            # Option 2: Use Ollama (Fallback or Primary if Groq not configured)
+            
+            # Construct single prompt for Ollama
+            full_prompt = f"{system_prompt}\n\n{user_msg_content}\n\nANSWER:"
             
             # Call Ollama API
             async with httpx.AsyncClient(timeout=60.0) as client:
@@ -111,7 +156,7 @@ ANSWER:"""
                     f"{self.ollama_base_url}/api/generate",
                     json={
                         "model": self.ollama_model,
-                        "prompt": prompt,
+                        "prompt": full_prompt,
                         "stream": False,
                         "options": {
                             "temperature": 0.0,
