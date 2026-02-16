@@ -2,7 +2,7 @@
 
 <div align="center">
   <img src="assets/logo.png" alt="ApplianceIQ Logo" width="200"/>
-  <h3>Transforming User Manuals into Interactive Intelligent Assistants</h3>
+  <h3>Interactive Manual Assistant</h3>
   <p>
     <img src="https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi" alt="FastAPI"/>
     <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React"/>
@@ -26,9 +26,9 @@
 
 ## Overview
 
-**ApplianceIQ** is a state-of-the-art AI platform designed to revolutionize how users interact with appliance manuals. By leveraging **Retrieval-Augmented Generation (RAG)** and advanced NLP, ApplianceIQ turns static PDFs into dynamic, conversational interfaces. 
+**ApplianceIQ** provides a searchable interface for appliance manuals using Retrieval-Augmented Generation (RAG). It processes uploaded PDF manuals to allow users to query specific appliance models using natural language.
 
-No more flipping through hundreds of pages—just ask a question, and get an instant, accurate answer based on your specific appliance model.
+Users can retrieve maintenance and operation details directly through a chat interface without navigating the original PDF document.
 
 ![ApplianceIQ Dashboard](assets/dashboard.png)
 
@@ -36,14 +36,14 @@ No more flipping through hundreds of pages—just ask a question, and get an ins
 
 ## Key Features
 
-- **Role-Based Access Control**: Secure login and signup for both **Administrators** and **Business Owners**.
+- **Role-Based Access Control**: Separate authentication and dashboards for **Administrators** and **Business Owners**.
 - **Dynamic Dashboards**:
-  - **Admin**: Oversee the entire ecosystem, manage users, and monitor system-wide manual uploads.
-  - **Business Owner**: Manage individual appliance manuals, generate QR codes, and track user queries.
-- **AI-Powered Chatbot**: Instant answers to technical questions using indexed manual data.
-- **Smart Manual Ingestion**: Seamlessly upload and process PDF manuals with automated embedding generation.
-- **QR Code Integration**: Generate unique QR codes for appliances that directly link customers to the interactive manual.
-- **Graceful Degradation**: Robust architecture that remains functional even if secondary ML services are offline.
+  - **Admin**: System-wide user and manual management.
+  - **Business Owner**: Specific manual management and usage tracking.
+- **AI-Powered Chatbot**: Technical queries answered using indexed manual content.
+- **Manual Processing**: Automatic text extraction and vector embedding for uploaded PDFs.
+- **QR Code Integration**: Unique QR codes link directly to interactive manuals.
+- **Service Resilience**: Core features remain operational if ML services are unavailable.
 
 ---
 
