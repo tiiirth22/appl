@@ -19,17 +19,15 @@ try:
 except ImportError as e:
     print(f"Warning: sentence_transformers not available: {e}")
 
-from qdrant_client import QdrantClient
-from qdrant_client.models import Filter, FieldCondition, MatchValue
+from pinecone import Index
 
 logger = logging.getLogger(__name__)
 
 class RAGEngine:
     """RAG engine for question answering."""
     
-    def __init__(self, qdrant_client: QdrantClient, collection_name: str):
-        self.qdrant_client = qdrant_client
-        self.collection_name = collection_name
+    def __init__(self, pinecone_index: Index):
+        self.index = pinecone_index
         
         # Initialize embedding model if available
         if sentence_transformers_available and SentenceTransformer:
@@ -65,31 +63,25 @@ class RAGEngine:
             # Generate query embedding
             query_embedding = self.embedding_model.encode(query).tolist()
             
-            # Search in Qdrant with manual_id filter
-            search_results = self.qdrant_client.search(
-                collection_name=self.collection_name,
-                query_vector=query_embedding,
-                query_filter=Filter(
-                    must=[
-                        FieldCondition(
-                            key="manual_id",
-                            match=MatchValue(value=manual_id)
-                        )
-                    ]
-                ),
-                limit=top_k,
-                with_payload=True,
-                score_threshold=0.3
+            # Search in Pinecone with manual_id filter
+            search_results = self.index.query(
+                vector=query_embedding,
+                top_k=top_k,
+                include_metadata=True,
+                filter={
+                    "manual_id": {"$eq": manual_id}
+                }
             )
             
             # Format results
             chunks = []
-            for result in search_results:
-                chunks.append({
-                    "content": result.payload["content"],
-                    "score": result.score,
-                    "chunk_index": result.payload.get("chunk_index", 0)
-                })
+            for match in search_results['matches']:
+                if match.score > 0.3:  # Threshold
+                    chunks.append({
+                        "content": match.metadata.get("content", ""),
+                        "score": match.score,
+                        "chunk_index": int(match.metadata.get("chunk_index", 0))
+                    })
             
             return chunks
             
