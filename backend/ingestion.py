@@ -20,17 +20,18 @@ try:
 except ImportError as e:
     print(f"Warning: sentence_transformers not available: {e}")
 
-from qdrant_client import QdrantClient
-from qdrant_client.models import PointStruct, Distance, VectorParams
+
+from pinecone import Pinecone, ServerlessSpec
 
 logger = logging.getLogger(__name__)
 
 class DocumentProcessor:
     """Handles document ingestion pipeline."""
     
-    def __init__(self, qdrant_client: QdrantClient, collection_name: str):
-        self.qdrant_client = qdrant_client
-        self.collection_name = collection_name
+    
+    def __init__(self, pinecone_client: Pinecone, index_name: str):
+        self.pc = pinecone_client
+        self.index_name = index_name
         
         # Initialize embedding model if available
         if sentence_transformers_available and SentenceTransformer:
@@ -44,23 +45,35 @@ class DocumentProcessor:
         self._ensure_collection()
     
     def _ensure_collection(self):
-        """Create collection if it doesn't exist."""
+        """Create index if it doesn't exist."""
         try:
-            collections = self.qdrant_client.get_collections().collections
-            collection_names = [c.name for c in collections]
+            existing_indexes = [i.name for i in self.pc.list_indexes()]
             
-            if self.collection_name not in collection_names:
-                self.qdrant_client.create_collection(
-                    collection_name=self.collection_name,
-                    vectors_config=VectorParams(
-                        size=384,  # all-MiniLM-L6-v2 dimension
-                        distance=Distance.COSINE
+            if self.index_name not in existing_indexes:
+                # Create serverless index
+                cloud = os.getenv("PINECONE_CLOUD", "aws")
+                region = os.getenv("PINECONE_REGION", "us-east-1")
+                
+                self.pc.create_index(
+                    name=self.index_name,
+                    dimension=384,  # all-MiniLM-L6-v2 dimension
+                    metric="cosine",
+                    spec=ServerlessSpec(
+                        cloud=cloud,
+                        region=region
                     )
                 )
-                logger.info(f"Created collection: {self.collection_name}")
+                logger.info(f"Created Pinecone index: {self.index_name}")
+            
+            self.index = self.pc.Index(self.index_name)
+            
         except Exception as e:
-            logger.error(f"Error ensuring collection: {e}")
-            raise
+            logger.error(f"Error ensuring index: {e}")
+            # If creation fails, try to get the index anyway (might be pod-based or pre-existing)
+            try:
+                self.index = self.pc.Index(self.index_name)
+            except Exception as e2:
+                raise e
     
     def extract_text_from_pdf(self, file_path: str) -> str:
         """Extract text from PDF file."""
@@ -132,27 +145,24 @@ class DocumentProcessor:
             # Generate embeddings
             embeddings = self.generate_embeddings(chunks)
             
-            # Prepare points for Qdrant
-            points = []
+            # Prepare vectors for Pinecone
+            vectors = []
             for idx, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
-                point = PointStruct(
-                    id=str(uuid.uuid4()),
-                    vector=embedding,
-                    payload={
-                        "manual_id": manual_id,
-                        "chunk_index": idx,
-                        "content": chunk,
-                        "total_chunks": len(chunks)
-                    }
-                )
-                points.append(point)
+                vector_id = str(uuid.uuid4())
+                metadata = {
+                    "manual_id": manual_id,
+                    "chunk_index": idx,
+                    "content": chunk,
+                    "total_chunks": len(chunks)
+                }
+                vectors.append((vector_id, embedding, metadata))
             
-            # Upsert to Qdrant
-            self.qdrant_client.upsert(
-                collection_name=self.collection_name,
-                points=points,
-                wait=True
-            )
+            # Upsert to Pinecone (batching is handled by Pinecone client usually, but good to be safe)
+            # Pinecone recommends batches of 100 or less for free tier, or larger for paid.
+            batch_size = 100
+            for i in range(0, len(vectors), batch_size):
+                batch = vectors[i:i + batch_size]
+                self.index.upsert(vectors=batch)
             
             # Update manual status in MongoDB
             await db.manuals.update_one(
