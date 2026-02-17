@@ -1,7 +1,7 @@
 import os
 import asyncio
 import httpx
-from qdrant_client import QdrantClient
+from pinecone import Pinecone
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -10,30 +10,29 @@ load_dotenv()
 async def check_setup():
     print("=== Checking RAG Setup ===")
     
-    # 1. Check Qdrant Connection
-    qdrant_url = os.getenv("QDRANT_URL")
-    qdrant_api_key = os.getenv("QDRANT_API_KEY")
-    collection_name = os.getenv("QDRANT_COLLECTION")
+    # 1. Check Pinecone Connection
+    pinecone_api_key = os.getenv("PINECONE_API_KEY")
+    index_name = os.getenv("PINECONE_INDEX_NAME", "appliance-manuals")
     
-    if not qdrant_url or not qdrant_api_key:
-        print("❌ QDRANT_URL or QDRANT_API_KEY missing in .env")
+    if not pinecone_api_key:
+        print("❌ PINECONE_API_KEY missing in .env")
         return
 
-    print(f"Checking Qdrant at '{qdrant_url}'...")
+    print(f"Checking Pinecone connection...")
     try:
-        client = QdrantClient(url=qdrant_url, api_key=qdrant_api_key)
-        collections = client.get_collections()
-        print(f"✅ Qdrant Connection Successful. Found {len(collections.collections)} collections.")
+        pc = Pinecone(api_key=pinecone_api_key)
+        indexes = pc.list_indexes()
+        index_names = [i.name for i in indexes]
+        print(f"✅ Pinecone Connection Successful. Found {len(index_names)} indexes: {index_names}")
         
-        # Check specific collection
-        collection_names = [c.name for c in collections.collections]
-        if collection_name in collection_names:
-            print(f"✅ Collection '{collection_name}' exists.")
+        # Check specific index
+        if index_name in index_names:
+            print(f"✅ Index '{index_name}' exists.")
         else:
-            print(f"⚠️ Collection '{collection_name}' does NOT exist (will be created by ingestion).")
+            print(f"⚠️ Index '{index_name}' does NOT exist (will be created by ingestion).")
             
     except Exception as e:
-        print(f"❌ Qdrant Connection Failed: {e}")
+        print(f"❌ Pinecone Connection Failed: {e}")
 
     # 2. Check Embedding Model
     print("\nChecking Embedding Model...")
