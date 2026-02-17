@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi.responses import RedirectResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
-from qdrant_client import QdrantClient
+from pinecone import Pinecone
 import os
 import logging
 from pathlib import Path
@@ -62,15 +62,16 @@ mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
 db_name = os.environ.get('DB_NAME', 'applianceiq_db')
 
 # Qdrant configuration
-qdrant_url = os.getenv("QDRANT_URL")
-qdrant_api_key = os.getenv("QDRANT_API_KEY")
-qdrant_collection = os.getenv("QDRANT_COLLECTION", "appliance_manuals")
+# Pinecone configuration
+pinecone_api_key = os.getenv("PINECONE_API_KEY")
+pinecone_index_name = os.getenv("PINECONE_INDEX_NAME", "appliance-manuals")
 
 # Global clients/services
 client = None
 db = None
 mongo_available = False
-qdrant_client = None
+pinecone_client = None
+pinecone_index = None
 doc_processor = None
 rag_engine = None
 qr_handler = None
@@ -79,7 +80,7 @@ initialization_error = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup logic
-    global client, db, mongo_available, qdrant_client, doc_processor, rag_engine, qr_handler
+    global client, db, mongo_available, pinecone_client, pinecone_index, doc_processor, rag_engine, qr_handler
     
     print("Starting up ApplianceIQ API...")
     
@@ -98,20 +99,31 @@ async def lifespan(app: FastAPI):
     # Initialize ML Services
     if ml_imports_available:
         qr_handler = QRHandler()
-        if qdrant_url and qdrant_api_key:
+        if pinecone_api_key:
             try:
-                qdrant_client = QdrantClient(url=qdrant_url, api_key=qdrant_api_key, timeout=30.0)
-                # Check connection
-                qdrant_client.get_collections()
+                pinecone_client = Pinecone(api_key=pinecone_api_key)
+                # Check connection by listing indexes
+                pinecone_client.list_indexes()
                 
-                doc_processor = DocumentProcessor(qdrant_client, qdrant_collection)
-                rag_engine = RAGEngine(qdrant_client, qdrant_collection)
-                print("Qdrant services initialized")
+                # DocumentProcessor expects the client to handle index creation/checking
+                doc_processor = DocumentProcessor(pinecone_client, pinecone_index_name)
+                
+                # RAGEngine expects the index object. 
+                # Note: doc_processor._ensure_collection() will create the index if needed.
+                # However, doc_processor is initialized but not "run". 
+                # RAGEngine might fail if index doesn't exist yet, but DocumentProcessor takes care of it.
+                # To be safe, let's get the index from the client.
+                # Note: doc_processor.index is set in _ensure_collection() which is called in __init__
+                
+                pinecone_index = pinecone_client.Index(pinecone_index_name)
+                rag_engine = RAGEngine(pinecone_index)
+                
+                print("Pinecone services initialized")
             except Exception as e:
-                initialization_error = f"Qdrant initialization failed: {e}"
+                initialization_error = f"Pinecone initialization failed: {e}"
                 print(f"{initialization_error}")
         else:
-            initialization_error = "Qdrant URL or API Key missing in .env"
+            initialization_error = "PINECONE_API_KEY missing in .env"
             print(f"{initialization_error}")
     else:
         initialization_error = f"ML dependencies missing: {ml_import_error}"
@@ -517,7 +529,7 @@ async def health_check():
         "status": "healthy",
         "services": {
             "mongodb": "connected",
-            "qdrant": "connected" if qdrant_client else "not configured",
+            "pinecone": "connected" if pinecone_client else "not configured",
             "rag": "ready" if rag_engine else "not configured",
             "ingestion": "ready" if doc_processor else "not configured"
         }
