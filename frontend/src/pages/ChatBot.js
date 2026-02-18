@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useParams } from 'react-router-dom';
 import axios from 'axios';
-import { Send, Loader, Bot, User, Star } from 'lucide-react';
+import { Send, Loader, Bot, User, Star, Mic, Image as ImageIcon, X } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -17,7 +17,10 @@ export default function ChatBot() {
   const [loadingQR, setLoadingQR] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [lastQueryId, setLastQueryId] = useState(null);
+  const [isListening, setIsListening] = useState(false);
+  const [analyzingImage, setAnalyzingImage] = useState(false);
   const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     const initializeChat = async () => {
@@ -120,6 +123,115 @@ export default function ChatBot() {
       setShowFeedback(false);
     } catch (error) {
       console.error('Feedback error:', error);
+    }
+  };
+
+  const startListening = () => {
+    if ('webkitSpeechRecognition' in window) {
+      const recognition = new window.webkitSpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        setInput(prev => prev + (prev ? ' ' : '') + transcript);
+        setIsListening(false);
+      };
+
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error', event.error);
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.start();
+    } else {
+      alert('Voice input is not supported in this browser.');
+    }
+  };
+
+  const handleImageUpload = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setAnalyzingImage(true);
+
+    // Add a temporary message
+    const tempMessage = {
+      type: 'user',
+      text: '📷 Analyzing image...',
+      isSystem: true
+    };
+    setMessages(prev => [...prev, tempMessage]);
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await axios.post(`${API}/analyze-image`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        withCredentials: true
+      });
+
+      const analysis = response.data.analysis;
+
+      // Parse analysis
+      let description = "Image Analysis";
+      let searchQuery = "";
+
+      const lines = analysis.split('\n');
+      for (const line of lines) {
+        if (line.startsWith("Description:")) description = line.replace("Description:", "").trim();
+        if (line.startsWith("Search Query:")) searchQuery = line.replace("Search Query:", "").trim();
+      }
+
+      if (!searchQuery) searchQuery = analysis;
+
+      // Update messages with result
+      setMessages(prev => {
+        const newMsgs = [...prev];
+        newMsgs.pop(); // Remove "Analyzing..."
+        newMsgs.push({
+          type: 'bot',
+          text: `I analyzed your image: ${description}. searching for a solution...`
+        });
+        return newMsgs;
+      });
+
+      // Automatically search with the query
+      setInput(searchQuery);
+      // Optional: Auto-send 
+      // handleSend(); // We can let user review first
+
+    } catch (error) {
+      console.error('Image analysis error:', error);
+      setMessages(prev => {
+        const newMsgs = [...prev];
+        newMsgs.pop();
+        newMsgs.push({
+          type: 'bot',
+          text: "Sorry, I couldn't analyze that image. Please try describing the issue."
+        });
+        return newMsgs;
+      });
+    } finally {
+      setAnalyzingImage(false);
+      // Clear input
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -282,6 +394,29 @@ export default function ChatBot() {
           >
             <Send size={20} />
           </button>
+          <button
+            className={`action-btn ${isListening ? 'listening' : ''}`}
+            onClick={startListening}
+            title="Voice Input"
+            disabled={loading || analyzingImage}
+          >
+            <Mic size={20} />
+          </button>
+          <button
+            className="action-btn"
+            onClick={handleImageUpload}
+            title="Upload Image"
+            disabled={loading || analyzingImage}
+          >
+            <ImageIcon size={20} />
+          </button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept="image/*"
+            style={{ display: 'none' }}
+          />
         </div>
       </div>
 
@@ -497,6 +632,49 @@ export default function ChatBot() {
           color: #94a3b8;
           cursor: not-allowed;
         }
+
+        .action-btn {
+          width: 2.75rem;
+          height: 2.75rem;
+          background: white;
+          color: #64748b;
+          border: 1px solid #e2e8f0;
+          border-radius: 0.75rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .action-btn:hover:not(:disabled) {
+          background: #f8fafc;
+          color: #2563eb;
+          border-color: #cbd5e1;
+        }
+
+        .action-btn.listening {
+          color: #ef4444;
+          border-color: #ef4444;
+          background: #fef2f2;
+          animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+          0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+          70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        .chat-input-wrapper {
+          max-width: 900px;
+          width: 100%;
+          position: relative;
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+
 
         .feedback-bar {
           background: #f8fafc;
