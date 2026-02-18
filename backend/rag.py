@@ -3,6 +3,7 @@ import logging
 from typing import List, Dict, Any
 import httpx
 import importlib
+import base64
 try:
     from groq import Groq
     groq_available = True
@@ -168,6 +169,52 @@ QUESTION: {question}"""
         except Exception as e:
             logger.error(f"Error generating answer: {e}")
             return f"Error generating answer: {str(e)}"
+
+    async def analyze_image(self, image_bytes: bytes) -> str:
+        """Analyze an image using Groq Vision model to identify appliance issues."""
+        if not self.groq_client:
+            raise RuntimeError("Groq client not available - cannot analyze images")
+
+        try:
+            # Encode image to base64
+            base64_image = base64.b64encode(image_bytes).decode('utf-8')
+            
+            # System prompt for vision analysis
+            system_prompt = """You are an expert appliance technician. Your job is to analyze images of appliances, parts, or error messages.
+            
+            1. Identify what is shown in the image (specific part, error code, control panel symbol, etc.).
+            2. If it's an error code, transcribe it exactly.
+            3. If it's a damaged part, describe the damage and the part name.
+            4. Generate a specific search query that would find the solution in a manual.
+            
+            Output ONLY the description and the search query in this format:
+            Description: [What you see]
+            Search Query: [The query]"""
+
+            chat_completion = self.groq_client.chat.completions.create(
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": system_prompt},
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:image/jpeg;base64,{base64_image}",
+                                },
+                            },
+                        ],
+                    }
+                ],
+                model="llama-3.2-11b-vision-preview",
+                temperature=0.0,
+                max_tokens=300,
+            )
+            
+            return chat_completion.choices[0].message.content
+        except Exception as e:
+            logger.error(f"Error analyzing image: {e}")
+            raise e
     
     async def answer_question(self, manual_id: str, question: str) -> Dict[str, Any]:
         """Complete RAG pipeline: retrieve and generate."""
