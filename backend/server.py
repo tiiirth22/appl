@@ -377,6 +377,27 @@ async def assign_qr_to_user(user_id: str, manual_id: str, current_user: dict = D
         )
     
     return {"message": "QR code assigned successfully"}
+
+@api_router.post("/analyze-image")
+async def analyze_image(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_db_business_user)  # Or allow any auth user
+):
+    """Analyze an uploaded image to identify appliance issues."""
+    if not rag_engine:
+         raise HTTPException(status_code=503, detail="RAG service not available")
+    
+    try:
+        contents = await file.read()
+        # Call the new method in RAGEngine (we need to update RAGEngine first or ensure it exists)
+        # Note: We added analyze_image to RAGEngine in the previous step
+        analysis_result = await rag_engine.analyze_image(contents)
+        
+        return {"analysis": analysis_result}
+    except Exception as e:
+        logger.error(f"Image analysis failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Image analysis failed: {str(e)}")
+
 @api_router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     """Chat endpoint for asking questions about a manual."""
