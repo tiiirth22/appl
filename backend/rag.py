@@ -20,7 +20,15 @@ try:
 except ImportError as e:
     print(f"Warning: sentence_transformers not available: {e}")
 
-from pinecone import Index
+# Pinecone imports
+Index = None
+pinecone_available = False
+try:
+    import pinecone
+    from pinecone import Index
+    pinecone_available = True
+except ImportError:
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +64,7 @@ class RAGEngine:
 
     
     def retrieve_relevant_chunks(self, query: str, manual_id: str, top_k: int = 5) -> List[Dict[str, Any]]:
-        """Retrieve relevant chunks from Qdrant."""
+        """Retrieve relevant chunks from Pinecone."""
         if self.embedding_model is None:
             raise RuntimeError("Embedding model not available - cannot retrieve relevant chunks")
         
@@ -88,6 +96,34 @@ class RAGEngine:
             
         except Exception as e:
             logger.error(f"Error retrieving chunks: {e}")
+            return []
+
+    async def retrieve_keyword_chunks(self, query: str, manual_id: str, db, top_k: int = 3) -> List[Dict[str, Any]]:
+        """Retrieve chunks from MongoDB using text search (Page Index)."""
+        if db is None:
+            return []
+        
+        try:
+            # MongoDB text search
+            cursor = db.manual_chunks.find(
+                {
+                    "manual_id": manual_id,
+                    "$text": {"$search": query}
+                },
+                {"score": {"$meta": "textScore"}}
+            ).sort([("score", {"$meta": "textScore"})]).limit(top_k)
+            
+            chunks = []
+            async for doc in cursor:
+                chunks.append({
+                    "content": doc["content"],
+                    "score": doc["score"] / 10.0,  # Normalize score roughly
+                    "chunk_index": doc["chunk_index"],
+                    "source": "keyword"
+                })
+            return chunks
+        except Exception as e:
+            logger.error(f"Error in keyword search: {e}")
             return []
     
     async def generate_answer(self, question: str, context_chunks: List[Dict[str, Any]]) -> str:
@@ -216,29 +252,45 @@ QUESTION: {question}"""
             logger.error(f"Error analyzing image: {e}")
             raise e
     
-    async def answer_question(self, manual_id: str, question: str) -> Dict[str, Any]:
-        """Complete RAG pipeline: retrieve and generate."""
-        # Retrieve relevant chunks
-        chunks = self.retrieve_relevant_chunks(question, manual_id, top_k=5)
+    async def answer_question(self, manual_id: str, question: str, db=None) -> Dict[str, Any]:
+        """Complete RAG pipeline: hybrid retrieve and generate."""
+        # 1. Semantic Retrieval (Pinecone)
+        semantic_chunks = self.retrieve_relevant_chunks(question, manual_id, top_k=5)
+        for chunk in semantic_chunks:
+            chunk["source"] = "semantic"
         
-        if not chunks:
+        # 2. Keyword Retrieval (MongoDB) - Hybrid model
+        keyword_chunks = await self.retrieve_keyword_chunks(question, manual_id, db, top_k=3)
+        
+        # 3. Combine and Rerank (Simple Fusion)
+        seen_indices = set()
+        combined_chunks = []
+        
+        # Priority to semantic, but include unique keyword hits
+        for chunk in semantic_chunks + keyword_chunks:
+            if chunk["chunk_index"] not in seen_indices:
+                combined_chunks.append(chunk)
+                seen_indices.add(chunk["chunk_index"])
+        
+        if not combined_chunks:
             return {
                 "answer": "I couldn't find relevant information in this manual to answer your question.",
                 "sources": [],
                 "manual_id": manual_id
             }
         
-        # Generate answer
-        answer = await self.generate_answer(question, chunks)
+        # 4. Generate answer
+        answer = await self.generate_answer(question, combined_chunks)
         
-        # Format sources
+        # 5. Format sources
         sources = [
             {
                 "chunk_index": chunk["chunk_index"],
                 "content_preview": chunk["content"][:200] + "...",
-                "relevance_score": round(chunk["score"], 3)
+                "relevance_score": round(chunk["score"], 3),
+                "source_type": chunk.get("source", "unknown")
             }
-            for chunk in chunks
+            for chunk in combined_chunks
         ]
         
         return {

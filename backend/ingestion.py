@@ -21,7 +21,16 @@ except ImportError as e:
     print(f"Warning: sentence_transformers not available: {e}")
 
 
-from pinecone import Pinecone, ServerlessSpec
+# Pinecone imports
+Pinecone = None
+ServerlessSpec = None
+pinecone_available = False
+try:
+    import pinecone
+    from pinecone import Pinecone, ServerlessSpec
+    pinecone_available = True
+except ImportError:
+    logger.warning("Pinecone library not installed - ML features will be disabled")
 
 logger = logging.getLogger(__name__)
 
@@ -126,7 +135,7 @@ class DocumentProcessor:
         return [emb.tolist() for emb in embeddings]
     
     async def process_manual(self, manual_id: str, file_path: str, file_type: str, db) -> int:
-        """Process a manual file and store in Qdrant."""
+        """Process a manual file and store in Pinecone."""
         try:
             # Extract text based on file type
             if file_type == "pdf":
@@ -157,12 +166,27 @@ class DocumentProcessor:
                 }
                 vectors.append((vector_id, embedding, metadata))
             
-            # Upsert to Pinecone (batching is handled by Pinecone client usually, but good to be safe)
-            # Pinecone recommends batches of 100 or less for free tier, or larger for paid.
+            # Upsert to Pinecone
             batch_size = 100
             for i in range(0, len(vectors), batch_size):
                 batch = vectors[i:i + batch_size]
                 self.index.upsert(vectors=batch)
+            
+            # Store chunks in MongoDB for keyword search (Hybrid Search)
+            mongo_chunks = []
+            for idx, chunk in enumerate(chunks):
+                mongo_chunks.append({
+                    "id": str(uuid.uuid4()),
+                    "manual_id": manual_id,
+                    "chunk_index": idx,
+                    "content": chunk,
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                })
+            
+            if mongo_chunks:
+                await db.manual_chunks.insert_many(mongo_chunks)
+                # Create text index for hybrid search if it doesn't exist
+                await db.manual_chunks.create_index([("content", "text")])
             
             # Update manual status in MongoDB
             await db.manuals.update_one(
