@@ -87,7 +87,7 @@ Testing:
     │               │                  │
     ▼               ▼                  ▼
 ┌──────────┐  ┌──────────┐       ┌──────────┐
-│ MongoDB* │  │ Qdrant*  │       │  Ollama* │
+│ MongoDB* │  │ Pinecone*│       │  Ollama* │
 │ Storage  │  │ Vectors  │       │   LLM    │
 └──────────┘  └──────────┘       └──────────┘
 
@@ -132,6 +132,12 @@ Testing:
 │    Graceful service degradation ................... [DONE]
 │    Environment configuration ....................... [DONE]
 │    Health check endpoint ........................... [DONE]
+│                                                          │
+│  Documentation:                                        │
+│    Setup guide ..................................... [DONE]
+│    API reference ................................... [DONE]
+│    Architecture docs ............................... [DONE]
+│    Implementation status ........................... [DONE]
 │                                                          │
 │  Documentation:                                        │
 │    Setup guide ..................................... [DONE]
@@ -187,7 +193,7 @@ Manual Upload Flow
    - Extract text (if ML available)
    - Generate embeddings (if ML available)
    - Store in MongoDB
-   - Store embeddings in Qdrant (if available)
+   - Store embeddings in Pinecone (if available)
                     │
                     ▼
 4. Return manual details to frontend
@@ -220,7 +226,7 @@ Local Development:
     │                 │
     ▼                 ▼
 ┌──────────┐     ┌──────────┐
-│ MongoDB  │     │ Qdrant   │  (optional)
+│ MongoDB  │     │ Pinecone │  (optional)
 │ (local)  │     │ (cloud)  │
 └──────────┘     └──────────┘
 
@@ -244,7 +250,7 @@ Production Deployment:
 │    │                 │           │ │
 │    ▼                 ▼           │ │
 │ ┌──────────┐    ┌──────────┐    │ │
-│ │ MongoDB  │    │ Qdrant   │    │ │
+│ │ MongoDB  │    │ Pinecone │    │ │
 │ │ (cloud)  │    │ (cloud)  │    │ │
 │ └──────────┘    └──────────┘    │ │
 │                                  │ │
@@ -412,7 +418,7 @@ For development continuation, focus on:
 3. **Deployment Considerations**
    - Review environment variables in `.env`
    - Understand optional service loading
-   - Plan MongoDB and Qdrant setup
+   - Plan MongoDB and Pinecone setup
 
 4. **ML Services Integration**
    - When ready, install tf-keras: `pip install tf-keras`

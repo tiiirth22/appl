@@ -99,9 +99,10 @@ MONGO_URL=mongodb://localhost:27017
 DB_NAME=applianceiq_db
 
 # Optional (for advanced features)
-QDRANT_URL=https://your-qdrant-cloud-instance.com
-QDRANT_API_KEY=your-api-key
-QDRANT_COLLECTION=appliance_manuals
+PINECONE_API_KEY=your-api-key
+PINECONE_INDEX_NAME=appliance-manuals
+PINECONE_ENVIRONMENT=us-east-1
+PINECONE_CLOUD=aws
 
 # Optional (QR code settings)
 QR_SECRET_KEY=your-secret-key

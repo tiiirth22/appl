@@ -10,7 +10,7 @@ This document outlines the planned features and improvements for the ApplianceIQ
 
 ## Phase 2: AI & RAG Integration (In Progress)
 - [x] Document ingestion with text extraction (PDF and Image).
-- [x] Vector store integration (Qdrant).
+- [x] Vector store integration (Pinecone).
 - [ ] RAG-based question answering using Llama 3.1.
 - [ ] Multi-lingual support for manual processing.
 

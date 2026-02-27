@@ -4,7 +4,7 @@ This document describes the high-level architecture of the ApplianceIQ platform.
 
 ## System Overview
 
-ApplianceIQ is a full-stack platform that transforms static appliance manuals into interactive AI assistants. It uses a modern tech stack consisting of FastAPI (Backend), React (Frontend), MongoDB (Database), and Qdrant (Vector Store).
+ApplianceIQ is a full-stack platform that transforms static appliance manuals into interactive AI assistants. It uses a modern tech stack consisting of FastAPI (Backend), React (Frontend), MongoDB (Database), and Pinecone (Vector Store).
 
 ## Component Architecture
 
@@ -22,15 +22,15 @@ ApplianceIQ is a full-stack platform that transforms static appliance manuals in
 - **Role**: Primary data store for user profiles, manual metadata, and query history.
 - **Integration**: Uses the Motor async driver for high performance.
 
-### 4. Vector Store (Qdrant)
+### 4. Vector Store (Pinecone)
 - **Role**: Stores document embeddings for fast semantic search.
 - **Function**: Enables the RAG engine to find relevant manual sections based on user questions.
 
 ## Data Flow
 
-1. **Manual Upload**: A business owner uploads a PDF. The backend extracts text, generates embeddings, and stores them in Qdrant.
+1. **Manual Upload**: A business owner uploads a PDF. The backend extracts text, generates embeddings, and stores them in Pinecone.
 2. **User Query**: A customer asks a question via the chatbot.
-3. **Retrieval**: The RAG engine searches Qdrant for the most relevant sections of the manual.
+3. **Retrieval**: The RAG engine searches Pinecone for the most relevant sections of the manual.
 4. **Generation**: The retrieved text is sent to an LLM (e.g., via Ollama) to generate a concise answer.
 5. **Response**: The answer is returned to the user through the frontend interface.
 

@@ -370,7 +370,7 @@ GET /health
   "services": {
     "api": "ok",
     "mongodb": "connected",
-    "qdrant": "not_configured",
+    "pinecone": "not_configured",
     "ml_services": "disabled"
   },
   "timestamp": "2026-01-28T10:00:00Z"

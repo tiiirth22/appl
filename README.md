@@ -52,7 +52,7 @@ Users can retrieve maintenance and operation details directly through a chat int
 ### Backend
 - **Framework**: [FastAPI](https://fastapi.tiangolo.com/) (Python)
 - **Database**: [MongoDB](https://www.mongodb.com/) (Motor Async Driver)
-- **Vector Search**: [Qdrant](https://qdrant.tech/) (for high-performance RAG)
+- **Vector Search**: [Pinecone](https://www.pinecone.io/) (for high-performance RAG)
 - **AI/ML**: Transformers, Embeddings, and NLP models.
 - **Security**: JWT Authentication & Bcrypt password hashing.
 
@@ -127,7 +127,7 @@ npm start
 
 ### Backend (100%)
 - [x] FastAPI server structure
-- [x] MongoDB & Qdrant integration
+- [x] MongoDB & Pinecone integration
 - [x] Environment configuration
 - [x] CORS & Middleware setup
 
@@ -173,7 +173,7 @@ We welcome contributions! Please follow these steps:
 
 To keep the platform running smoothly:
 - Regularly update dependencies in both `backend` and `frontend`.
-- Monitor MongoDB and Qdrant performance.
+- Monitor MongoDB and Pinecone performance.
 - Clear temporary files in the `backend/tmp` directory periodically.
 
 ---
