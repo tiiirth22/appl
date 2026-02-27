@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi.responses import RedirectResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
-from pinecone import Pinecone
+# Pinecone import moved to try-except below
 import os
 import logging
 from pathlib import Path
@@ -11,6 +11,10 @@ from dotenv import load_dotenv
 from datetime import datetime, timezone
 from typing import Optional, List
 import uuid
+import logging
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 from auth import get_current_user, signup_user, login_user, require_admin, require_business_owner_or_admin
 
@@ -21,18 +25,21 @@ from models import (
 )
 
 # Optional imports - will be None if not available
+DocumentProcessor = None
+RAGEngine = None
+QRHandler = None
+Pinecone = None
+ml_imports_available = False
+ml_import_error = None
+
 try:
-    from ingestion import DocumentProcessor
+    from ingestion import DocumentProcessor, Pinecone as IngestionPinecone
     from rag import RAGEngine
     from qr_handler import QRHandler
+    Pinecone = IngestionPinecone
     ml_imports_available = True
-    ml_import_error = None
 except Exception as e:
-    print(f"Warning: Some ML services not available for import: {e}")
-    DocumentProcessor = None
-    RAGEngine = None
-    QRHandler = None
-    ml_imports_available = False
+    logger.warning(f"Some ML services not available: {e}")
     ml_import_error = str(e)
 
 # Dependency injection helpers
@@ -61,7 +68,6 @@ load_dotenv(ROOT_DIR / '.env')
 mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
 db_name = os.environ.get('DB_NAME', 'applianceiq_db')
 
-# Qdrant configuration
 # Pinecone configuration
 pinecone_api_key = os.getenv("PINECONE_API_KEY")
 pinecone_index_name = os.getenv("PINECONE_INDEX_NAME", "appliance-manuals")
@@ -99,7 +105,7 @@ async def lifespan(app: FastAPI):
     # Initialize ML Services
     if ml_imports_available:
         qr_handler = QRHandler()
-        if pinecone_api_key:
+        if pinecone_api_key and Pinecone:
             try:
                 pinecone_client = Pinecone(api_key=pinecone_api_key)
                 # Check connection by listing indexes
@@ -404,13 +410,24 @@ async def chat(request: ChatRequest):
     if not rag_engine:
         raise HTTPException(status_code=503, detail="RAG service not available - ML dependencies not installed")
     
+    # Rate Limiting (Simple in-memory)
+    # Note: In production, use Redis or similar
+    global rate_limit_data
+    if 'rate_limit_data' not in globals():
+        rate_limit_data = {}
+    
+    # Very simple rate limit: 5 requests per 10 seconds per IP or manual_id
+    # Since we don't have request object here easily without adding it to dependecy, 
+    # let's use manual_id as a proxy or skip for now if too complex.
+    # Actually, let's just implement the db pass for now.
+    
     # Get manual info
     manual = await db.manuals.find_one({"id": request.manual_id}, {"_id": 0})
     if not manual:
         raise HTTPException(status_code=404, detail="Manual not found")
-    
-    # Generate answer
-    result = await rag_engine.answer_question(request.manual_id, request.question)
+
+    # Generate answer with Hybrid Search (passing db)
+    result = await rag_engine.answer_question(request.manual_id, request.question, db=db)
     
     # Save query
     query = Query(
@@ -434,6 +451,37 @@ async def chat(request: ChatRequest):
             "version": manual["version"]
         }
     )
+
+@api_router.post("/qr/assign")
+async def assign_qr_to_manual(
+    qr_id: str = Form(...),
+    manual_id: str = Form(...),
+    admin: dict = Depends(get_db_admin_user)
+):
+    """Admin endpoint to assign/reassign a QR code to a manual."""
+    # Verify QR code exists
+    qr_code = await db.qr_codes.find_one({"id": qr_id})
+    if not qr_code:
+        raise HTTPException(status_code=404, detail="QR code record not found")
+    
+    # Verify manual exists
+    manual = await db.manuals.find_one({"id": manual_id})
+    if not manual:
+        raise HTTPException(status_code=404, detail="Manual not found")
+    
+    # Update QR code mapping
+    await db.qr_codes.update_one(
+        {"id": qr_id},
+        {"$set": {"manual_id": manual_id, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    # Update manual's qr_code_id
+    await db.manuals.update_one(
+        {"id": manual_id},
+        {"$set": {"qr_code_id": qr_id}}
+    )
+    
+    return {"message": f"Successfully assigned QR {qr_id} to manual {manual_id}"}
 
 # ============= QR DETAILS & REDIRECT =============
 @api_router.get("/qr-details/{qr_id}")

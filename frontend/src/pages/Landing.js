@@ -58,7 +58,7 @@ export default function Landing() {
                 <MessageSquare size={32} />
               </div>
               <h3>RAG Query Engine</h3>
-              <p>Uses vector search (Qdrant) and LLMs (Llama 3.1) to answer questions based on manual content.</p>
+              <p>Uses vector search (Pinecone) and LLMs (Llama 3.1) to answer questions based on manual content.</p>
             </div>
 
             <div className="feature-card" data-testid="feature-security">
