@@ -11,22 +11,25 @@ import ManualUpload from './pages/ManualUpload';
 import Analytics from './pages/Analytics';
 import ChatBot from './pages/ChatBot';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+const API = `${BACKEND_URL.replace(/\/$/, '')}/api`;
+const SESSION_TOKEN_KEY = 'session_token';
 
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const token = localStorage.getItem(SESSION_TOKEN_KEY);
+    if (token) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    }
     checkAuth();
   }, []);
 
   const checkAuth = async () => {
     try {
-      const response = await axios.get(`${API}/auth/me`, {
-        withCredentials: true
-      });
+      const response = await axios.get(`${API}/auth/me`);
       setUser(response.data);
     } catch (error) {
       console.log('Not authenticated');
@@ -35,13 +38,17 @@ function App() {
     }
   };
 
-  const handleLogin = (userData) => {
+  const handleLogin = (userData, token) => {
+    localStorage.setItem(SESSION_TOKEN_KEY, token);
+    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     setUser(userData);
   };
 
   const handleLogout = async () => {
     try {
-      await axios.post(`${API}/auth/logout`, {}, { withCredentials: true });
+      await axios.post(`${API}/auth/logout`);
+      localStorage.removeItem(SESSION_TOKEN_KEY);
+      delete axios.defaults.headers.common['Authorization'];
       setUser(null);
       window.location.href = '/';
     } catch (error) {
