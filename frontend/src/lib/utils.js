@@ -70,9 +70,9 @@ export const reducer = (state, action) => {
         toasts: state.toasts.map((t) =>
           t.id === toastId || toastId === undefined
             ? {
-                ...t,
-                open: false,
-              }
+              ...t,
+              open: false,
+            }
             : t),
       };
     }
@@ -150,6 +150,13 @@ function useToast() {
     toast,
     dismiss: (toastId) => dispatch({ type: "DISMISS_TOAST", toastId }),
   };
+}
+
+import { clsx } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs) {
+  return twMerge(clsx(inputs))
 }
 
 export { useToast, toast }
