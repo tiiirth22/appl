@@ -1,7 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { Upload, BarChart, LogOut, FileText, QrCode, Loader, Eye, MessageSquare } from 'lucide-react';
+import { Upload, BarChart, LogOut, FileText, QrCode, Loader, Eye, MessageSquare, Trash2, Calendar, Shield, ExternalLink, Download, Search, LayoutGrid, List } from 'lucide-react';
+import { StatCard } from '../components/ui/stat-card';
+import Navbar from '../components/ui/Navbar';
+
+const ManualCard = ({ title, description, icon, onSecondaryClick, onPrimaryClick, secondaryText, primaryText, status, className, children }) => (
+  <div className={`integration-card border border-white/10 rounded-2xl p-5 bg-white/5 dark:bg-[#101010] shadow-md flex flex-col gap-4 ${className || ''}`}>
+    <div className="flex items-center gap-4">
+      <div className="icon-wrapper p-3 bg-white/10 rounded-xl">{icon}</div>
+      <div className="flex-1 min-w-0">
+        <h3 className="font-bold text-lg m-0 truncate">{title}</h3>
+        <p className="text-sm text-slate-400 m-0 truncate">{description}</p>
+      </div>
+      <span className={`px-2 py-1 text-xs font-semibold rounded-full shrink-0 ${status === 'Connected' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'}`}>
+        {status}
+      </span>
+    </div>
+    {children}
+    <div className="flex gap-2 mt-auto pt-2">
+      {onSecondaryClick && (
+        <button onClick={onSecondaryClick} className="flex-1 py-2 px-4 rounded-xl font-semibold bg-white/5 hover:bg-white/10 border border-white/10 text-white transition text-sm">
+          {secondaryText}
+        </button>
+      )}
+      {onPrimaryClick && (
+        <button onClick={onPrimaryClick} className="flex-1 py-2 px-4 rounded-xl font-semibold bg-blue-600 hover:bg-blue-700 text-white transition shadow-lg shadow-blue-500/20 text-sm">
+          {primaryText}
+        </button>
+      )}
+    </div>
+  </div>
+);
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -11,6 +41,7 @@ export default function BusinessOwnerDashboard({ user, onLogout }) {
   const [loading, setLoading] = useState(true);
   const [selectedQR, setSelectedQR] = useState(null);
   const [loadingQR, setLoadingQR] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     fetchManuals();
@@ -44,590 +75,411 @@ export default function BusinessOwnerDashboard({ user, onLogout }) {
     }
   };
 
+  const handleDeleteManual = async (manualId) => {
+    if (!window.confirm('Delete this manual and its AI index? This cannot be undone.')) {
+      return;
+    }
+
+    try {
+      await axios.delete(`${API}/manuals/${manualId}`, {
+        withCredentials: true
+      });
+      fetchManuals();
+    } catch (error) {
+      console.error('Error deleting manual:', error);
+      alert('Failed to delete manual: ' + (error.response?.data?.detail || error.message));
+    }
+  };
+
+  const filteredManuals = manuals.filter(m =>
+    m.model_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    m.filename.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
-    <div className="dashboard" data-testid="business-owner-dashboard-page">
-      {/* Navbar */}
-      <nav className="navbar">
-        <div className="navbar-content">
-          <h2 className="navbar-brand">ApplianceIQ</h2>
-          <div className="navbar-links">
-            <Link to="/dashboard" className="navbar-link">Dashboard</Link>
-            <Link to="/upload" className="navbar-link" data-testid="upload-link">Upload Manual</Link>
-            <Link to="/analytics" className="navbar-link">Analytics</Link>
-          </div>
-          <div className="navbar-user">
-            <img src={user.picture || 'https://via.placeholder.com/40'} alt={user.name} />
-            <span>{user.name}</span>
-            <button onClick={onLogout} className="btn-logout" data-testid="logout-btn">
-              <LogOut size={16} />
-            </button>
-          </div>
-        </div>
-      </nav>
+    <div className="dashboard-page">
+      <Navbar user={user} onLogout={onLogout} activePage="dashboard" />
 
-      {/* Main Content */}
-      <div className="container">
-        <div className="dashboard-header">
-          <div>
-            <h1 data-testid="dashboard-title">Welcome back, {user.name}</h1>
-            <p>Manage your appliance manuals and view QR codes</p>
+      <div className="main-container">
+        {/* Header Section */}
+        <header className="page-header">
+          <div className="header-left">
+            <h1>Workspace Overview</h1>
+            <p>Managing {manuals.length} active appliance manuals across your network.</p>
           </div>
-          <Link to="/upload" className="btn btn-primary" data-testid="new-manual-btn">
-            <Upload size={20} />
-            Upload New Manual
+          <Link to="/upload" className="cta-btn-primary">
+            <Upload size={18} />
+            Add New Resource
           </Link>
-        </div>
+        </header>
 
-        {/* Stats Cards */}
+        {/* Stats Grid using Watermelon-inspired styles */}
         <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-icon">
-              <FileText size={24} />
-            </div>
-            <div>
-              <div className="stat-value" data-testid="total-manuals">{manuals.length}</div>
-              <div className="stat-label">My Manuals</div>
-            </div>
+          <StatCard
+            title="Total Manuals"
+            amount={manuals.length.toString()}
+            percentage="+12%"
+            isPositive={true}
+          />
+          <StatCard
+            title="Active Agents"
+            amount={manuals.filter(m => m.status === 'completed').length.toString()}
+            percentage="+5%"
+            isPositive={true}
+          />
+        </div>
+
+        {/* Search and Filter Bar */}
+        <div className="filter-bar">
+          <div className="search-box">
+            <Search size={18} className="search-icon" />
+            <input
+              type="text"
+              placeholder="Search by model or filename..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
-          <div className="stat-card">
-            <div className="stat-icon">
-              <QrCode size={24} />
-            </div>
-            <div>
-              <div className="stat-value">{manuals.filter(m => m.qr_code_id).length}</div>
-              <div className="stat-label">QR Codes Assigned</div>
-            </div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon">
-              <BarChart size={24} />
-            </div>
-            <div>
-              <div className="stat-value">{manuals.filter(m => m.status === 'completed').length}</div>
-              <div className="stat-label">Active Manuals</div>
-            </div>
+          <div className="view-toggle">
+            <button className="toggle-btn active"><LayoutGrid size={18} /></button>
+            <button className="toggle-btn"><List size={18} /></button>
           </div>
         </div>
 
-        {/* Manuals List */}
-        <div className="manuals-section">
-          <h2>My Manuals</h2>
+        {/* Resources Grid */}
+        <div className="resource-section">
           {loading ? (
-            <div className="loading-container">
+            <div className="loading-state">
               <Loader className="spinner" size={40} />
+              <span>Synchronizing vector library...</span>
             </div>
-          ) : manuals.length === 0 ? (
-            <div className="empty-state" data-testid="empty-state">
-              <FileText size={64} />
-              <h3>No manuals yet</h3>
-              <p>Upload your first appliance manual to get started</p>
-              <Link to="/upload" className="btn btn-primary">
-                <Upload size={20} />
-                Upload Manual
-              </Link>
+          ) : filteredManuals.length === 0 ? (
+            <div className="empty-state-glass">
+              <FileText size={64} className="text-muted" />
+              <h3>No Resources Found</h3>
+              <p>Try a different search term or upload a new manual.</p>
+              <Link to="/upload" className="btn-outline">Upload Now</Link>
             </div>
           ) : (
-            <div className="manuals-grid" data-testid="manuals-list">
-              {manuals.map((manual) => (
-                <div key={manual.id} className="manual-card" data-testid={`manual-${manual.id}`}>
-                  <div className="manual-header">
-                    <h3>{manual.model_name}</h3>
-                    <span className={`badge badge-${manual.status === 'completed' ? 'success' : manual.status === 'processing' ? 'warning' : 'error'}`}>
-                      {manual.status}
-                    </span>
+            <div className="manual-grid">
+              {filteredManuals.map((manual) => (
+                <ManualCard
+                  key={manual.id}
+                  title={manual.model_name}
+                  description={`${manual.version} • ${manual.region}`}
+                  icon={<FileText size={24} className="text-primary" />}
+                  onSecondaryClick={() => handleViewQR(manual.id)}
+                  onPrimaryClick={() => window.location.href = `/chat?manual_id=${manual.id}`}
+                  secondaryText="View QR"
+                  primaryText="Test Chat"
+                  status={manual.status === 'completed' ? 'Connected' : 'Syncing'}
+                  className="manual-integration-card"
+                >
+                  {/* Custom middle content for the integration card */}
+                  <div className="card-extra-info">
+                    <div className="extra-row">
+                      <span>Source: {manual.filename}</span>
+                    </div>
+                    <div className="extra-row actions">
+                      <button className="delete-mini" onClick={() => handleDeleteManual(manual.id)}>
+                        <Trash2 size={14} /> Delete
+                      </button>
+                    </div>
                   </div>
-                  <div className="manual-details">
-                    <p><strong>Version:</strong> {manual.version}</p>
-                    <p><strong>Region:</strong> {manual.region}</p>
-                    <p><strong>Chunks:</strong> {manual.chunks_count || 0}</p>
-                    {manual.qr_code_id && (
-                      <div className="qr-section">
-                        <p><strong>QR Code Assigned:</strong></p>
-                        <div className="qr-display">
-                          <QrCode size={32} />
-                          <span>{manual.qr_code_id}</span>
-                          <button
-                            className="btn btn-secondary btn-sm"
-                            onClick={() => handleViewQR(manual.id)}
-                            disabled={loadingQR}
-                          >
-                            <Eye size={16} />
-                            {loadingQR && selectedQR?.qr_id === manual.qr_code_id ? 'Loading...' : 'View QR'}
-                          </button>
-                          <Link
-                            to={`/chat?manual_id=${manual.id}`}
-                            className="btn btn-primary btn-sm"
-                            style={{ marginTop: '0.5rem' }}
-                          >
-                            <MessageSquare size={16} />
-                            Test Assistant
-                          </Link>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                </ManualCard>
               ))}
             </div>
           )}
         </div>
+      </div>
 
-        {/* QR Modal */}
-        {selectedQR && (
-          <div className="modal-overlay" onClick={() => setSelectedQR(null)}>
-            <div className="modal-content" onClick={e => e.stopPropagation()}>
-              <div className="modal-header">
-                <h2>QR Code for {manuals.find(m => m.id === selectedQR.manual_id)?.model_name}</h2>
-                <button className="btn-close" onClick={() => setSelectedQR(null)}>&times;</button>
+      {/* Modern QR Modal */}
+      {selectedQR && (
+        <div className="modal-overlay" onClick={() => setSelectedQR(null)}>
+          <div className="modal-glass-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title">
+                <QrCode size={20} className="text-primary" />
+                <h3>Resource Access Code</h3>
               </div>
-              <div className="modal-body">
-                <div className="qr-image-container">
-                  <img src={selectedQR.image} alt="QR Code" />
+              <button className="close-circle" onClick={() => setSelectedQR(null)}>&times;</button>
+            </div>
+
+            <div className="modal-body">
+              <div className="qr-container-premium">
+                <img src={selectedQR.image} alt="QR Code" />
+                <div className="qr-glow"></div>
+              </div>
+
+              <div className="qr-details">
+                <div className="url-badge">
+                  <ExternalLink size={14} />
+                  <span>{selectedQR.url}</span>
                 </div>
-                <div className="qr-info">
-                  <p><strong>Short URL:</strong> {selectedQR.url}</p>
-                  <p className="qr-hint">Scan this code with a mobile device to open the Chat Assistant.</p>
-                </div>
-                <div className="modal-actions">
-                  <button
-                    className="btn btn-primary"
-                    onClick={() => {
-                      const link = document.createElement('a');
-                      link.href = selectedQR.image;
-                      link.download = `qr-${selectedQR.qr_id}.png`;
-                      link.click();
-                    }}
-                  >
-                    Download PNG
-                  </button>
-                  <button className="btn btn-secondary" onClick={() => setSelectedQR(null)}>Close</button>
-                </div>
+                <p>Deploy this QR code on physical hardware to enable instant AI support for your users.</p>
+              </div>
+
+              <div className="modal-actions">
+                <button
+                  className="btn-premium primary"
+                  onClick={() => {
+                    const link = document.createElement('a');
+                    link.href = selectedQR.image;
+                    link.download = `qr-${selectedQR.qr_id}.png`;
+                    link.click();
+                  }}
+                >
+                  <Download size={18} />
+                  Export Assets
+                </button>
+                <button className="btn-premium secondary" onClick={() => setSelectedQR(null)}>Dismiss</button>
               </div>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       <style jsx>{`
-        .modal-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0, 0, 0, 0.7);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 1000;
-          backdrop-filter: blur(4px);
-        }
-
-        .modal-content {
-          background: white;
-          border-radius: 1rem;
-          width: 90%;
-          max-width: 500px;
-          padding: 2rem;
-          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-        }
-
-        .modal-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 1.5rem;
-        }
-
-        .modal-header h2 {
-          font-size: 1.5rem;
-          margin: 0;
-          color: #2d3748;
-        }
-
-        .btn-close {
-          background: none;
-          border: none;
-          font-size: 1.5rem;
-          cursor: pointer;
-          color: #a0aec0;
-        }
-
-        .qr-image-container {
-          text-align: center;
-          margin-bottom: 1.5rem;
-          background: #f7fafc;
-          padding: 2rem;
-          border-radius: 0.5rem;
-        }
-
-        .qr-image-container img {
-          max-width: 200px;
-          height: auto;
-        }
-
-        .qr-info {
-          margin-bottom: 1.5rem;
-          text-align: center;
-        }
-
-        .qr-hint {
-          font-size: 0.875rem;
-          color: #718096;
-          margin-top: 0.5rem;
-        }
-        .dashboard {
+        .dashboard-page {
           min-height: 100vh;
-          background: #f8fafc;
-          color: #1e293b;
+          background: #09090b;
+          color: white;
+          font-family: 'Inter', sans-serif;
         }
 
-        .navbar {
-          background: rgba(255, 255, 255, 0.8);
-          backdrop-filter: blur(12px);
-          border-bottom: 1px solid rgba(226, 232, 240, 0.8);
-          padding: 1rem 0;
-          position: sticky;
-          top: 0;
-          z-index: 100;
-        }
-
-        .navbar-content {
-          max-width: 1200px;
-          margin: 0 auto;
-          padding: 0 2rem;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        .navbar-brand {
-          font-size: 1.25rem;
-          font-weight: 800;
-          color: #0f172a;
-          letter-spacing: -0.025em;
-        }
-
-        .navbar-links {
-          display: flex;
-          gap: 2.5rem;
-        }
-
-        .navbar-link {
-          color: #64748b;
-          text-decoration: none;
-          font-weight: 600;
-          font-size: 0.95rem;
-          transition: color 0.2s;
-        }
-
-        .navbar-link:hover {
-          color: #6366f1;
-        }
-
-        .navbar-user {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-        }
-
-        .navbar-user img {
-          width: 38px;
-          height: 38px;
-          border-radius: 50%;
-          border: 2px solid #e2e8f0;
-        }
-
-        .btn-logout {
-          background: #f1f5f9;
-          border: none;
-          color: #64748b;
-          cursor: pointer;
-          padding: 0.5rem;
-          border-radius: 0.5rem;
-          transition: all 0.2s;
-        }
-
-        .btn-logout:hover {
-          background: #fee2e2;
-          color: #ef4444;
-        }
-
-        .container {
-          max-width: 1200px;
+        .main-container {
+          max-width: 1400px;
           margin: 0 auto;
           padding: 3rem 2rem;
         }
 
-        .dashboard-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-end;
-          margin-bottom: 3rem;
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 3rem;
         }
 
-        .dashboard-header h1 {
-          font-size: 2.5rem;
-          font-weight: 800;
-          letter-spacing: -0.025em;
-          margin-bottom: 0.5rem;
+        .page-header h1 { font-size: 2.25rem; font-weight: 900; letter-spacing: -0.05em; margin: 0; }
+        .page-header p { color: #64748b; margin-top: 0.5rem; font-size: 1rem; }
+
+        .cta-btn-primary {
+            background: #3b82f6;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 1rem;
+            font-weight: 700;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            transition: 0.2s;
+            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3);
+        }
+        .cta-btn-primary:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
         }
 
-        .dashboard-header p {
-          color: #64748b;
-          font-size: 1.125rem;
-        }
-
+        /* Stats override */
         .stats-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-          gap: 1.5rem;
-          margin-bottom: 4rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
         }
 
-        .stat-card {
-          background: white;
-          padding: 2rem;
-          border-radius: 1.5rem;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-          display: flex;
-          align-items: center;
-          gap: 1.5rem;
-          transition: transform 0.3s;
-          border: 1px solid #f1f5f9;
+        .filter-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            background: rgba(15, 23, 42, 0.4);
+            padding: 0.75rem;
+            border-radius: 1.25rem;
+            border: 1px solid rgba(255,255,255,0.05);
         }
 
-        .stat-card:hover {
-          transform: translateY(-5px);
-          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+        .search-box {
+            position: relative;
+            flex: 1;
+            max-width: 400px;
+        }
+        .search-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #475569; }
+        .search-box input {
+            width: 100%;
+            background: rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.05);
+            padding: 0.625rem 1rem 0.625rem 3rem;
+            border-radius: 0.875rem;
+            color: white;
+            font-size: 0.875rem;
+        }
+        .search-box input:focus { outline: none; border-color: #3b82f6; }
+
+        .view-toggle { display: flex; gap: 0.5rem; }
+        .toggle-btn {
+            background: none;
+            border: none;
+            color: #475569;
+            padding: 0.5rem;
+            cursor: pointer;
+            border-radius: 0.5rem;
+        }
+        .toggle-btn.active { background: rgba(255,255,255,0.05); color: white; }
+
+        .manual-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 2rem;
         }
 
-        .stat-icon {
-          color: #2563eb;
-          background: #eff6ff;
-          padding: 1rem;
-          border-radius: 1rem;
+        /* Integration Card Custom Content */
+        .card-extra-info {
+            margin: 1.25rem 0;
+            padding: 1rem;
+            background: rgba(0,0,0,0.2);
+            border-radius: 0.875rem;
+            font-size: 0.75rem;
+            color: #64748b;
         }
-
-        .stat-value {
-          font-size: 2.25rem;
-          font-weight: 800;
-          color: #0f172a;
-          line-height: 1;
-          margin-bottom: 0.25rem;
+        .extra-row { margin-bottom: 0.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .extra-row.actions { margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 0.75rem; display: flex; justify-content: flex-end; }
+        .delete-mini {
+            background: none;
+            border: none;
+            color: #ef4444;
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+            font-size: 0.7rem;
+            font-weight: 700;
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.4rem;
         }
+        .delete-mini:hover { background: rgba(239, 68, 68, 0.1); }
 
-        .stat-label {
-          color: #64748b;
-          font-weight: 600;
-          font-size: 0.75rem;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
+        .loading-state {
+            padding: 5rem;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+            color: #64748b;
         }
-
-        .manuals-section h2 {
-          font-size: 1.5rem;
-          font-weight: 800;
-          margin-bottom: 2.5rem;
-          color: #0f172a;
-        }
-
-        .manuals-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-          gap: 2rem;
-        }
-
-        .manual-card {
-          background: white;
-          border-radius: 1rem;
-          padding: 2rem;
-          border: 1px solid #e2e8f0;
-          transition: all 0.2s;
-          display: flex;
-          flex-direction: column;
-          gap: 1.5rem;
-        }
-
-        .manual-card:hover {
-          border-color: #2563eb;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-
-        .manual-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-        }
-
-        .manual-header h3 {
-          font-size: 1.25rem;
-          font-weight: 700;
-          margin: 0;
-        }
-
-        .badge {
-          padding: 0.375rem 0.875rem;
-          border-radius: 9999px;
-          font-size: 0.75rem;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-        }
-
-        .badge-success { background: #dcfce7; color: #166534; }
-        .badge-warning { background: #fef9c3; color: #854d0e; }
-        .badge-error { background: #fee2e2; color: #991b1b; }
-
-        .manual-details {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 1rem;
-          color: #64748b;
-          font-size: 0.875rem;
-        }
-
-        .manual-details p { margin: 0; }
-        .manual-details strong { color: #475569; }
-
-        .qr-section {
-          padding-top: 1.5rem;
-          border-top: 1px solid #f1f5f9;
-        }
-
-        .qr-display {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          background: #f8fafc;
-          padding: 1rem;
-          border-radius: 1rem;
-        }
-
-        .qr-display span {
-          flex: 1;
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 0.75rem;
-          color: #2563eb;
-        }
-
-        .btn {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.75rem;
-          padding: 0.75rem 1.5rem;
-          border-radius: 0.5rem;
-          font-weight: 700;
-          transition: all 0.2s;
-          border: none;
-          cursor: pointer;
-          text-decoration: none;
-        }
-
-        .btn-primary {
-          background: #2563eb;
-          color: white;
-        }
-
-        .btn-primary:hover {
-          background: #1d4ed8;
-        }
-
-        .btn-secondary {
-          background: #f1f5f9;
-          color: #475569;
-        }
-
-        .btn-secondary:hover:not(:disabled) {
-          background: #e2e8f0;
-          color: #0f172a;
-        }
-
-        .btn-sm {
-          padding: 0.5rem 1rem;
-          font-size: 0.875rem;
-        }
-
-        .modal-overlay {
-          position: fixed;
-          top: 0; left: 0; right: 0; bottom: 0;
-          background: rgba(15, 23, 42, 0.8);
-          backdrop-filter: blur(8px);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 1000;
-        }
-
-        .modal-content {
-          background: white;
-          border-radius: 2rem;
-          width: 90%;
-          max-width: 480px;
-          padding: 2.5rem;
-          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-          animation: modalPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-
-        @keyframes modalPop {
-          from { transform: scale(0.9); opacity: 0; }
-          to { transform: scale(1); opacity: 1; }
-        }
-
-        .modal-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 2rem;
-        }
-
-        .modal-header h2 { font-size: 1.5rem; font-weight: 800; margin: 0; }
-
-        .btn-close {
-          background: #f1f5f9;
-          border: none;
-          width: 36px; height: 36px;
-          border-radius: 50%;
-          display: flex;
-          align-items: center; justify-content: center;
-          cursor: pointer;
-          color: #64748b;
-          font-size: 1.25rem;
-        }
-
-        .qr-image-container {
-          background: #f8fafc;
-          padding: 2.5rem;
-          border-radius: 1.5rem;
-          display: flex;
-          justify-content: center;
-          margin-bottom: 2rem;
-          border: 2px dashed #e2e8f0;
-        }
-
-        .qr-image-container img {
-          max-width: 100%;
-          height: auto;
-          border-radius: 0.75rem;
-        }
-
-        .qr-info { text-align: center; margin-bottom: 2rem; }
-        .qr-info p { margin: 0.5rem 0; color: #475569; }
-        .qr-hint { font-size: 0.875rem; color: #64748b; }
-
-        .modal-actions {
-          display: flex;
-          gap: 1rem;
-        }
-
-        .modal-actions .btn { flex: 1; }
-
         .spinner { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-        @media (max-width: 768px) {
-          .dashboard-header { flex-direction: column; align-items: flex-start; gap: 1.5rem; }
-          .manual-details { grid-template-columns: 1fr; }
+        .empty-state-glass {
+            padding: 6rem;
+            text-align: center;
+            background: rgba(15, 23, 42, 0.3);
+            border: 1px dashed rgba(255,255,255,0.1);
+            border-radius: 3rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+        .btn-outline {
+            margin-top: 1rem;
+            padding: 0.75rem 2rem;
+            border: 1px solid #3b82f6;
+            color: #3b82f6;
+            text-decoration: none;
+            border-radius: 1rem;
+            font-weight: 700;
+            transition: 0.2s;
+        }
+        .btn-outline:hover { background: rgba(59, 130, 246, 0.1); }
+
+        /* Modal Glass */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(2, 6, 23, 0.85);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-glass-content {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 2.5rem;
+            padding: 3rem;
+            width: 95%;
+            max-width: 480px;
+            box-shadow: 0 50px 100px -20px rgba(0,0,0,0.5);
+            animation: modalScale 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        @keyframes modalScale { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2.5rem; }
+        .modal-title { display: flex; align-items: center; gap: 0.75rem; }
+        .modal-title h3 { font-size: 1.25rem; font-weight: 800; margin: 0; letter-spacing: -0.05em; }
+        .close-circle { background: rgba(255,255,255,0.05); border: none; color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 1.25rem; }
+
+        .qr-container-premium {
+            position: relative;
+            background: white;
+            padding: 2.5rem;
+            border-radius: 2rem;
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: center;
+        }
+        .qr-container-premium img { width: 100%; max-width: 240px; mix-blend-mode: multiply; }
+        .qr-glow {
+            position: absolute;
+            inset: 0;
+            border-radius: 2rem;
+            box-shadow: inset 0 0 30px rgba(59, 130, 246, 0.2);
+            pointer-events: none;
+        }
+
+        .qr-details { text-align: center; margin-bottom: 2.5rem; }
+        .url-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(37, 99, 235, 0.1);
+            border: 1px solid rgba(37, 99, 235, 0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            color: #60a5fa;
+            font-family: monospace;
+            font-size: 0.8125rem;
+            margin-bottom: 1rem;
+        }
+        .qr-details p { color: #64748b; font-size: 0.875rem; line-height: 1.5; margin: 0 auto; max-width: 300px; }
+
+        .modal-actions { display: flex; gap: 1rem; }
+        .btn-premium {
+            flex: 1;
+            padding: 1rem;
+            border-radius: 1.25rem;
+            border: none;
+            font-weight: 800;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            transition: 0.2s;
+        }
+        .btn-premium.primary { background: #3b82f6; color: white; }
+        .btn-premium.primary:hover { background: #2563eb; transform: translateY(-2px); }
+        .btn-premium.secondary { background: rgba(255,255,255,0.05); color: white; border: 1px solid rgba(255,255,255,0.1); }
+        .btn-premium.secondary:hover { background: rgba(255,255,255,0.1); }
+
+        @media (max-width: 600px) {
+            .page-header { flex-direction: column; align-items: flex-start; gap: 1.5rem; }
+            .modal-glass-content { padding: 2rem; }
         }
       `}</style>
     </div>
