@@ -7,14 +7,16 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
-from dotenv import load_dotenv
+
+# Initialize logger before imports that might trigger it
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
 from datetime import datetime, timezone
 from typing import Optional, List
 import uuid
-import logging
 
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
+from dotenv import load_dotenv
 
 from auth import get_current_user, signup_user, login_user, require_admin, require_business_owner_or_admin
 
@@ -39,7 +41,9 @@ try:
     Pinecone = IngestionPinecone
     ml_imports_available = True
 except Exception as e:
+    import traceback
     logger.warning(f"Some ML services not available: {e}")
+    logger.debug(traceback.format_exc())
     ml_import_error = str(e)
 
 # Dependency injection helpers
@@ -104,35 +108,37 @@ async def lifespan(app: FastAPI):
     
     # Initialize ML Services
     if ml_imports_available:
-        qr_handler = QRHandler()
+        # 1. Initialize QR Handler (always works if imported)
+        if QRHandler:
+            qr_handler = QRHandler()
+            
+        # 2. Try to initialize Pinecone
+        pinecone_success = False
         if pinecone_api_key and Pinecone:
             try:
                 pinecone_client = Pinecone(api_key=pinecone_api_key)
-                # Check connection by listing indexes
                 pinecone_client.list_indexes()
-                
-                # DocumentProcessor expects the client to handle index creation/checking
-                doc_processor = DocumentProcessor(pinecone_client, pinecone_index_name)
-                
-                # RAGEngine expects the index object. 
-                # Note: doc_processor._ensure_collection() will create the index if needed.
-                # However, doc_processor is initialized but not "run". 
-                # RAGEngine might fail if index doesn't exist yet, but DocumentProcessor takes care of it.
-                # To be safe, let's get the index from the client.
-                # Note: doc_processor.index is set in _ensure_collection() which is called in __init__
-                
                 pinecone_index = pinecone_client.Index(pinecone_index_name)
-                rag_engine = RAGEngine(pinecone_index)
-                
-                print("Pinecone services initialized")
+                pinecone_success = True
+                print("Pinecone client initialized")
             except Exception as e:
                 initialization_error = f"Pinecone initialization failed: {e}"
                 print(f"{initialization_error}")
         else:
-            initialization_error = "PINECONE_API_KEY missing in .env"
+            initialization_error = "PINECONE_API_KEY missing or Pinecone package not installed"
             print(f"{initialization_error}")
+
+        # 3. Always initialize processor/engine if classes are available (supports Degraded Mode)
+        if DocumentProcessor:
+            doc_processor = DocumentProcessor(pinecone_client if pinecone_success else None, pinecone_index_name)
+            print("Document Processor initialized (Degraded Mode if Pinecone failed)")
+            
+        if RAGEngine:
+            rag_engine = RAGEngine(pinecone_index if pinecone_success else None)
+            print("RAG Engine initialized (Degraded Mode if Pinecone failed)")
     else:
         initialization_error = f"ML dependencies missing: {ml_import_error}"
+        print(f"{initialization_error}")
     
     yield
     
@@ -181,15 +187,78 @@ async def get_me(current_user: dict = Depends(get_db_current_user)):
     return current_user
 
 @api_router.post("/auth/logout")
-async def logout(response: Response, session_token: Optional[str] = Cookie(None)):
+async def logout(
+    response: Response,
+    session_token: Optional[str] = Cookie(None),
+    authorization: Optional[str] = Header(None),
+):
     """Logout user."""
-    if mongo_available and db is not None and session_token:
-        await db.user_sessions.delete_one({"session_token": session_token})
-    
+    token = session_token
+    if not token and authorization and authorization.startswith("Bearer "):
+        token = authorization.replace("Bearer ", "")
+
+    if mongo_available and db is not None and token:
+        await db.user_sessions.delete_one({"session_token": token})
+
+    # Clean up any cookie if the client used it
     response.delete_cookie("session_token")
     return {"message": "Logged out successfully"}
 
 # ============= MANUAL ENDPOINTS =============
+@api_router.delete("/manuals/{manual_id}")
+async def delete_manual(manual_id: str, current_user: dict = Depends(get_db_business_user)):
+    """Delete a manual and its associated data."""
+    if not mongo_available or db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+        
+    # Check if manual exists and user has permission
+    query = {"id": manual_id}
+    if current_user.get("role") != "admin":
+        # Business owners can only delete their own manuals
+        query["user_id"] = current_user["id"]
+        
+    manual = await db.manuals.find_one(query)
+    if not manual:
+        raise HTTPException(status_code=404, detail="Manual not found or access denied")
+    
+    # Delete file from filesystem
+    try:
+        file_path = manual.get("file_path")
+        if file_path and os.path.exists(file_path):
+            os.remove(file_path)
+            logger.info(f"Deleted file: {file_path}")
+    except Exception as e:
+        logger.warning(f"Failed to delete file {manual.get('file_path')}: {e}")
+    
+    # Delete from Pinecone
+    if pinecone_index:
+        try:
+            # Delete by manual_id metadata
+            pinecone_index.delete(filter={"manual_id": {"$eq": manual_id}})
+            logger.info(f"Deleted manual {manual_id} from Pinecone")
+        except Exception as e:
+            logger.warning(f"Failed to delete from Pinecone: {e}")
+            
+    # Delete from MongoDB collections
+    try:
+        await db.manuals.delete_one({"id": manual_id})
+        await db.manual_chunks.delete_many({"manual_id": manual_id})
+        
+        # Delete associated QR code
+        if manual.get("qr_code_id"):
+            await db.qr_codes.delete_one({"id": manual["qr_code_id"]})
+            
+        # Delete queries and feedback related to this manual
+        await db.queries.delete_many({"manual_id": manual_id})
+        await db.feedback.delete_many({"manual_id": manual_id})
+        
+        logger.info(f"Deleted manual {manual_id} data from MongoDB")
+    except Exception as e:
+        logger.error(f"Error during database deletion: {e}")
+        raise HTTPException(status_code=500, detail=f"Database deletion failed: {str(e)}")
+    
+    return {"message": "Manual and all associated data deleted successfully"}
+
 @api_router.post("/manuals/upload")
 async def upload_manual(
     file: UploadFile = File(...),
@@ -207,7 +276,8 @@ async def upload_manual(
         raise HTTPException(status_code=503, detail=detail)
     
     # Validate file type
-    file_ext = file.filename.split('.')[-1].lower()
+    original_filename = file.filename
+    file_ext = original_filename.split('.')[-1].lower()
     if file_ext not in ['pdf', 'png', 'jpg', 'jpeg']:
         raise HTTPException(status_code=400, detail="Unsupported file type")
     
@@ -216,18 +286,21 @@ async def upload_manual(
     if current_user.get("role") == "admin" and user_id:
         # Admin can upload for any user
         target_user_id = user_id
-    elif current_user.get("role") == "business_owner":
-        # Business owners can only upload for themselves
-        target_user_id = current_user["id"]
     
     # Create manual record
     manual_id = str(uuid.uuid4())
-    file_path = f"/tmp/{manual_id}.{file_ext}"
+    uploads_dir = ROOT_DIR / "uploads"
+    uploads_dir.mkdir(exist_ok=True)
+    file_path = str(uploads_dir / f"{manual_id}.{file_ext}")
     
     # Save file
-    with open(file_path, "wb") as f:
-        content = await file.read()
-        f.write(content)
+    try:
+        with open(file_path, "wb") as f:
+            content = await file.read()
+            f.write(content)
+    except Exception as e:
+        logger.error(f"Failed to save file: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
     
     # Create manual in DB
     manual = Manual(
@@ -242,6 +315,7 @@ async def upload_manual(
     )
     
     manual_dict = manual.model_dump()
+    manual_dict['filename'] = original_filename
     manual_dict['created_at'] = manual_dict['created_at'].isoformat()
     manual_dict['updated_at'] = manual_dict['updated_at'].isoformat()
     
@@ -285,7 +359,12 @@ async def upload_manual(
         }
     except Exception as e:
         logger.error(f"Error processing manual: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        # Manual status is updated to "failed" inside doc_processor.process_manual
+        return {
+            "manual_id": manual_id,
+            "status": "failed",
+            "error": str(e)
+        }
 
 @api_router.get("/manuals")
 async def get_manuals(current_user: dict = Depends(get_db_business_user)):
@@ -338,12 +417,15 @@ async def get_manual_qr(manual_id: str, current_user: dict = Depends(get_db_busi
     if not qr_code:
         raise HTTPException(status_code=404, detail="QR code record not found")
     
-    qr_data = qr_handler.generate_qr_code(manual_id, manual["version"])
+    # Regenerate QR image using the EXISTING qr_id (not a new one)
+    stored_qr_id = manual["qr_code_id"]
+    qr_image = qr_handler.regenerate_qr_image(stored_qr_id)
+    short_url = f"{qr_handler.app_base_url}/device/{stored_qr_id}"
     
     return {
-        "qr_id": manual["qr_code_id"],
-        "url": qr_code["short_url"],
-        "image": qr_data["image_base64"]
+        "qr_id": stored_qr_id,
+        "url": short_url,
+        "image": qr_image
     }
 
 @api_router.get("/admin/users")
@@ -534,8 +616,7 @@ async def get_queries_analytics(current_user: dict = Depends(lambda: require_bus
         manuals = await db.manuals.find(
             {"user_id": current_user["id"]},
             {"id": 1, "_id": 0}
-        ).to_list(1000)
-        
+        ).to_list(1000)    
         manual_ids = [m["id"] for m in manuals]
         
         queries = await db.queries.find(
