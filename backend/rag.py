@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 class RAGEngine:
     """RAG engine for question answering."""
     
-    def __init__(self, pinecone_index: Index):
+    def __init__(self, pinecone_index: Index = None):
         self.index = pinecone_index
         
         # Initialize embedding model if available
@@ -58,15 +58,24 @@ class RAGEngine:
         if groq_available and self.groq_api_key:
             try:
                 self.groq_client = Groq(api_key=self.groq_api_key)
+                print(f"[RAG] Groq client initialized OK. Model: {self.groq_model}")
                 logger.info(f"Initialized Groq client with model: {self.groq_model}")
             except Exception as e:
+                print(f"[RAG] Groq client FAILED to initialize: {e}")
                 logger.error(f"Failed to initialize Groq client: {e}")
+        else:
+            print(f"[RAG] Groq NOT initialized. groq_available={groq_available}, api_key_present={bool(self.groq_api_key)}")
 
     
     def retrieve_relevant_chunks(self, query: str, manual_id: str, top_k: int = 5) -> List[Dict[str, Any]]:
         """Retrieve relevant chunks from Pinecone."""
+        if self.index is None:
+            logger.warning("Pinecone index not available - skipping semantic search")
+            return []
+            
         if self.embedding_model is None:
-            raise RuntimeError("Embedding model not available - cannot retrieve relevant chunks")
+            logger.warning("Embedding model not available - cannot retrieve relevant chunks from Pinecone")
+            return []
         
         try:
             # Generate query embedding
@@ -152,8 +161,10 @@ IMPORTANT INSTRUCTIONS:
 QUESTION: {question}"""
 
             # Option 1: Use Groq if available
+            print(f"[RAG] generate_answer: groq_client={self.groq_client is not None}, model={self.groq_model}")
             if self.groq_client:
                 try:
+                    print(f"[RAG] Calling Groq API with model: {self.groq_model}")
                     chat_completion = self.groq_client.chat.completions.create(
                         messages=[
                             {
@@ -169,13 +180,15 @@ QUESTION: {question}"""
                         temperature=0.0,
                         max_tokens=1024,
                     )
+                    print(f"[RAG] Groq API SUCCESS")
                     return chat_completion.choices[0].message.content
                 except Exception as e:
+                    print(f"[RAG] Groq API FAILED: {type(e).__name__}: {e}")
                     logger.error(f"Groq API error: {e}. Falling back to Ollama.")
                     # Fallthrough to Ollama on error
             
             # Option 2: Use Ollama (Fallback or Primary if Groq not configured)
-            
+            print(f"[RAG] Falling through to Ollama at {self.ollama_base_url}")
             # Construct single prompt for Ollama
             full_prompt = f"{system_prompt}\n\n{user_msg_content}\n\nANSWER:"
             
@@ -254,13 +267,17 @@ QUESTION: {question}"""
     
     async def answer_question(self, manual_id: str, question: str, db=None) -> Dict[str, Any]:
         """Complete RAG pipeline: hybrid retrieve and generate."""
+        logger.info(f"Processing chat for manual {manual_id}: {question}")
+        
         # 1. Semantic Retrieval (Pinecone)
-        semantic_chunks = self.retrieve_relevant_chunks(question, manual_id, top_k=5)
-        for chunk in semantic_chunks:
-            chunk["source"] = "semantic"
+        semantic_chunks = []
+        if self.index:
+            semantic_chunks = self.retrieve_relevant_chunks(question, manual_id, top_k=5)
+            for chunk in semantic_chunks:
+                chunk["source"] = "semantic"
         
         # 2. Keyword Retrieval (MongoDB) - Hybrid model
-        keyword_chunks = await self.retrieve_keyword_chunks(question, manual_id, db, top_k=3)
+        keyword_chunks = await self.retrieve_keyword_chunks(question, manual_id, db, top_k=5)
         
         # 3. Combine and Rerank (Simple Fusion)
         seen_indices = set()
@@ -272,12 +289,26 @@ QUESTION: {question}"""
                 combined_chunks.append(chunk)
                 seen_indices.add(chunk["chunk_index"])
         
+        logger.info(f"Retrieved {len(combined_chunks)} total chunks (semantic: {len(semantic_chunks)}, keyword: {len(keyword_chunks)})")
+        
         if not combined_chunks:
-            return {
-                "answer": "I couldn't find relevant information in this manual to answer your question.",
-                "sources": [],
-                "manual_id": manual_id
-            }
+            # Fallback: if absolutely nothing found, try to get some general chunks for this manual
+            if db is not None:
+                cursor = db.manual_chunks.find({"manual_id": manual_id}).limit(2)
+                async for doc in cursor:
+                    combined_chunks.append({
+                        "content": doc["content"],
+                        "chunk_index": doc["chunk_index"],
+                        "score": 0.1,
+                        "source": "fallback"
+                    })
+            
+            if not combined_chunks:
+                return {
+                    "answer": "I couldn't find any information for this manual. It might still be processing or contains no searchable text.",
+                    "sources": [],
+                    "manual_id": manual_id
+                }
         
         # 4. Generate answer
         answer = await self.generate_answer(question, combined_chunks)
@@ -287,7 +318,7 @@ QUESTION: {question}"""
             {
                 "chunk_index": chunk["chunk_index"],
                 "content_preview": chunk["content"][:200] + "...",
-                "relevance_score": round(chunk["score"], 3),
+                "relevance_score": round(chunk.get("score", 0), 3),
                 "source_type": chunk.get("source", "unknown")
             }
             for chunk in combined_chunks
