@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { UserPlus, Eye, EyeOff } from 'lucide-react';
+import { UserPlus, Eye, EyeOff, Shield, ArrowLeft, Mail, Lock, User, Briefcase, Info } from 'lucide-react';
+import { MorphingButton } from '../components/ui/morphing-button';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -28,20 +29,18 @@ export default function Signup({ onLogin }) {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setLoading(true);
     setError('');
 
-    // Validate passwords match
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       setLoading(false);
       return;
     }
 
-    // Validate password strength
     if (formData.password.length < 8) {
-      setError('Password must be at least 8 characters long');
+      setError('Password must be at least 8 characters');
       setLoading(false);
       return;
     }
@@ -57,309 +56,276 @@ export default function Signup({ onLogin }) {
       const response = await axios.post(`${API}/auth/signup`, signupData);
       const { session_token, user } = response.data;
 
-      // Set cookie - handle localhost vs production (https)
-      const isLocalhost = window.location.hostname === 'localhost';
-      const cookieOptions = isLocalhost
-        ? `session_token=${session_token}; path=/; max-age=604800`
-        : `session_token=${session_token}; path=/; secure; samesite=none; max-age=604800`;
-      document.cookie = cookieOptions;
-
-      onLogin(user);
+      onLogin(user, session_token);
       navigate('/dashboard');
     } catch (error) {
       console.error('Signup error:', error);
-      if (error.response) {
-        console.error('Error response:', error.response.data);
-      }
-      setError(error.response?.data?.detail || 'Signup failed');
+      const detail = error.response?.data?.detail || error.response?.data || error.message;
+      setError(detail || 'Registration failed');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="auth-page">
-      <div className="auth-container">
-        <div className="auth-header">
-          <h1>ApplianceIQ</h1>
-          <p>Create your account</p>
+    <div className="signup-page">
+
+      <Link to="/" className="back-link">
+        <ArrowLeft size={16} />
+        Back to Home
+      </Link>
+
+      <div className="signup-card">
+        <div className="card-header">
+          <div className="logo-box">
+            <UserPlus size={24} className="text-secondary" />
+          </div>
+          <h1>Create Account</h1>
+          <p>Join the enterprise network for appliance IQ</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="auth-form">
+        <form onSubmit={handleSubmit} className="signup-form">
           {error && (
-            <div className="error-message">
+            <div className="error-alert">
+              <Info size={16} />
               {error}
             </div>
           )}
 
-          <div className="form-group">
-            <label htmlFor="name">Full Name</label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              required
-              placeholder="Enter your full name"
-            />
-          </div>
+          <div className="form-grid">
+            <div className="input-field">
+              <label>Full Name</label>
+              <div className="input-wrapper">
+                <User size={18} className="field-icon" />
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  required
+                  placeholder="John Doe"
+                />
+              </div>
+            </div>
 
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-              placeholder="Enter your email"
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="role">Account Type</label>
-            <select
-              id="role"
-              name="role"
-              value={formData.role}
-              onChange={handleChange}
-              required
-            >
-              <option value="business_owner">Business Owner</option>
-              <option value="admin">Administrator</option>
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <div className="password-input">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                required
-                placeholder="Create a password"
-              />
-              <button
-                type="button"
-                className="password-toggle"
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
+            <div className="input-field">
+              <label>Email Address</label>
+              <div className="input-wrapper">
+                <Mail size={18} className="field-icon" />
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
+                  placeholder="john@company.com"
+                />
+              </div>
             </div>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="confirmPassword">Confirm Password</label>
-            <div className="password-input">
-              <input
-                type={showConfirmPassword ? 'text' : 'password'}
-                id="confirmPassword"
-                name="confirmPassword"
-                value={formData.confirmPassword}
+          <div className="input-field">
+            <label>Account Type</label>
+            <div className="input-wrapper">
+              <Briefcase size={18} className="field-icon" />
+              <select
+                name="role"
+                value={formData.role}
                 onChange={handleChange}
                 required
-                placeholder="Confirm your password"
-              />
-              <button
-                type="button"
-                className="password-toggle"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
               >
-                {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
+                <option value="business_owner">Business Owner / Merchant</option>
+                <option value="admin">System Administrator</option>
+              </select>
             </div>
           </div>
 
-          <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
-            {loading ? (
-              <>
-                <div className="spinner"></div>
-                Creating account...
-              </>
-            ) : (
-              <>
-                <UserPlus size={20} />
-                Create Account
-              </>
-            )}
-          </button>
+          <div className="form-grid">
+            <div className="input-field">
+              <label>Password</label>
+              <div className="input-wrapper">
+                <Lock size={18} className="field-icon" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  className="toggle-eye"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            <div className="input-field">
+              <label>Confirm Password</label>
+              <div className="input-wrapper">
+                <Lock size={18} className="field-icon" />
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  required
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  className="toggle-eye"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="submit-area">
+            <MorphingButton
+              buttonText={loading ? "Creating..." : "Create Account"}
+              className="w-full"
+              onSubmit={() => {
+                if (!loading) {
+                  const form = document.querySelector('.signup-form');
+                  if (form.checkValidity()) {
+                    handleSubmit();
+                  } else {
+                    form.reportValidity();
+                  }
+                }
+              }}
+            />
+          </div>
         </form>
 
-        <div className="auth-footer">
+        <div className="card-footer">
           <p>Already have an account? <Link to="/login">Sign in</Link></p>
         </div>
       </div>
 
       <style jsx>{`
-        .auth-page {
+        .signup-page {
           min-height: 100vh;
+          background: #09090b;
           display: flex;
           align-items: center;
           justify-content: center;
-          background: #f8fafc;
           padding: 2rem;
-        }
-
-        .auth-container {
-          background: white;
-          border-radius: 1rem;
-          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-          padding: 3rem;
-          width: 100%;
-          max-width: 400px;
-        }
-
-        .auth-header {
-          text-align: center;
-          margin-bottom: 2rem;
-        }
-
-        .auth-header h1 {
-          font-size: 2rem;
-          font-weight: bold;
-          color: #2d3748;
-          margin-bottom: 0.5rem;
-        }
-
-        .auth-header p {
-          color: #718096;
-        }
-
-        .auth-form {
-          display: flex;
-          flex-direction: column;
-          gap: 1.5rem;
-        }
-
-        .form-group {
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-
-        .form-group label {
-          font-weight: 500;
-          color: #4a5568;
-        }
-
-        .form-group input, .form-group select {
-          padding: 0.75rem;
-          border: 1px solid #e2e8f0;
-          border-radius: 0.5rem;
-          font-size: 1rem;
-          transition: border-color 0.2s, box-shadow 0.2s;
-        }
-
-        .form-group input:focus, .form-group select:focus {
-          outline: none;
-          border-color: #4299e1;
-          box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
-        }
-
-        .password-input {
+          color: white;
+          font-family: 'Inter', sans-serif;
           position: relative;
         }
 
-        .password-toggle {
+        .back-link {
           position: absolute;
-          right: 0.75rem;
-          top: 50%;
-          transform: translateY(-50%);
-          background: none;
-          border: none;
-          color: #718096;
-          cursor: pointer;
-          padding: 0.25rem;
-          border-radius: 0.25rem;
-          transition: color 0.2s;
-        }
-
-        .password-toggle:hover {
-          color: #4a5568;
-        }
-
-        .error-message {
-          background: #fed7d7;
-          color: #c53030;
-          padding: 0.75rem;
-          border-radius: 0.5rem;
-          border: 1px solid #feb2b2;
+          top: 2rem;
+          left: 2rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          color: #64748b;
+          text-decoration: none;
+          font-weight: 600;
           font-size: 0.875rem;
+          transition: 0.2s;
+          z-index: 10;
+        }
+        .back-link:hover { color: white; }
+
+        .signup-card {
+          position: relative;
+          z-index: 1;
+          background: rgba(15, 23, 42, 0.6);
+          backdrop-filter: blur(20px);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 2.5rem;
+          padding: 3.5rem;
+          width: 100%;
+          max-width: 600px;
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
         }
 
-        .btn {
-          display: inline-flex;
+        .card-header { text-align: center; margin-bottom: 2.5rem; }
+        .logo-box {
+          width: 56px;
+          height: 56px;
+          background: rgba(16, 185, 129, 0.1);
+          border: 1px solid rgba(16, 185, 129, 0.2);
+          border-radius: 1rem;
+          display: flex;
           align-items: center;
           justify-content: center;
-          gap: 0.5rem;
-          padding: 0.75rem 1.5rem;
-          border-radius: 0.5rem;
-          font-weight: 500;
-          text-decoration: none;
-          transition: all 0.2s;
-          border: none;
-          cursor: pointer;
-          font-size: 1rem;
+          margin: 0 auto 1.5rem;
+          color: #10b981;
+        }
+        .card-header h1 { font-size: 1.875rem; font-weight: 800; letter-spacing: -0.05em; margin: 0; }
+        .card-header p { color: #64748b; margin-top: 0.5rem; font-size: 0.9375rem; }
+
+        .signup-form { display: flex; flex-direction: column; gap: 1.25rem; }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.25rem;
         }
 
-        .btn-primary {
-          background: #2563eb;
-          color: white;
+        .error-alert {
+          background: rgba(239, 68, 68, 0.1);
+          border: 1px solid rgba(239, 68, 68, 0.2);
+          color: #f87171;
+          padding: 0.75rem 1rem;
+          border-radius: 0.75rem;
+          font-size: 0.8125rem;
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
         }
 
-        .btn-primary:hover:not(:disabled) {
-          background: #1d4ed8;
-        }
+        .input-field { display: flex; flex-direction: column; gap: 0.625rem; }
+        .input-field label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; }
 
-        .btn-primary:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-
-        .btn-full {
+        .input-wrapper { position: relative; display: flex; align-items: center; }
+        .field-icon { position: absolute; left: 1rem; color: #475569; transition: 0.2s; }
+        
+        .input-wrapper input, .input-wrapper select {
           width: 100%;
+          background: rgba(2, 6, 23, 0.4);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          padding: 0.875rem 1rem 0.875rem 3rem;
+          border-radius: 0.875rem;
+          color: white;
+          font-size: 0.9375rem;
+          transition: all 0.2s;
         }
-
-        .spinner {
-          width: 20px;
-          height: 20px;
-          border: 2px solid #ffffff;
-          border-top: 2px solid transparent;
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
+        .input-wrapper select { appearance: none; }
+        .input-wrapper input:focus, .input-wrapper select:focus {
+          outline: none; border-color: #10b981; background: rgba(2, 6, 23, 0.6);
+          box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
         }
+        
+        .toggle-eye { position: absolute; right: 0.875rem; background: none; border: none; color: #475569; cursor: pointer; }
+        .toggle-eye:hover { color: white; }
 
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
+        .submit-area { margin-top: 1.5rem; }
 
-        .auth-footer {
-          text-align: center;
-          margin-top: 2rem;
+        .card-footer {
+          margin-top: 2.5rem;
           padding-top: 2rem;
-          border-top: 1px solid #e2e8f0;
+          border-top: 1px solid rgba(255, 255, 255, 0.05);
+          text-align: center;
         }
+        .card-footer p { color: #64748b; font-size: 0.875rem; }
+        .card-footer a { color: #10b981; text-decoration: none; font-weight: 700; }
 
-        .auth-footer p {
-          color: #718096;
-          margin: 0;
-        }
-
-        .auth-footer a {
-          color: #2563eb;
-          text-decoration: none;
-          font-weight: 500;
-        }
-
-        .auth-footer a:hover {
-          text-decoration: underline;
+        @media (max-width: 600px) {
+          .signup-card { padding: 2rem; }
+          .form-grid { grid-template-columns: 1fr; }
         }
       `}</style>
     </div>
