@@ -43,33 +43,39 @@ class QRHandler:
         payload["sig"] = signature
         return payload, qr_id
     
-    def generate_qr_code(self, manual_id: str, version: str) -> tuple:
-        """Generate QR code image."""
-        payload, qr_id = self.create_qr_payload(manual_id, version)
-        
-        # Create short URL
-        short_url = f"{self.app_base_url}/device/{qr_id}"
-        
-        # Generate QR code
+    def _make_qr_image_base64(self, url: str) -> str:
+        """Generate a QR code image as a base64 data URI for the given URL."""
         qr = qrcode.QRCode(
             version=1,
             error_correction=qrcode.constants.ERROR_CORRECT_L,
             box_size=10,
             border=4,
         )
-        qr.add_data(short_url)
+        qr.add_data(url)
         qr.make(fit=True)
         
         img = qr.make_image(fill_color="black", back_color="white")
         
-        # Convert to base64
         buffered = BytesIO()
         img.save(buffered, format="PNG")
         img_str = base64.b64encode(buffered.getvalue()).decode()
+        return f"data:image/png;base64,{img_str}"
+
+    def generate_qr_code(self, manual_id: str, version: str) -> tuple:
+        """Generate QR code image for a NEW manual (creates a new qr_id)."""
+        payload, qr_id = self.create_qr_payload(manual_id, version)
+        
+        short_url = f"{self.app_base_url}/device/{qr_id}"
+        image_base64 = self._make_qr_image_base64(short_url)
         
         return {
             "qr_id": qr_id,
             "short_url": short_url,
             "payload": payload,
-            "image_base64": f"data:image/png;base64,{img_str}"
+            "image_base64": image_base64
         }
+
+    def regenerate_qr_image(self, qr_id: str) -> str:
+        """Regenerate QR code image for an EXISTING qr_id (no new UUID)."""
+        short_url = f"{self.app_base_url}/device/{qr_id}"
+        return self._make_qr_image_base64(short_url)
