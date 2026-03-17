@@ -86,3 +86,10 @@ android-sdk/
 # User temporary files
 heelo.c
 heelo.exe
+
+# Ignore generated uploads and temporary scripts
+backend/uploads/
+tmp/
+
+# Ignore large image assets not meant for source control
+docs/*.png
