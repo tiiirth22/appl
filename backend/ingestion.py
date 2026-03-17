@@ -21,6 +21,8 @@ except ImportError as e:
     print(f"Warning: sentence_transformers not available: {e}")
 
 
+logger = logging.getLogger(__name__)
+
 # Pinecone imports
 Pinecone = None
 ServerlessSpec = None
@@ -32,26 +34,32 @@ try:
 except ImportError:
     logger.warning("Pinecone library not installed - ML features will be disabled")
 
-logger = logging.getLogger(__name__)
-
 class DocumentProcessor:
     """Handles document ingestion pipeline."""
     
     
-    def __init__(self, pinecone_client: Pinecone, index_name: str):
+    def __init__(self, pinecone_client: Pinecone = None, index_name: str = "appliance-manuals"):
         self.pc = pinecone_client
         self.index_name = index_name
+        self.index = None
         
         # Initialize embedding model if available
         if sentence_transformers_available and SentenceTransformer:
-            self.embedding_model = SentenceTransformer(
-                os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
-            )
+            try:
+                self.embedding_model = SentenceTransformer(
+                    os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
+                )
+            except Exception as e:
+                logger.warning(f"Failed to load embedding model: {e}")
+                self.embedding_model = None
         else:
             self.embedding_model = None
-            logger.warning("Embedding model not available - document processing will be limited")
+            logger.warning("Embedding model not available - RAG features will be limited")
         
-        self._ensure_collection()
+        if self.pc:
+            self._ensure_collection()
+        else:
+            logger.warning("Pinecone client not provided - vector search will be disabled")
     
     def _ensure_collection(self):
         """Create index if it doesn't exist."""
@@ -106,7 +114,12 @@ class DocumentProcessor:
     def chunk_text(self, text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]:
         """Chunk text into overlapping segments using LangChain's splitter."""
         try:
-            from langchain.text_splitter import RecursiveCharacterTextSplitter
+            # Try newer import path first
+            try:
+                from langchain_text_splitters import RecursiveCharacterTextSplitter
+            except ImportError:
+                # Fallback to older import path
+                from langchain.text_splitter import RecursiveCharacterTextSplitter
             
             splitter = RecursiveCharacterTextSplitter(
                 chunk_size=chunk_size,
@@ -130,9 +143,14 @@ class DocumentProcessor:
     def generate_embeddings(self, texts: List[str]) -> List[List[float]]:
         """Generate embeddings for text chunks."""
         if self.embedding_model is None:
-            raise RuntimeError("Embedding model not available - cannot generate embeddings")
-        embeddings = self.embedding_model.encode(texts, convert_to_numpy=False)
-        return [emb.tolist() for emb in embeddings]
+            logger.warning("Embedding model not available - skipping embedding generation")
+            return []
+        try:
+            embeddings = self.embedding_model.encode(texts, convert_to_numpy=False)
+            return [emb.tolist() for emb in embeddings]
+        except Exception as e:
+            logger.error(f"Error generating embeddings: {e}")
+            return []
     
     async def process_manual(self, manual_id: str, file_path: str, file_type: str, db) -> int:
         """Process a manual file and store in Pinecone."""
@@ -151,26 +169,31 @@ class DocumentProcessor:
             if not chunks:
                 raise ValueError("No text extracted from file")
             
-            # Generate embeddings
-            embeddings = self.generate_embeddings(chunks)
-            
-            # Prepare vectors for Pinecone
-            vectors = []
-            for idx, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
-                vector_id = str(uuid.uuid4())
-                metadata = {
-                    "manual_id": manual_id,
-                    "chunk_index": idx,
-                    "content": chunk,
-                    "total_chunks": len(chunks)
-                }
-                vectors.append((vector_id, embedding, metadata))
-            
-            # Upsert to Pinecone
-            batch_size = 100
-            for i in range(0, len(vectors), batch_size):
-                batch = vectors[i:i + batch_size]
-                self.index.upsert(vectors=batch)
+            # Generate and store embeddings in Pinecone if available
+            if self.index and self.embedding_model:
+                # Generate embeddings
+                embeddings = self.generate_embeddings(chunks)
+                
+                if embeddings:
+                    # Prepare vectors for Pinecone
+                    vectors = []
+                    for idx, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
+                        vector_id = str(uuid.uuid4())
+                        metadata = {
+                            "manual_id": manual_id,
+                            "chunk_index": idx,
+                            "content": chunk,
+                            "total_chunks": len(chunks)
+                        }
+                        vectors.append((vector_id, embedding, metadata))
+                    
+                    # Upsert to Pinecone
+                    batch_size = 100
+                    for i in range(0, len(vectors), batch_size):
+                        batch = vectors[i:i + batch_size]
+                        self.index.upsert(vectors=batch)
+            else:
+                logger.warning("Pinecone or embedding model not available - skipping vector storage")
             
             # Store chunks in MongoDB for keyword search (Hybrid Search)
             mongo_chunks = []
