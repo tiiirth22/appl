@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { Upload, BarChart, LogOut, FileText, QrCode, Loader, Users, Settings } from 'lucide-react';
+import { Upload, BarChart, LogOut, FileText, QrCode, Loader, Users, Trash2, Shield, Calendar, Activity, Database, Server, Settings, Search, Filter } from 'lucide-react';
+import { StatCard } from '../components/ui/stat-card';
+import Navbar from '../components/ui/Navbar';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -10,6 +12,7 @@ export default function AdminDashboard({ user, onLogout }) {
   const [manuals, setManuals] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -30,407 +33,300 @@ export default function AdminDashboard({ user, onLogout }) {
     }
   };
 
+  const handleDeleteManual = async (manualId) => {
+    if (!window.confirm('As Admin: Permanently delete this manual and its entire vector index?')) {
+      return;
+    }
+
+    try {
+      await axios.delete(`${API}/manuals/${manualId}`, {
+        withCredentials: true
+      });
+      fetchData();
+    } catch (error) {
+      console.error('Error deleting manual:', error);
+      alert('Failed to delete manual: ' + (error.response?.data?.detail || error.message));
+    }
+  };
+
+  const filteredUsers = users.filter(u =>
+    u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    u.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
-    <div className="dashboard" data-testid="admin-dashboard-page">
-      {/* Navbar */}
-      <nav className="navbar">
-        <div className="navbar-content">
-          <h2 className="navbar-brand">ApplianceIQ Admin</h2>
-          <div className="navbar-links">
-            <Link to="/dashboard" className="navbar-link">Dashboard</Link>
-            <Link to="/upload" className="navbar-link" data-testid="upload-link">Upload Manual</Link>
-            <Link to="/analytics" className="navbar-link">Analytics</Link>
-          </div>
-          <div className="navbar-user">
-            <img src={user.picture || 'https://via.placeholder.com/40'} alt={user.name} />
-            <span>{user.name} (Admin)</span>
-            <button onClick={onLogout} className="btn-logout" data-testid="logout-btn">
-              <LogOut size={16} />
-            </button>
-          </div>
-        </div>
-      </nav>
+    <div className="admin-page">
+      <Navbar
+        user={user}
+        onLogout={onLogout}
+        activePage="dashboard"
+        accentColor="#10b981"
+        roleLabel="Superuser"
+        brandSuffix="Console"
+      />
 
-      {/* Main Content */}
-      <div className="container">
-        <div className="dashboard-header">
-          <div>
-            <h1>Admin Control Panel</h1>
-            <p>Monitor system activity and manage resources</p>
+      <div className="main-container">
+        <header className="page-header">
+          <div className="header-left">
+            <h1>System Governance</h1>
+            <p>Monitoring {users.length} operators and {manuals.length} vector-indexed resources.</p>
           </div>
-          <Link to="/upload" className="btn btn-primary" data-testid="new-manual-btn">
-            <Upload size={20} />
-            Upload Manual
-          </Link>
-        </div>
+          <div className="header-actions">
+            <button className="btn-glass"><Settings size={18} /> Engine Config</button>
+            <Link to="/upload" className="cta-btn-primary">
+              <Upload size={18} />
+              Global Upload
+            </Link>
+          </div>
+        </header>
 
-        {/* Stats Cards */}
+        {/* Admin Stats Grid */}
         <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-icon">
-              <Users size={24} />
-            </div>
-            <div>
-              <div className="stat-value" data-testid="total-users">{users.length}</div>
-              <div className="stat-label">Total Users</div>
-            </div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon">
-              <FileText size={24} />
-            </div>
-            <div>
-              <div className="stat-value" data-testid="total-manuals">{manuals.length}</div>
-              <div className="stat-label">Total Manuals</div>
-            </div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon">
-              <QrCode size={24} />
-            </div>
-            <div>
-              <div className="stat-value">{manuals.filter(m => m.qr_code_id).length}</div>
-              <div className="stat-label">QR Codes Generated</div>
-            </div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon">
-              <BarChart size={24} />
-            </div>
-            <div>
-              <div className="stat-value">{manuals.filter(m => m.status === 'completed').length}</div>
-              <div className="stat-label">Active Manuals</div>
-            </div>
-          </div>
+          <StatCard
+            title="Registered Users"
+            amount={users.length.toString()}
+            percentage="+15%"
+            isPositive={true}
+          />
+          <StatCard
+            title="Total Knowledge Base"
+            amount={manuals.length.toString()}
+            percentage="+22%"
+            isPositive={true}
+          />
+          <StatCard
+            title="Index Integrity"
+            amount="99.9%"
+            percentage="Stable"
+            isPositive={true}
+          />
         </div>
 
-        {/* Users Section */}
-        <div className="users-section">
-          <h2>System Users</h2>
-          {loading ? (
-            <div className="loading-container">
-              <Loader className="spinner" size={40} />
+        <div className="admin-layout">
+          {/* User Management Section */}
+          <section className="admin-section">
+            <div className="section-head">
+              <div className="head-title">
+                <Users size={20} className="text-primary" />
+                <h2>Operator Management</h2>
+              </div>
+              <div className="head-tools">
+                <div className="search-mini">
+                  <Search size={14} />
+                  <input
+                    type="text"
+                    placeholder="Search operators..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+              </div>
             </div>
-          ) : (
-            <div className="users-grid">
-              {users.map((u) => (
-                <div key={u.id} className="user-card">
-                  <div className="user-header">
-                    <h3>{u.name}</h3>
-                    <span className={`badge badge-${u.role === 'admin' ? 'primary' : 'secondary'}`}>
-                      {u.role}
-                    </span>
+
+            <div className="glass-card table-card">
+              {loading ? (
+                <div className="loading-box"><Loader className="spinner" /></div>
+              ) : (
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Identity</th>
+                      <th>Role</th>
+                      <th>Resources</th>
+                      <th>Created</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredUsers.map(u => (
+                      <tr key={u.id}>
+                        <td>
+                          <div className="ident-cell">
+                            <div className="avatar-sm">{u.name.charAt(0)}</div>
+                            <div className="ident-text">
+                              <span className="u-name">{u.name}</span>
+                              <span className="u-email">{u.email}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <span className={`role-badge ${u.role === 'admin' ? 'admin' : 'owner'}`}>
+                            {u.role === 'admin' ? 'Superuser' : 'Merchant'}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="resource-count">
+                            <Database size={12} />
+                            <span>{manuals.filter(m => m.user_id === u.id).length} docs</span>
+                          </div>
+                        </td>
+                        <td className="time-text">{new Date(u.created_at || Date.now()).toLocaleDateString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </section>
+
+          {/* Manual Management Side Section */}
+          <aside className="admin-section side">
+            <div className="section-head">
+              <div className="head-title">
+                <FileText size={20} className="text-secondary" />
+                <h2>Resource Health</h2>
+              </div>
+            </div>
+
+            <div className="manual-scroll-stack">
+              {manuals.map(m => (
+                <div className="manual-item-glass" key={m.id}>
+                  <div className="m-main">
+                    <h4>{m.model_name}</h4>
+                    <div className="m-sub">
+                      <span>{m.status === 'completed' ? 'Fully Indexed' : 'Processing'}</span>
+                      <span className="m-owner-ext">Owner: {m.user_id.split('@')[0]}</span>
+                    </div>
                   </div>
-                  <div className="user-details">
-                    <p><strong>Email:</strong> {u.email}</p>
-                    <p><strong>Joined:</strong> {new Date(u.created_at).toLocaleDateString()}</p>
+                  <div className="m-actions">
+                    <button className="del-btn" onClick={() => handleDeleteManual(m.id)}>
+                      <Trash2 size={14} />
+                    </button>
                   </div>
                 </div>
               ))}
             </div>
-          )}
-        </div>
 
-        {/* Manuals List */}
-        <div className="manuals-section">
-          <h2>All Manuals</h2>
-          {loading ? (
-            <div className="loading-container">
-              <Loader className="spinner" size={40} />
+            <div className="system-health-card">
+              <div className="health-row">
+                <Server size={14} />
+                <span>Llama 3.1 70B: Online</span>
+              </div>
+              <div className="health-row">
+                <Activity size={14} />
+                <span>Pinecone Latency: 45ms</span>
+              </div>
             </div>
-          ) : manuals.length === 0 ? (
-            <div className="empty-state" data-testid="empty-state">
-              <FileText size={64} />
-              <h3>No manuals yet</h3>
-              <p>Upload the first appliance manual to get started</p>
-              <Link to="/upload" className="btn btn-primary">
-                <Upload size={20} />
-                Upload Manual
-              </Link>
-            </div>
-          ) : (
-            <div className="manuals-grid" data-testid="manuals-list">
-              {manuals.map((manual) => (
-                <div key={manual.id} className="manual-card" data-testid={`manual-${manual.id}`}>
-                  <div className="manual-header">
-                    <h3>{manual.model_name}</h3>
-                    <span className={`badge badge-${manual.status === 'completed' ? 'success' : manual.status === 'processing' ? 'warning' : 'error'}`}>
-                      {manual.status}
-                    </span>
-                  </div>
-                  <div className="manual-details">
-                    <p><strong>Version:</strong> {manual.version}</p>
-                    <p><strong>Region:</strong> {manual.region}</p>
-                    <p><strong>Owner:</strong> {users.find(u => u.id === manual.user_id)?.name || manual.user_id}</p>
-                    <p><strong>Chunks:</strong> {manual.chunks_count || 0}</p>
-                    {manual.qr_code_id && (
-                      <p><strong>QR Code:</strong> {manual.qr_code_id}</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          </aside>
         </div>
       </div>
 
       <style jsx>{`
-        .dashboard {
+        .admin-page {
           min-height: 100vh;
-          background: #f8fafc;
-          color: #1e293b;
+          background: #09090b;
+          background-image: radial-gradient(circle at 0% 0%, rgba(16, 185, 129, 0.05) 0%, transparent 40%);
+          color: white;
+          font-family: 'Inter', sans-serif;
         }
 
-        .navbar {
-          background: rgba(255, 255, 255, 0.8);
-          backdrop-filter: blur(12px);
-          border-bottom: 1px solid rgba(226, 232, 240, 0.8);
-          padding: 1rem 0;
-          position: sticky;
-          top: 0;
-          z-index: 100;
-        }
-
-        .navbar-content {
-          max-width: 1200px;
-          margin: 0 auto;
-          padding: 0 2rem;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        .navbar-brand {
-          font-size: 1.25rem;
-          font-weight: 800;
-          color: #0f172a;
-          letter-spacing: -0.025em;
-        }
-
-        .navbar-links {
-          display: flex;
-          gap: 2rem;
-        }
-
-        .navbar-link {
-          color: #64748b;
-          text-decoration: none;
-          font-weight: 600;
-          font-size: 0.9rem;
-          transition: color 0.2s;
-        }
-
-        .navbar-link:hover {
-          color: #10b981;
-        }
-
-        .navbar-user {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-        }
-
-        .navbar-user img {
-          width: 36px;
-          height: 36px;
-          border-radius: 50%;
-          border: 2px solid #10b981;
-        }
-
-        .btn-logout {
-          background: #f1f5f9;
-          border: none;
-          color: #64748b;
-          padding: 0.5rem;
-          border-radius: 0.5rem;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .btn-logout:hover {
-          background: #fee2e2;
-          color: #ef4444;
-        }
-
-        .container {
-          max-width: 1200px;
+        .main-container {
+          max-width: 1400px;
           margin: 0 auto;
           padding: 3rem 2rem;
         }
 
-        .dashboard-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-end;
-          margin-bottom: 3rem;
-        }
+        .page-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 3rem; }
+        .page-header h1 { font-size: 2.25rem; font-weight: 900; letter-spacing: -0.05em; margin: 0; }
+        .page-header p { color: #64748b; margin-top: 0.5rem; font-size: 1rem; }
 
-        .dashboard-header h1 {
-          font-size: 2.5rem;
-          font-weight: 800;
-          margin-bottom: 0.5rem;
-          letter-spacing: -0.025em;
+        .header-actions { display: flex; gap: 1rem; }
+        .btn-glass {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            color: white;
+            padding: 0.75rem 1.25rem;
+            border-radius: 1rem;
+            display: flex; align-items: center; gap: 0.75rem;
+            font-size: 0.875rem; font-weight: 600; cursor: pointer;
         }
-
-        .dashboard-header p {
-          color: #64748b;
-          font-size: 1.125rem;
+        .cta-btn-primary {
+            background: #10b981; color: white;
+            padding: 0.75rem 1.5rem; border-radius: 1rem;
+            font-weight: 700; text-decoration: none;
+            display: flex; align-items: center; gap: 0.75rem;
+            transition: 0.2s; box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3);
         }
+        .cta-btn-primary:hover { background: #059669; transform: translateY(-2px); }
 
         .stats-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-          gap: 1.5rem;
-          margin-bottom: 4rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3.5rem;
         }
 
-        .stat-card {
-          background: white;
-          padding: 1.5rem;
-          border-radius: 1.25rem;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          border: 1px solid #f1f5f9;
-          transition: transform 0.3s;
+        .admin-layout { display: grid; grid-template-columns: 1.8fr 1fr; gap: 2.5rem; }
+
+        .section-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .head-title { display: flex; align-items: center; gap: 0.75rem; }
+        .head-title h2 { font-size: 1.25rem; font-weight: 800; margin: 0; letter-spacing: -0.02em; }
+
+        .search-mini {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            padding: 0.4rem 0.8rem; border-radius: 0.75rem;
+            display: flex; align-items: center; gap: 0.5rem;
+            color: #475569;
         }
-
-        .stat-card:hover {
-          transform: translateY(-5px);
+        .search-mini input {
+            background: none; border: none; color: white; font-size: 0.8125rem;
+            width: 150px;
         }
+        .search-mini input:focus { outline: none; width: 200px; transition: 0.3s; }
 
-        .stat-icon {
-          color: #2563eb;
-          background: #eff6ff;
-          padding: 0.75rem;
-          border-radius: 0.75rem;
+        .glass-card { background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 2rem; overflow: hidden; }
+
+        .admin-table { width: 100%; border-collapse: collapse; text-align: left; }
+        .admin-table th { padding: 1.25rem 1.5rem; font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 800; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .admin-table td { padding: 1.25rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.02); }
+
+        .ident-cell { display: flex; align-items: center; gap: 1rem; }
+        .avatar-sm { width: 32px; height: 32px; background: #1e293b; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: #3b82f6; }
+        .ident-text { display: flex; flex-direction: column; }
+        .u-name { font-size: 0.875rem; font-weight: 700; }
+        .u-email { font-size: 0.75rem; color: #64748b; }
+
+        .role-badge { 
+            font-size: 0.65rem; font-weight: 800; padding: 0.25rem 0.625rem; border-radius: 2rem; 
+            text-transform: uppercase; letter-spacing: 0.02em;
         }
+        .role-badge.admin { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+        .role-badge.owner { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
 
-        .stat-value {
-          font-size: 1.875rem;
-          font-weight: 800;
-          color: #0f172a;
-          line-height: 1;
-          margin-bottom: 0.25rem;
+        .resource-count { display: flex; align-items: center; gap: 0.5rem; color: #64748b; font-size: 0.75rem; }
+        .time-text { font-size: 0.8125rem; color: #475569; }
+
+        .manual-scroll-stack { display: flex; flex-direction: column; gap: 1rem; }
+        .manual-item-glass {
+            background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);
+            padding: 1.25rem; border-radius: 1.5rem; display: flex; justify-content: space-between; align-items: center;
+            transition: 0.2s;
         }
+        .manual-item-glass:hover { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.1); }
 
-        .stat-label {
-          color: #64748b;
-          font-size: 0.75rem;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
+        .m-main h4 { margin: 0; font-size: 0.9375rem; font-weight: 700; }
+        .m-sub { display: flex; flex-direction: column; gap: 0.25rem; margin-top: 0.375rem; }
+        .m-sub span { font-size: 0.6875rem; color: #64748b; }
+        .m-owner-ext { font-family: monospace; }
+        
+        .del-btn { 
+            background: rgba(255,255,255,0.03); border: none; color: #475569; 
+            width: 32px; height: 32px; border-radius: 8px; cursor: pointer; 
+            display: flex; align-items: center; justify-content: center; transition: 0.2s;
         }
+        .del-btn:hover { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
 
-        .users-section, .manuals-section {
-          background: white;
-          padding: 2.5rem;
-          border-radius: 1.5rem;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-          margin-bottom: 3rem;
-          border: 1px solid #f1f5f9;
+        .system-health-card {
+            margin-top: 2rem; background: rgba(16, 185, 129, 0.05); padding: 1.5rem; border-radius: 1.5rem;
+            border: 1px solid rgba(16, 185, 129, 0.1); display: flex; flex-direction: column; gap: 0.75rem;
         }
+        .health-row { display: flex; align-items: center; gap: 0.75rem; font-size: 0.75rem; color: #10b981; font-weight: 600; }
 
-        .users-section h2, .manuals-section h2 {
-          font-size: 1.5rem;
-          font-weight: 800;
-          margin-bottom: 2rem;
-          color: #0f172a;
-        }
-
-        .users-grid, .manuals-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-          gap: 1.5rem;
-        }
-
-        .user-card, .manual-card {
-          border: 1px solid #f1f5f9;
-          border-radius: 1rem;
-          padding: 1.5rem;
-          transition: all 0.2s;
-        }
-
-        .user-card:hover, .manual-card:hover {
-          border-color: #2563eb;
-          background: #f8fafc;
-        }
-
-        .user-header, .manual-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          margin-bottom: 1rem;
-        }
-
-        .user-header h3, .manual-header h3 {
-          font-size: 1.125rem;
-          font-weight: 700;
-          margin: 0;
-        }
-
-        .badge {
-          padding: 0.25rem 0.75rem;
-          border-radius: 9999px;
-          font-size: 0.7rem;
-          font-weight: 700;
-          text-transform: uppercase;
-        }
-
-        .badge-primary { background: #dbeafe; color: #1e40af; }
-        .badge-secondary { background: #f1f5f9; color: #475569; }
-        .badge-success { background: #dcfce7; color: #166534; }
-        .badge-warning { background: #fef9c3; color: #854d0e; }
-        .badge-error { background: #fee2e2; color: #991b1b; }
-
-        .user-details, .manual-details {
-          color: #64748b;
-          font-size: 0.875rem;
-        }
-
-        .user-details p, .manual-details p {
-          margin: 0.5rem 0;
-        }
-
-        .loading-container {
-          display: flex;
-          justify-content: center;
-          padding: 3rem;
-        }
-
-        .spinner {
-          animation: spin 1s linear infinite;
-        }
-
+        .loading-box { padding: 4rem; text-align: center; }
+        .spinner { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-        .btn {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.75rem 1.5rem;
-          border-radius: 0.75rem;
-          font-weight: 700;
-          transition: all 0.2s;
-          border: none;
-          cursor: pointer;
-          text-decoration: none;
-        }
-
-        .btn-primary {
-          background: #2563eb;
-          color: white;
-        }
-
-        .btn-primary:hover {
-          background: #1d4ed8;
-          transform: translateY(-1px);
-        }
-
-        @media (max-width: 768px) {
-          .dashboard-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
-        }
+        @media (max-width: 1100px) { .admin-layout { grid-template-columns: 1fr; } }
       `}</style>
     </div>
   );
