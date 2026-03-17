@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Upload, LogOut, FileText, Loader, Check } from 'lucide-react';
+import { Upload, LogOut, FileText, Loader, Check, ArrowRight, Shield, Globe, Info } from 'lucide-react';
+import { MorphingButton } from '../components/ui/morphing-button';
+import { FloatingInput } from '../components/ui/floating-input';
+import Navbar from '../components/ui/Navbar';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -45,7 +48,7 @@ export default function ManualUpload({ user, onLogout }) {
 
       setTimeout(() => {
         navigate('/dashboard');
-      }, 3000);
+      }, 5000);
     } catch (error) {
       console.error('Upload error:', error);
       alert(error.response?.data?.detail || 'Failed to upload manual');
@@ -55,132 +58,171 @@ export default function ManualUpload({ user, onLogout }) {
   };
 
   return (
-    <div className="upload-page" data-testid="upload-page">
-      {/* Navbar */}
-      <nav className="navbar">
-        <div className="navbar-content">
-          <h2 className="navbar-brand">ApplianceIQ</h2>
-          <div className="navbar-links">
-            <Link to="/dashboard" className="navbar-link">Dashboard</Link>
-            <Link to="/upload" className="navbar-link">Upload Manual</Link>
-            <Link to="/analytics" className="navbar-link">Analytics</Link>
-          </div>
-          <div className="navbar-user">
-            <img src={user.picture || 'https://via.placeholder.com/40'} alt={user.name} />
-            <span>{user.name}</span>
-            <button onClick={onLogout} className="btn-logout">
-              <LogOut size={16} />
-            </button>
-          </div>
-        </div>
-      </nav>
+    <div className="upload-page">
+      <Navbar user={user} onLogout={onLogout} activePage="upload" />
 
-      <div className="container">
+      <div className="main-content">
         <div className="upload-container">
           {success ? (
-            <div className="success-message" data-testid="success-message">
-              <div className="success-icon">
-                <Check size={48} />
+            <div className="success-card">
+              <div className="success-header">
+                <div className="confetti-icon">
+                  <Check size={40} />
+                </div>
+                <h2>Success! Ingestion Complete</h2>
+                <p>Your manual is being indexed and the QR code is ready.</p>
               </div>
-              <h2>Manual Uploaded Successfully!</h2>
-              <p>Your manual has been processed and QR code generated.</p>
+
               {qrData && (
-                <div className="qr-preview">
-                  <img src={qrData.image} alt="QR Code" style={{ maxWidth: '300px' }} />
-                  <p><strong>Short URL:</strong> {qrData.url}</p>
+                <div className="qr-result-area">
+                  <div className="qr-box">
+                    <img src={qrData.image} alt="QR Code" />
+                    <div className="qr-badge">SCAN ME</div>
+                  </div>
+                  <div className="qr-meta">
+                    <div className="meta-row">
+                      <span className="label text-muted">Model</span>
+                      <span className="value">{formData.model_name}</span>
+                    </div>
+                    <div className="meta-row">
+                      <span className="label text-muted">Short URL</span>
+                      <span className="value link">{qrData.url}</span>
+                    </div>
+                  </div>
                 </div>
               )}
-              <p className="redirect-text">Redirecting to dashboard...</p>
+
+              <div className="completion-footer">
+                <p>Redirecting to your dashboard in a few seconds...</p>
+                <div className="progress-bar-container">
+                  <div className="progress-bar-fill"></div>
+                </div>
+                <Link to="/dashboard" className="btn btn-secondary mt-4">
+                  Go Now <ArrowRight size={16} />
+                </Link>
+              </div>
             </div>
           ) : (
-            <div className="upload-form-wrapper">
-              <div className="upload-header">
-                <FileText size={48} />
-                <h1 data-testid="upload-title">Upload Appliance Manual</h1>
-                <p>Upload PDF or image files. We'll extract text and create a QR code for your chatbot.</p>
+            <div className="upload-glass-card">
+              <div className="form-sidebar">
+                <div className="sidebar-content">
+                  <div className="step-indicator">
+                    <div className="step active">
+                      <div className="step-number">1</div>
+                      <div className="step-text">Metadata</div>
+                    </div>
+                    <div className={`step ${file ? 'active' : ''}`}>
+                      <div className="step-number">2</div>
+                      <div className="step-text">File Assets</div>
+                    </div>
+                    <div className={`step ${uploading ? 'active' : ''}`}>
+                      <div className="step-number">3</div>
+                      <div className="step-text">AI Indexing</div>
+                    </div>
+                  </div>
+
+                  <div className="upload-tips">
+                    <h3><Info size={16} /> Pro Tips</h3>
+                    <ul>
+                      <li>Upload clear high-res PDFs for better OCR.</li>
+                      <li>Include regional versions for localized info.</li>
+                      <li>Index time: ~30s per 100 pages.</li>
+                    </ul>
+                  </div>
+                </div>
               </div>
 
-              <form onSubmit={handleSubmit} className="upload-form" data-testid="upload-form">
-                <div className="form-group">
-                  <label className="form-label">Appliance Model Name *</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    data-testid="model-name-input"
-                    placeholder="e.g., Refrigerator XR-2000"
-                    value={formData.model_name}
-                    onChange={(e) => setFormData({ ...formData, model_name: e.target.value })}
-                    required
-                  />
+              <div className="form-main">
+                <div className="form-header">
+                  <h1>Upload New Manual</h1>
+                  <p>Train your AI custom assistant with specialized product knowledge.</p>
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">Version *</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    data-testid="version-input"
-                    placeholder="e.g., v1.0"
-                    value={formData.version}
-                    onChange={(e) => setFormData({ ...formData, version: e.target.value })}
-                    required
-                  />
-                </div>
+                <form onSubmit={handleSubmit} className="modern-form">
+                  <div className="form-row">
+                    <FloatingInput
+                      label="Appliance Model Name"
+                      placeholder="e.g. Samsung Jet 75 Pet"
+                      value={formData.model_name}
+                      onChange={(e) => setFormData({ ...formData, model_name: e.target.value })}
+                      required
+                      className="flex-1"
+                    />
+                  </div>
 
-                <div className="form-group">
-                  <label className="form-label">Region</label>
-                  <select
-                    className="form-input"
-                    data-testid="region-select"
-                    value={formData.region}
-                    onChange={(e) => setFormData({ ...formData, region: e.target.value })}
-                  >
-                    <option value="global">Global</option>
-                    <option value="us">United States</option>
-                    <option value="eu">Europe</option>
-                    <option value="asia">Asia</option>
-                  </select>
-                </div>
+                  <div className="form-grid">
+                    <div className="input-group">
+                      <label>Version</label>
+                      <div className="input-with-icon">
+                        <Shield size={16} className="input-icon" />
+                        <input
+                          type="text"
+                          placeholder="e.g. v2.4"
+                          value={formData.version}
+                          onChange={(e) => setFormData({ ...formData, version: e.target.value })}
+                          required
+                        />
+                      </div>
+                    </div>
 
-                <div className="form-group">
-                  <label className="form-label">Upload Manual (PDF or Image) *</label>
-                  <div className="file-upload-area">
+                    <div className="input-group">
+                      <label>Region</label>
+                      <div className="input-with-icon">
+                        <Globe size={16} className="input-icon" />
+                        <select
+                          value={formData.region}
+                          onChange={(e) => setFormData({ ...formData, region: e.target.value })}
+                        >
+                          <option value="global">Global (Universal)</option>
+                          <option value="us">North America (US/CA)</option>
+                          <option value="eu">Europe (EMEA)</option>
+                          <option value="asia">Asia Pacific (APAC)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className={`dropzone ${file ? 'has-file' : ''}`}>
                     <input
                       type="file"
-                      id="file-input"
-                      data-testid="file-input"
+                      id="file-assets"
                       accept=".pdf,.png,.jpg,.jpeg"
                       onChange={(e) => setFile(e.target.files[0])}
                       required
-                      style={{ display: 'none' }}
                     />
-                    <label htmlFor="file-input" className="file-upload-label">
-                      <Upload size={32} />
-                      <span>{file ? file.name : 'Click to select file'}</span>
-                      <span className="file-types">PDF, PNG, JPG (max 10MB)</span>
+                    <label htmlFor="file-assets">
+                      <div className="dropzone-icon">
+                        {file ? <FileText size={32} /> : <Upload size={32} />}
+                      </div>
+                      <div className="dropzone-text">
+                        <span className="primary">{file ? file.name : 'Drop manual file here'}</span>
+                        <span className="secondary">PDF, PNG or JPEG (max 25MB)</span>
+                      </div>
+                      {file && <div className="file-ready-tag">READY</div>}
                     </label>
                   </div>
-                </div>
 
-                <button
-                  type="submit"
-                  className="btn btn-primary btn-block"
-                  data-testid="submit-btn"
-                  disabled={uploading}
-                >
-                  {uploading ? (
-                    <>
-                      <Loader className="spinner" size={20} />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <Upload size={20} />
-                      Upload Manual
-                    </>
-                  )}
-                </button>
-              </form>
+                  <div className="form-actions">
+                    <MorphingButton
+                      buttonText={uploading ? "Analyzing..." : "Index Manual"}
+                      className="w-full"
+                      onSubmit={() => {
+                        // The MorphingButton in Watermelon UI has its own email state usually,
+                        // but we are using it as a styled interactive button here.
+                        // We trigger the native form submission if possible or directly call handleSubmit.
+                        if (!uploading) {
+                          const form = document.querySelector('.modern-form');
+                          if (form.checkValidity()) {
+                            handleSubmit({ preventDefault: () => { } });
+                          } else {
+                            form.reportValidity();
+                          }
+                        }
+                      }}
+                    />
+                  </div>
+                </form>
+              </div>
             </div>
           )}
         </div>
@@ -189,282 +231,438 @@ export default function ManualUpload({ user, onLogout }) {
       <style jsx>{`
         .upload-page {
           min-height: 100vh;
-          background: #f8fafc;
-          color: #1a202c;
+          background: #09090b;
+          background-image: 
+            radial-gradient(at 0% 0%, rgba(37, 99, 235, 0.15) 0px, transparent 50%),
+            radial-gradient(at 100% 0%, rgba(16, 185, 129, 0.1) 0px, transparent 50%);
+          color: #f8fafc;
+          font-family: 'Inter', system-ui, sans-serif;
         }
 
-        .navbar {
-          background: #ffffff;
-          border-bottom: 1px solid #e2e8f0;
-          padding: 1rem 0;
-          position: sticky;
-          top: 0;
-          z-index: 100;
-        }
-
-        .navbar-content {
-          max-width: 1200px;
-          margin: 0 auto;
-          padding: 0 2rem;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        .navbar-brand {
-          font-size: 1.25rem;
-          font-weight: 800;
-          color: #0f172a;
-          letter-spacing: -0.025em;
-        }
-
-        .navbar-links {
-          display: flex;
-          gap: 2.5rem;
-        }
-
-        .navbar-link {
-          color: #64748b;
-          text-decoration: none;
-          font-weight: 600;
-          font-size: 0.9rem;
-          transition: all 0.2s;
-        }
-
-        .navbar-link:hover {
-          color: #2563eb;
-        }
-
-        .navbar-user {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-        }
-
-        .navbar-user img {
-          width: 32px;
-          height: 32px;
-          border-radius: 50%;
-          border: 1px solid #e2e8f0;
-        }
-
-        .btn-logout {
-          background: #f1f5f9;
-          border: none;
-          color: #64748b;
-          cursor: pointer;
-          padding: 0.5rem;
-          border-radius: 0.5rem;
-          transition: all 0.2s;
-        }
-
-        .btn-logout:hover {
-          background: #fee2e2;
-          color: #ef4444;
-        }
-
-        .container {
+        .main-content {
           max-width: 1200px;
           margin: 0 auto;
           padding: 4rem 2rem;
         }
 
-        .upload-container {
-          max-width: 640px;
-          margin: 0 auto;
+        .upload-glass-card {
+          background: rgba(30, 41, 59, 0.5);
+          backdrop-filter: blur(20px);
+          border-radius: 2rem;
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          display: grid;
+          grid-template-columns: 280px 1fr;
+          overflow: hidden;
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
         }
 
-        .upload-form-wrapper {
-          background: #ffffff;
-          border-radius: 1.5rem;
-          padding: 3rem;
-          box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-          border: 1px solid #e2e8f0;
+        .form-sidebar {
+          background: rgba(15, 23, 42, 0.4);
+          padding: 3rem 2rem;
+          border-right: 1px solid rgba(255, 255, 255, 0.05);
         }
 
-        .upload-header {
-          text-align: center;
+        .step-indicator {
+          display: flex;
+          flex-direction: column;
+          gap: 2rem;
+        }
+
+        .step {
+          display: flex;
+          align-items: center;
+          gap: 1.25rem;
+          opacity: 0.4;
+          transition: all 0.3s;
+        }
+
+        .step.active {
+          opacity: 1;
+        }
+
+        .step-number {
+          width: 32px;
+          height: 32px;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 800;
+          font-size: 0.875rem;
+        }
+
+        .step.active .step-number {
+          background: #3b82f6;
+          border-color: #60a5fa;
+          color: white;
+          box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+        }
+
+        .step-text {
+          font-weight: 600;
+          font-size: 0.9375rem;
+        }
+
+        .upload-tips {
+          margin-top: 6rem;
+          background: rgba(59, 130, 246, 0.1);
+          border: 1px solid rgba(59, 130, 246, 0.2);
+          padding: 1.5rem;
+          border-radius: 1.25rem;
+        }
+
+        .upload-tips h3 {
+          font-size: 0.8125rem;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 0.1em;
+          margin: 0 0 1rem 0;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          color: #60a5fa;
+        }
+
+        .upload-tips ul {
+          padding: 0;
+          margin: 0;
+          list-style: none;
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+
+        .upload-tips li {
+          font-size: 0.75rem;
+          line-height: 1.5;
+          color: #94a3b8;
+          padding-left: 1.25rem;
+          position: relative;
+        }
+
+        .upload-tips li::before {
+          content: '→';
+          position: absolute;
+          left: 0;
+          color: #3b82f6;
+        }
+
+        .form-main {
+          padding: 4rem;
+        }
+
+        .form-header {
           margin-bottom: 3.5rem;
         }
 
-        .upload-header svg {
-          color: #2563eb;
-          margin-bottom: 2rem;
-        }
-
-        .upload-header h1 {
+        .form-header h1 {
           font-size: 2.25rem;
-          font-weight: 800;
-          margin-bottom: 1rem;
-          color: #0f172a;
-          letter-spacing: -0.025em;
+          font-weight: 900;
+          letter-spacing: -0.05em;
+          margin: 0;
         }
 
-        .upload-header p {
-          color: #64748b;
+        .form-header p {
+          color: #94a3b8;
+          margin-top: 0.75rem;
           font-size: 1.125rem;
-          line-height: 1.6;
         }
 
-        .form-group {
-          margin-bottom: 2rem;
+        .modern-form {
+          display: flex;
+          flex-direction: column;
+          gap: 2.5rem;
         }
 
-        .form-label {
+        .form-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 2rem;
+        }
+
+        .input-group label {
           display: block;
-          font-weight: 600;
+          font-size: 0.75rem;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 0.1em;
+          color: #64748b;
           margin-bottom: 0.75rem;
-          color: #4a5568;
-          font-size: 0.95rem;
         }
 
-        .form-input {
+        .input-with-icon {
+          position: relative;
+          display: flex;
+          align-items: center;
+        }
+
+        .input-icon {
+          position: absolute;
+          left: 1.25rem;
+          color: #475569;
+        }
+
+        .input-with-icon input, .input-with-icon select {
           width: 100%;
-          padding: 1rem 1.25rem;
-          background: white;
-          border: 2px solid transparent;
-          border-radius: 12px;
+          background: rgba(15, 23, 42, 0.4);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          padding: 1rem 1.25rem 1rem 3.25rem;
+          border-radius: 1rem;
+          color: white;
           font-size: 1rem;
-          transition: all 0.3s;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+          transition: all 0.2s;
         }
 
-        .form-input:focus {
+        .input-with-icon input:focus, .input-with-icon select:focus {
           outline: none;
-          border-color: #667eea;
-          box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+          border-color: #3b82f6;
+          background: rgba(15, 23, 42, 0.6);
+          box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+        }
+
+        .dropzone {
+          position: relative;
+          border: 2px dashed rgba(255, 255, 255, 0.1);
+          border-radius: 1.5rem;
+          padding: 3rem;
+          text-align: center;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          background: rgba(255, 255, 255, 0.02);
+        }
+
+        .dropzone:hover {
+          border-color: #3b82f6;
+          background: rgba(59, 130, 246, 0.05);
           transform: translateY(-2px);
         }
 
-        .file-upload-area {
-          border: 2px dashed #cbd5e0;
-          border-radius: 16px;
-          padding: 3rem;
-          text-align: center;
-          transition: all 0.3s;
+        .dropzone.has-file {
+          border-color: #10b981;
+          background: rgba(16, 185, 129, 0.05);
+          border-style: solid;
+        }
+
+        .dropzone input {
+          position: absolute;
+          inset: 0;
+          opacity: 0;
           cursor: pointer;
-          background: rgba(255, 255, 255, 0.5);
         }
 
-        .file-upload-area:hover {
-          border-color: #667eea;
-          background: #fff;
-          transform: scale(1.02);
+        .dropzone-icon {
+          width: 64px;
+          height: 64px;
+          background: rgba(255, 255, 255, 0.03);
+          border-radius: 1.25rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0 auto 1.5rem;
+          color: #94a3b8;
+          transition: all 0.3s;
         }
 
-        .file-upload-label {
+        .dropzone:hover .dropzone-icon {
+          color: #3b82f6;
+          transform: scale(1.1) rotate(5deg);
+        }
+
+        .dropzone-text {
           display: flex;
           flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .dropzone-text .primary {
+          font-size: 1.125rem;
+          font-weight: 700;
+        }
+
+        .dropzone-text .secondary {
+          font-size: 0.875rem;
+          color: #64748b;
+        }
+
+        .file-ready-tag {
+          position: absolute;
+          top: 1rem;
+          right: 1rem;
+          background: #10b981;
+          color: white;
+          font-size: 0.65rem;
+          font-weight: 900;
+          padding: 0.25rem 0.75rem;
+          border-radius: 2rem;
+        }
+
+        .form-actions {
+          margin-top: 2rem;
+        }
+
+        /* Success Card Styles */
+        .success-card {
+          background: rgba(15, 23, 42, 0.6);
+          backdrop-filter: blur(20px);
+          border-radius: 2.5rem;
+          padding: 4rem;
+          border: 1px solid rgba(16, 185, 129, 0.2);
+          text-align: center;
+          max-width: 600px;
+          margin: 0 auto;
+          box-shadow: 0 0 50px rgba(16, 185, 129, 0.1);
+          animation: cardPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes cardPop {
+          from { transform: scale(0.9) translateY(30px); opacity: 0; }
+          to { transform: scale(1) translateY(0); opacity: 1; }
+        }
+
+        .success-header {
+          margin-bottom: 3rem;
+        }
+
+        .confetti-icon {
+          width: 80px;
+          height: 80px;
+          background: #10b981;
+          color: white;
+          border-radius: 50%;
+          display: flex;
           align-items: center;
-          gap: 1rem;
-          cursor: pointer;
+          justify-content: center;
+          margin: 0 auto 2rem;
+          box-shadow: 0 0 30px rgba(16, 185, 129, 0.5);
         }
 
-        .file-upload-label span {
-          font-weight: 600;
-          color: #2d3748;
+        .success-header h2 {
+          font-size: 2.25rem;
+          font-weight: 900;
+          margin: 0;
+          letter-spacing: -0.05em;
         }
 
-        .file-types {
-          font-size: 0.8rem !important;
-          color: #a0aec0 !important;
-          font-weight: 400 !important;
+        .qr-result-area {
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 2rem;
+          padding: 2.5rem;
+          display: flex;
+          align-items: center;
+          gap: 2.5rem;
+          margin-bottom: 3rem;
+        }
+
+        .qr-box {
+          position: relative;
+          background: white;
+          padding: 1.25rem;
+          border-radius: 1.5rem;
+          flex-shrink: 0;
+        }
+
+        .qr-box img {
+          width: 160px;
+          height: 160px;
+          mix-blend-mode: multiply;
+        }
+
+        .qr-badge {
+          position: absolute;
+          bottom: -10px;
+          left: 50%;
+          transform: translateX(-50%);
+          background: #3b82f6;
+          color: white;
+          font-size: 0.65rem;
+          font-weight: 900;
+          padding: 0.25rem 0.75rem;
+          border-radius: 2rem;
+          white-space: nowrap;
+        }
+
+        .qr-meta {
+          flex: 1;
+          text-align: left;
+          display: flex;
+          flex-direction: column;
+          gap: 1.25rem;
+        }
+
+        .meta-row {
+          display: flex;
+          flex-direction: column;
+          gap: 0.375rem;
+        }
+
+        .meta-row .label {
+          font-size: 0.65rem;
+          font-weight: 800;
+          text-transform: uppercase;
+          color: #64748b;
+        }
+
+        .meta-row .value {
+          font-weight: 700;
+          font-size: 1.125rem;
+        }
+
+        .meta-row .value.link {
+          color: #3b82f6;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 0.875rem;
+        }
+
+        .progress-bar-container {
+          width: 100%;
+          height: 6px;
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 10px;
+          margin: 1.5rem 0;
+          overflow: hidden;
+        }
+
+        .progress-bar-fill {
+          height: 100%;
+          width: 100%;
+          background: #10b981;
+          animation: progressRun 5s linear forwards;
+          transform-origin: left;
+        }
+
+        @keyframes progressRun {
+          from { transform: scaleX(0); }
+          to { transform: scaleX(1); }
         }
 
         .btn {
           display: inline-flex;
           align-items: center;
+          justify-content: center;
           gap: 0.75rem;
-          padding: 1.25rem 2.5rem;
-          border-radius: 12px;
+          padding: 1rem 2rem;
+          border-radius: 1rem;
           font-weight: 700;
-          font-size: 1.125rem;
-          transition: all 0.3s;
-          border: none;
+          transition: all 0.2s;
           cursor: pointer;
-          width: 100%;
-          justify-content: center;
+          text-decoration: none;
         }
 
-        .btn-primary {
-          background: #2563eb;
+        .btn-secondary {
+          background: #334155;
           color: white;
-          box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.1), 0 2px 4px -1px rgba(37, 99, 235, 0.06);
         }
 
-        .btn-primary:hover:not(:disabled) {
-          background: #1d4ed8;
-          transform: translateY(-2px);
-          box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.2);
+        .btn-secondary:hover {
+          background: #475569;
         }
 
-        .btn-primary:disabled {
-          background: #94a3b8;
-          cursor: not-allowed;
-        }
-
-        .success-message {
-          background: white;
-          border-radius: 1.5rem;
-          padding: 4rem;
-          text-align: center;
-          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-          border: 1px solid #e2e8f0;
-          animation: slideIn 0.5s ease-out;
-        }
-
-        @keyframes slideIn {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-
-        .success-icon {
-          width: 80px;
-          height: 80px;
-          background: #f0fdf4;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin: 0 auto 2.5rem;
-          color: #16a34a;
-          border: 1px solid #dcfce7;
-        }
-
-        .qr-preview {
-          margin: 3rem 0;
-          padding: 2.5rem;
-          background: #f7fafc;
-          border-radius: 20px;
-          border: 1px dashed #cbd5e0;
-        }
-
-        .qr-preview img {
-          border-radius: 12px;
-          box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-          margin-bottom: 1.5rem;
-          transition: transform 0.3s;
-        }
-
-        .qr-preview img:hover {
-          transform: scale(1.05);
-        }
-
-        .spinner {
-          animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-
-        @media (max-width: 640px) {
-          .upload-form-wrapper {
-            padding: 2rem;
-          }
-          .upload-header h1 {
-            font-size: 2rem;
-          }
+        @media (max-width: 900px) {
+          .upload-glass-card { grid-template-columns: 1fr; }
+          .form-sidebar { display: none; }
+          .form-main { padding: 2.5rem; }
         }
       `}</style>
     </div>
