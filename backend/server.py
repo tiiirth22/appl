@@ -606,7 +606,7 @@ async def redirect_to_chat(qr_id: str):
 
 # ============= ANALYTICS ENDPOINTS =============
 @api_router.get("/analytics/queries")
-async def get_queries_analytics(current_user: dict = Depends(lambda: require_business_owner_or_admin(db))):
+async def get_queries_analytics(current_user: dict = Depends(get_db_business_user)):
     """Get query analytics based on user role."""
     if current_user.get("role") == "admin":
         # Admins see all queries
@@ -650,7 +650,7 @@ async def submit_feedback(feedback: FeedbackCreate):
     return {"message": "Feedback submitted successfully"}
 
 @api_router.get("/feedback")
-async def get_feedback(current_user: dict = Depends(lambda: require_business_owner_or_admin(db))):
+async def get_feedback(current_user: dict = Depends(get_db_business_user)):
     """Get feedback based on user role."""
     if current_user.get("role") == "admin":
         # Admins see all feedback
