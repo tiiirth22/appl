@@ -291,6 +291,16 @@ QUESTION: {question}"""
         
         logger.info(f"Retrieved {len(combined_chunks)} total chunks (semantic: {len(semantic_chunks)}, keyword: {len(keyword_chunks)})")
         
+        # Check relevance threshold
+        max_score = max((chunk.get("score", 0) for chunk in combined_chunks), default=0)
+        if max_score < 0.4 or not combined_chunks:
+            return {
+                "answer": "I'm sorry, but I don't have sufficient information in this manual to answer your question accurately.",
+                "sources": [],
+                "manual_id": manual_id
+            }
+        
+        # Fallback: if low relevance but some chunks exist, still try to generate (LLM will handle)
         if not combined_chunks:
             # Fallback: if absolutely nothing found, try to get some general chunks for this manual
             if db is not None:
