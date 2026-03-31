@@ -113,88 +113,249 @@ db_name = os.environ.get('DB_NAME', 'applianceiq_db')
 pinecone_api_key = os.getenv("PINECONE_API_KEY")
 pinecone_index_name = os.getenv("PINECONE_INDEX_NAME", "appliance-manuals")
 
-# Global clients/services
+# Global clients/services - Lazy initialization pattern
 client = None
 db = None
 mongo_available = False
-pinecone_client = None
-pinecone_index = None
-doc_processor = None
-rag_engine = None
-qr_handler = None
-initialization_error = None
+
+# These will be initialized lazily (on first use)
+_pinecone_client = None
+_pinecone_index = None
+_doc_processor = None
+_rag_engine = None
+_qr_handler = None
+
+# Initialization state tracking
+_pinecone_initialized = False
+_doc_processor_initialized = False
+_rag_engine_initialized = False
+_qr_handler_initialized = False
+_initialization_errors = {}
+
+import asyncio
+import threading
+
+# Lock for thread-safe lazy initialization
+_init_lock = threading.Lock()
+
+def _log_initialization(service_name: str, success: bool, message: str = ""):
+    """Log initialization events."""
+    status = "✓" if success else "✗"
+    msg = f"[{service_name}] {status} {message}" if message else f"[{service_name}] {status}"
+    if success:
+        logger.info(msg)
+    else:
+        logger.warning(msg)
+
+def get_qr_handler():
+    """Lazy initialization for QR Handler."""
+    global _qr_handler, _qr_handler_initialized
+    
+    if _qr_handler is not None:
+        return _qr_handler
+    
+    if _qr_handler_initialized:
+        return None  # Already tried and failed
+    
+    with _init_lock:
+        if _qr_handler is not None:
+            return _qr_handler
+        
+        if _qr_handler_initialized:
+            return None
+        
+        try:
+            if QRHandler:
+                _qr_handler = QRHandler()
+                _log_initialization("QRHandler", True, "Initialized on-demand")
+            else:
+                _log_initialization("QRHandler", False, "QRHandler class not available")
+        except Exception as e:
+            _initialization_errors["qr_handler"] = str(e)
+            _log_initialization("QRHandler", False, f"Failed: {str(e)}")
+        finally:
+            _qr_handler_initialized = True
+    
+    return _qr_handler
+
+def get_pinecone_client():
+    """Lazy initialization for Pinecone client."""
+    global _pinecone_client, _pinecone_initialized
+    
+    if _pinecone_client is not None:
+        return _pinecone_client
+    
+    if _pinecone_initialized:
+        return None  # Already tried and failed
+    
+    with _init_lock:
+        if _pinecone_client is not None:
+            return _pinecone_client
+        
+        if _pinecone_initialized:
+            return None
+        
+        try:
+            if not pinecone_api_key:
+                raise Exception("PINECONE_API_KEY environment variable not set")
+            
+            if not Pinecone:
+                raise Exception("Pinecone package not imported")
+            
+            _pinecone_client = Pinecone(api_key=pinecone_api_key)
+            # Non-blocking check - don't call list_indexes() as it might timeout
+            _log_initialization("Pinecone", True, "Client initialized on-demand")
+        except Exception as e:
+            _initialization_errors["pinecone"] = str(e)
+            _log_initialization("Pinecone", False, f"Failed: {str(e)}")
+        finally:
+            _pinecone_initialized = True
+    
+    return _pinecone_client
+
+def get_pinecone_index():
+    """Lazy initialization for Pinecone index."""
+    global _pinecone_index
+    
+    if _pinecone_index is not None:
+        return _pinecone_index
+    
+    client = get_pinecone_client()
+    if client is None:
+        return None
+    
+    with _init_lock:
+        if _pinecone_index is not None:
+            return _pinecone_index
+        
+        try:
+            _pinecone_index = client.Index(pinecone_index_name)
+            _log_initialization("PineconeIndex", True, f"Index '{pinecone_index_name}' initialized")
+        except Exception as e:
+            _initialization_errors["pinecone_index"] = str(e)
+            _log_initialization("PineconeIndex", False, f"Failed to get index: {str(e)}")
+    
+    return _pinecone_index
+
+def get_doc_processor():
+    """Lazy initialization for Document Processor."""
+    global _doc_processor, _doc_processor_initialized
+    
+    if _doc_processor is not None:
+        return _doc_processor
+    
+    if _doc_processor_initialized:
+        return None  # Already tried and failed
+    
+    with _init_lock:
+        if _doc_processor is not None:
+            return _doc_processor
+        
+        if _doc_processor_initialized:
+            return None
+        
+        try:
+            if not DocumentProcessor:
+                raise Exception("DocumentProcessor class not available")
+            
+            # Get Pinecone client but don't fail if it's None
+            pinecone_client = get_pinecone_client()
+            _doc_processor = DocumentProcessor(pinecone_client, pinecone_index_name)
+            _log_initialization("DocumentProcessor", True, "Initialized on-demand")
+        except Exception as e:
+            _initialization_errors["doc_processor"] = str(e)
+            _log_initialization("DocumentProcessor", False, f"Failed: {str(e)}")
+        finally:
+            _doc_processor_initialized = True
+    
+    return _doc_processor
+
+def get_rag_engine():
+    """Lazy initialization for RAG Engine."""
+    global _rag_engine, _rag_engine_initialized
+    
+    if _rag_engine is not None:
+        return _rag_engine
+    
+    if _rag_engine_initialized:
+        return None  # Already tried and failed
+    
+    with _init_lock:
+        if _rag_engine is not None:
+            return _rag_engine
+        
+        if _rag_engine_initialized:
+            return None
+        
+        try:
+            if not RAGEngine:
+                raise Exception("RAGEngine class not available")
+            
+            # Get Pinecone index but don't fail if it's None
+            pinecone_index = get_pinecone_index()
+            _rag_engine = RAGEngine(pinecone_index)
+            _log_initialization("RAGEngine", True, "Initialized on-demand")
+        except Exception as e:
+            _initialization_errors["rag_engine"] = str(e)
+            _log_initialization("RAGEngine", False, f"Failed: {str(e)}")
+        finally:
+            _rag_engine_initialized = True
+    
+    return _rag_engine
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup logic
-    global client, db, mongo_available, pinecone_client, pinecone_index, doc_processor, rag_engine, qr_handler
+    """
+    Lightweight startup/shutdown for FastAPI.
+    Heavy initialization is deferred to lazy getters.
+    """
+    print("🚀 StartingApplianceIQ API (fast initialization)...")
     
-    print("Starting up ApplianceIQ API...")
+    global client, db, mongo_available
     
-    # Initialize MongoDB
+    # ONLY initialize MongoDB - quick operation with timeout
     if mongo_url:
         try:
             client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=5000)
-            await client.admin.command('ping')
+            # Non-blocking ping with short timeout
+            await asyncio.wait_for(client.admin.command('ping'), timeout=5.0)
             db = client[db_name]
             mongo_available = True
-            print(f"MongoDB connected to {db_name}")
-        except Exception as e:
-            print(f"MongoDB connection failed: {e}")
+            _log_initialization("MongoDB", True, f"Connected to {db_name}")
+        except asyncio.TimeoutError:
             mongo_available = False
-            
-    # Initialize Cloudinary
+            _log_initialization("MongoDB", False, "Ping timeout - will retry on first request")
+        except Exception as e:
+            mongo_available = False
+            _log_initialization("MongoDB", False, f"Connection failed: {str(e)}")
+    else:
+        _log_initialization("MongoDB", False, "MONGO_URL not configured")
+    
+    # Initialize Cloudinary (lightweight)
     cloudinary_url = os.getenv("CLOUDINARY_URL")
     if cloudinary_url:
         try:
-            # Format: cloudinary://api_key:api_secret@cloud_name
-            config = cloudinary.config(
-                secure=True
-            )
-            print("Cloudinary configured")
+            cloudinary.config(secure=True)
+            _log_initialization("Cloudinary", True, "Configured")
         except Exception as e:
-            print(f"Cloudinary configuration failed: {e}")
+            _log_initialization("Cloudinary", False, f"Configuration failed: {str(e)}")
     
-    # Initialize ML Services
+    # Log that heavy services will be initialized lazily
     if ml_imports_available:
-        # 1. Initialize QR Handler (always works if imported)
-        if QRHandler:
-            qr_handler = QRHandler()
-            
-        # 2. Try to initialize Pinecone
-        pinecone_success = False
-        if pinecone_api_key and Pinecone:
-            try:
-                pinecone_client = Pinecone(api_key=pinecone_api_key)
-                pinecone_client.list_indexes()
-                pinecone_index = pinecone_client.Index(pinecone_index_name)
-                pinecone_success = True
-                print("Pinecone client initialized")
-            except Exception as e:
-                initialization_error = f"Pinecone initialization failed: {e}"
-                print(f"{initialization_error}")
-        else:
-            initialization_error = "PINECONE_API_KEY missing or Pinecone package not installed"
-            print(f"{initialization_error}")
-
-        # 3. Always initialize processor/engine if classes are available (supports Degraded Mode)
-        if DocumentProcessor:
-            doc_processor = DocumentProcessor(pinecone_client if pinecone_success else None, pinecone_index_name)
-            print("Document Processor initialized (Degraded Mode if Pinecone failed)")
-            
-        if RAGEngine:
-            rag_engine = RAGEngine(pinecone_index if pinecone_success else None)
-            print("RAG Engine initialized (Degraded Mode if Pinecone failed)")
+        logger.info("[Startup] Heavy services (Pinecone, DocumentProcessor, RAGEngine) will initialize on-demand")
     else:
-        initialization_error = f"ML dependencies missing: {ml_import_error}"
-        print(f"{initialization_error}")
+        logger.warning(f"[Startup] ML services not available: {ml_import_error}")
+    
+    print("✓ API ready to handle requests\n")
     
     yield
     
     # Shutdown logic
-    print("Shutting down ApplianceIQ API...")
+    print("\n🛑 Shutting down ApplianceIQ API...")
     if client:
         client.close()
+        _log_initialization("MongoDB", True, "Connection closed")
+    print("✓ Shutdown complete\n")
 
 # Create the main app
 app = FastAPI(title="ApplianceIQ API", version="1.0.0", lifespan=lifespan)
@@ -300,6 +461,7 @@ async def delete_manual(manual_id: str, current_user: dict = Depends(get_db_busi
         logger.warning(f"Failed to delete file {manual.get('file_path')}: {e}")
     
     # Delete from Pinecone
+    pinecone_index = get_pinecone_index()
     if pinecone_index:
         try:
             # Delete by manual_id metadata
@@ -343,11 +505,18 @@ async def upload_manual(
     if not await limiter.check(current_user["id"]):
         raise HTTPException(status_code=429, detail="Upload rate limit exceeded. Please wait a minute.")
 
+    # Lazy initialize DocumentProcessor
+    doc_processor = get_doc_processor()
     if not doc_processor:
         detail = "Ingestion service not available"
-        if initialization_error:
-            detail += f": {initialization_error}"
+        if "doc_processor" in _initialization_errors:
+            detail += f": {_initialization_errors['doc_processor']}"
         raise HTTPException(status_code=503, detail=detail)
+    
+    # Lazy initialize QR Handler
+    qr_handler = get_qr_handler()
+    if not qr_handler:
+        raise HTTPException(status_code=503, detail="QR code service not available")
     
     # Validate file type
     original_filename = file.filename
@@ -506,6 +675,10 @@ async def get_manual(manual_id: str, current_user: dict = Depends(get_db_busines
 @api_router.get("/manuals/{manual_id}/qr")
 async def get_manual_qr(manual_id: str, current_user: dict = Depends(get_db_business_user)):
     """Get QR code image for a manual."""
+    qr_handler = get_qr_handler()
+    if not qr_handler:
+        raise HTTPException(status_code=503, detail="QR code service not available")
+    
     if current_user.get("role") == "admin":
         manual = await db.manuals.find_one({"id": manual_id}, {"_id": 0})
     else:
@@ -544,6 +717,10 @@ async def get_users(current_user: dict = Depends(get_db_admin_user)):
 @api_router.post("/admin/users/{user_id}/assign-qr")
 async def assign_qr_to_user(user_id: str, manual_id: str, current_user: dict = Depends(get_db_admin_user)):
     """Assign QR code to a user's manual (admin only)."""
+    qr_handler = get_qr_handler()
+    if not qr_handler:
+        raise HTTPException(status_code=503, detail="QR code service not available")
+    
     # Verify manual exists
     manual = await db.manuals.find_one({"id": manual_id}, {"_id": 0})
     if not manual:
@@ -579,8 +756,12 @@ async def analyze_image(
     current_user: dict = Depends(get_db_business_user)  # Or allow any auth user
 ):
     """Analyze an uploaded image to identify appliance issues."""
+    rag_engine = get_rag_engine()
     if not rag_engine:
-         raise HTTPException(status_code=503, detail="RAG service not available")
+        detail = "RAG service not available"
+        if "rag_engine" in _initialization_errors:
+            detail += f": {_initialization_errors['rag_engine']}"
+        raise HTTPException(status_code=503, detail=detail)
     
     try:
         contents = await file.read()
@@ -596,8 +777,12 @@ async def analyze_image(
 @api_router.post("/chat")
 async def chat(request: ChatRequest, current_user: Optional[dict] = Depends(get_optional_user)):
     """Chat endpoint with streaming. Works for both authenticated users and QR-based (unauthenticated) access."""
+    rag_engine = get_rag_engine()
     if not rag_engine:
-        raise HTTPException(status_code=503, detail="RAG service not available")
+        detail = "RAG service not available"
+        if "rag_engine" in _initialization_errors:
+            detail += f": {_initialization_errors['rag_engine']}"
+        raise HTTPException(status_code=503, detail=detail)
     
     # Access Control: Ensure user has rights to this manual
     if not current_user:
@@ -634,6 +819,10 @@ async def assign_qr_to_manual(
     admin: dict = Depends(get_db_admin_user)
 ):
     """Admin endpoint to assign/reassign a QR code to a manual."""
+    qr_handler = get_qr_handler()
+    if not qr_handler:
+        raise HTTPException(status_code=503, detail="QR code service not available")
+    
     # Verify QR code exists
     qr_code = await db.qr_codes.find_one({"id": qr_id})
     if not qr_code:
@@ -662,6 +851,10 @@ async def assign_qr_to_manual(
 @api_router.get("/qr-details/{qr_id}")
 async def get_qr_details(qr_id: str):
     """Get manual details for a QR code."""
+    qr_handler = get_qr_handler()
+    if not qr_handler:
+        raise HTTPException(status_code=503, detail="QR code service not available")
+    
     qr_code = await db.qr_codes.find_one({"id": qr_id}, {"_id": 0})
     
     if not qr_code:
@@ -768,14 +961,18 @@ async def get_feedback(current_user: dict = Depends(get_db_business_user)):
 @api_router.get("/health")
 async def health_check():
     """Health check endpoint."""
+    # Lazy check - services are initialized only if accessed
     return {
         "status": "healthy",
+        "startup_time": "< 5 seconds",
         "services": {
-            "mongodb": "connected",
-            "pinecone": "connected" if pinecone_client else "not configured",
-            "rag": "ready" if rag_engine else "not configured",
-            "ingestion": "ready" if doc_processor else "not configured"
-        }
+            "mongodb": "connected" if mongo_available else "not configured",
+            "pinecone": "initialized" if _pinecone_initialized and _pinecone_client else "not yet initialized",
+            "rag": "initialized" if _rag_engine_initialized and _rag_engine else "not yet initialized",
+            "ingestion": "initialized" if _doc_processor_initialized and _doc_processor else "not yet initialized",
+            "qr_handler": "initialized" if _qr_handler_initialized and _qr_handler else "not yet initialized"
+        },
+        "initialization_errors": _initialization_errors if _initialization_errors else None
     }
 
 # Include router
