@@ -93,3 +93,11 @@ tmp/
 
 # Ignore large image assets not meant for source control
 docs/*.png
+
+# Exclude specific assignment files
+hello.exe
+hello.l
+hello.py
+lex.yy.c
+predictive_parser.py
+student_validator.l
