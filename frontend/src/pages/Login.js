@@ -8,6 +8,12 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 export default function Login({ onLogin }) {
+  // Diagnostic log
+  React.useEffect(() => {
+    console.log("ApplianceIQ - Backend URL Configured:", BACKEND_URL);
+    console.log("ApplianceIQ - Login API Endpoint:", `${API}/auth/login`);
+  }, []);
+
   const [formData, setFormData] = useState({
     email: '',
     password: ''
