@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Upload, LogOut, FileText, Loader, Check, ArrowRight, Shield, Globe, Info } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { MorphingButton } from '../components/ui/morphing-button';
 import { FloatingInput } from '../components/ui/floating-input';
 import Navbar from '../components/ui/Navbar';
@@ -62,9 +63,15 @@ export default function ManualUpload({ user, onLogout }) {
       <Navbar user={user} onLogout={onLogout} activePage="upload" />
 
       <div className="main-content">
+        <AnimatePresence mode="wait">
         <div className="upload-container">
           {success ? (
-            <div className="success-card">
+            <motion.div 
+              key="success"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              className="success-card"
+            >
               <div className="success-header">
                 <div className="confetti-icon">
                   <Check size={40} />
@@ -101,22 +108,47 @@ export default function ManualUpload({ user, onLogout }) {
                   Go Now <ArrowRight size={16} />
                 </Link>
               </div>
-            </div>
+            </motion.div>
           ) : (
-            <div className="upload-glass-card">
+            <motion.div 
+              key="form"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="upload-glass-card"
+            >
               <div className="form-sidebar">
                 <div className="sidebar-content">
                   <div className="step-indicator">
                     <div className="step active">
-                      <div className="step-number">1</div>
+                      <motion.div 
+                        animate={{ boxShadow: ["0 0 0px rgba(59,130,246,0)", "0 0 20px rgba(59,130,246,0.5)", "0 0 0px rgba(59,130,246,0)"] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                        className="step-number"
+                      >1</motion.div>
                       <div className="step-text">Metadata</div>
                     </div>
                     <div className={`step ${file ? 'active' : ''}`}>
-                      <div className="step-number">2</div>
+                      {file ? (
+                        <motion.div 
+                          animate={{ boxShadow: ["0 0 0px rgba(59,130,246,0)", "0 0 20px rgba(59,130,246,0.5)", "0 0 0px rgba(59,130,246,0)"] }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                          className="step-number"
+                        >2</motion.div>
+                      ) : (
+                        <div className="step-number">2</div>
+                      )}
                       <div className="step-text">File Assets</div>
                     </div>
                     <div className={`step ${uploading ? 'active' : ''}`}>
-                      <div className="step-number">3</div>
+                      {uploading ? (
+                        <motion.div 
+                          animate={{ boxShadow: ["0 0 0px rgba(59,130,246,0)", "0 0 20px rgba(59,130,246,0.5)", "0 0 0px rgba(59,130,246,0)"] }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                          className="step-number"
+                        >3</motion.div>
+                      ) : (
+                        <div className="step-number">3</div>
+                      )}
                       <div className="step-text">AI Indexing</div>
                     </div>
                   </div>
@@ -223,21 +255,32 @@ export default function ManualUpload({ user, onLogout }) {
                   </div>
                 </form>
               </div>
-            </div>
+            </motion.div>
           )}
         </div>
+        </AnimatePresence>
       </div>
 
       <style jsx>{`
         .upload-page {
           min-height: 100vh;
-          background: #09090b;
+          background: #020617;
           background-image: 
-            radial-gradient(at 0% 0%, rgba(37, 99, 235, 0.15) 0px, transparent 50%),
-            radial-gradient(at 100% 0%, rgba(16, 185, 129, 0.1) 0px, transparent 50%);
+            radial-gradient(at 0% 0%, rgba(37, 99, 235, 0.1) 0px, transparent 50%),
+            radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.1) 0px, transparent 50%);
           color: #f8fafc;
           font-family: 'Inter', system-ui, sans-serif;
+          position: relative;
+          overflow: hidden;
         }
+
+        .upload-page::before {
+            content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.03) 0%, transparent 70%);
+            animation: aurora 20s infinite linear; z-index: 0; pointer-events: none;
+        }
+
+        @keyframes aurora { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
         .main-content {
           max-width: 1200px;
