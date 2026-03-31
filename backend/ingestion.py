@@ -1,8 +1,9 @@
-
 import os
 import io
-from typing import List, Dict, Any
-from pdfminer.high_level import extract_text
+import hashlib
+from typing import List, Dict, Any, Tuple, Optional
+from pdfminer.high_level import extract_text, extract_pages
+from pdfminer.layout import LTTextContainer, LAParams
 from PIL import Image
 import pytesseract
 import uuid
@@ -93,13 +94,34 @@ class DocumentProcessor:
                 raise e
     
     def extract_text_from_pdf(self, file_path: str) -> str:
-        """Extract text from PDF file."""
+        """Extract text from PDF file (full text, fallback)."""
         try:
             text = extract_text(file_path)
             return text
         except Exception as e:
             logger.error(f"Error extracting text from PDF: {e}")
             raise
+
+    def extract_text_by_page(self, file_path: str) -> List[Tuple[int, str]]:
+        """Extract text from PDF page-by-page. Returns (page_number, text) list (1-indexed)."""
+        pages = []
+        try:
+            for page_num, page_layout in enumerate(extract_pages(file_path, laparams=LAParams()), start=1):
+                page_text = ""
+                for element in page_layout:
+                    if isinstance(element, LTTextContainer):
+                        page_text += element.get_text()
+                if page_text.strip():
+                    pages.append((page_num, page_text))
+            
+            if not pages:
+                full_text = self.extract_text_from_pdf(file_path)
+                if full_text.strip(): pages = [(1, full_text)]
+            return pages
+        except Exception as e:
+            logger.error(f"Error extracting text by page: {e}")
+            full_text = self.extract_text_from_pdf(file_path)
+            return [(1, full_text)] if full_text.strip() else []
     
     def extract_text_from_image(self, file_path: str) -> str:
         """Extract text from image using OCR."""
@@ -112,13 +134,11 @@ class DocumentProcessor:
             raise
     
     def chunk_text(self, text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]:
-        """Chunk text into overlapping segments using LangChain's splitter."""
+        """Chunk text into overlapping segments."""
         try:
-            # Try newer import path first
             try:
                 from langchain_text_splitters import RecursiveCharacterTextSplitter
             except ImportError:
-                # Fallback to older import path
                 from langchain.text_splitter import RecursiveCharacterTextSplitter
             
             splitter = RecursiveCharacterTextSplitter(
@@ -129,16 +149,64 @@ class DocumentProcessor:
             )
             return splitter.split_text(text)
         except ImportError:
-            # Fallback to simple splitting if langchain is not available
-            logger.warning("LangChain not available, falling back to simple chunking")
+            logger.warning("LangChain not available, fallback to simple splitting")
             chunks = []
             words = text.split()
             for i in range(0, len(words), chunk_size - overlap):
                 chunk_words = words[i:i + chunk_size]
                 chunk = ' '.join(chunk_words)
-                if chunk.strip():
-                    chunks.append(chunk)
+                if chunk.strip(): chunks.append(chunk)
             return chunks
+
+    def chunk_text_with_pages(self, pages: List[Tuple[int, str]], chunk_size: int = 500, overlap: int = 50) -> List[Dict[str, Any]]:
+        """Chunk page-segmented text, tracking page numbers."""
+        result_chunks = []
+        for page_num, page_text in pages:
+            page_chunks = self.chunk_text(page_text, chunk_size, overlap)
+            for chunk in page_chunks:
+                result_chunks.append({"content": chunk, "page_number": page_num})
+        return result_chunks
+
+    async def generate_embeddings_with_cache(self, texts: List[str], db) -> List[List[float]]:
+        """Generate embeddings with MongoDB caching."""
+        if self.embedding_model is None or db is None:
+            return []
+            
+        final_embeddings = [None] * len(texts)
+        to_embed_indices = []
+        to_embed_texts = []
+        
+        # 1. Check Cache
+        for i, text in enumerate(texts):
+            text_hash = hashlib.sha256(text.encode('utf-8')).hexdigest()
+            cached = await db.embedding_cache.find_one({"hash": text_hash})
+            if cached:
+                final_embeddings[i] = cached["embedding"]
+            else:
+                to_embed_indices.append(i)
+                to_embed_texts.append(text)
+        
+        # 2. Batch Embed missing ones
+        if to_embed_texts:
+            logger.info(f"Cache miss: Embedding {len(to_embed_texts)} new chunks")
+            new_embeddings = self.embedding_model.encode(to_embed_texts, convert_to_numpy=False)
+            
+            cache_docs = []
+            for i, (idx, emb) in enumerate(zip(to_embed_indices, new_embeddings)):
+                emb_list = emb.tolist() if hasattr(emb, 'tolist') else emb
+                final_embeddings[idx] = emb_list
+                cache_docs.append({
+                    "hash": hashlib.sha256(to_embed_texts[i].encode('utf-8')).hexdigest(),
+                    "embedding": emb_list,
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                })
+            
+            if cache_docs:
+                await db.embedding_cache.insert_many(cache_docs, ordered=False)
+                # Ensure index on hash
+                await db.embedding_cache.create_index("hash", unique=True)
+                
+        return final_embeddings
     
     def generate_embeddings(self, texts: List[str]) -> List[List[float]]:
         """Generate embeddings for text chunks."""
@@ -153,85 +221,77 @@ class DocumentProcessor:
             return []
     
     async def process_manual(self, manual_id: str, file_path: str, file_type: str, db) -> int:
-        """Process a manual file and store in Pinecone."""
+        """Process a manual file and store in Pinecone and MongoDB."""
         try:
-            # Extract text based on file type
+            # Extract and chunk with page numbers
             if file_type == "pdf":
-                text = self.extract_text_from_pdf(file_path)
+                pages = self.extract_text_by_page(file_path)
+                chunked_data = self.chunk_text_with_pages(pages)
             elif file_type in ["image", "png", "jpg", "jpeg"]:
                 text = self.extract_text_from_image(file_path)
+                chunks = self.chunk_text(text)
+                chunked_data = [{"content": c, "page_number": 1} for c in chunks]
             else:
                 raise ValueError(f"Unsupported file type: {file_type}")
             
-            # Chunk text
-            chunks = self.chunk_text(text, chunk_size=500, overlap=50)
-            
-            if not chunks:
+            if not chunked_data:
                 raise ValueError("No text extracted from file")
             
-            # Generate and store embeddings in Pinecone if available
+            chunk_texts = [c["content"] for c in chunked_data]
+            
+            # Generate/Cache embeddings
             if self.index and self.embedding_model:
-                # Generate embeddings
-                embeddings = self.generate_embeddings(chunks)
+                embeddings = await self.generate_embeddings_with_cache(chunk_texts, db)
                 
                 if embeddings:
-                    # Prepare vectors for Pinecone
                     vectors = []
-                    for idx, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
+                    for idx, (chunk_info, embedding) in enumerate(zip(chunked_data, embeddings)):
                         vector_id = str(uuid.uuid4())
                         metadata = {
                             "manual_id": manual_id,
                             "chunk_index": idx,
-                            "content": chunk,
-                            "total_chunks": len(chunks)
+                            "page_number": chunk_info["page_number"],
+                            "content": chunk_info["content"],
+                            "total_chunks": len(chunked_data)
                         }
                         vectors.append((vector_id, embedding, metadata))
                     
-                    # Upsert to Pinecone
                     batch_size = 100
                     for i in range(0, len(vectors), batch_size):
                         batch = vectors[i:i + batch_size]
                         self.index.upsert(vectors=batch)
-            else:
-                logger.warning("Pinecone or embedding model not available - skipping vector storage")
             
-            # Store chunks in MongoDB for keyword search (Hybrid Search)
+            # Store chunks in MongoDB
             mongo_chunks = []
-            for idx, chunk in enumerate(chunks):
+            for idx, chunk_info in enumerate(chunked_data):
                 mongo_chunks.append({
                     "id": str(uuid.uuid4()),
                     "manual_id": manual_id,
                     "chunk_index": idx,
-                    "content": chunk,
+                    "page_number": chunk_info["page_number"],
+                    "content": chunk_info["content"],
                     "created_at": datetime.now(timezone.utc).isoformat()
                 })
             
             if mongo_chunks:
                 await db.manual_chunks.insert_many(mongo_chunks)
-                # Create text index for hybrid search if it doesn't exist
                 await db.manual_chunks.create_index([("content", "text")])
             
-            # Update manual status in MongoDB
             await db.manuals.update_one(
                 {"id": manual_id},
                 {"$set": {
                     "status": "completed",
-                    "chunks_count": len(chunks),
+                    "chunks_count": len(chunked_data),
                     "updated_at": datetime.now(timezone.utc).isoformat()
                 }}
             )
             
-            logger.info(f"Processed manual {manual_id}: {len(chunks)} chunks")
-            return len(chunks)
-            
+            logger.info(f"Processed manual {manual_id}: {len(chunked_data)} chunks with cache check")
+            return len(chunked_data)
         except Exception as e:
             logger.error(f"Error processing manual {manual_id}: {e}")
-            # Update manual status to failed
             await db.manuals.update_one(
                 {"id": manual_id},
-                {"$set": {
-                    "status": "failed",
-                    "updated_at": datetime.now(timezone.utc).isoformat()
-                }}
+                {"$set": {"status": "failed", "updated_at": datetime.now(timezone.utc).isoformat()}}
             )
-            raise
+            raise
