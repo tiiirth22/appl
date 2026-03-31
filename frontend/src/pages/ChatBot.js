@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { Send, Loader, Bot, User, Star, Mic, Image as ImageIcon, X, Shield, Paperclip, Maximize2, Info, ChevronDown } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { MorphingButton } from '../components/ui/morphing-button';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -51,14 +52,21 @@ export default function ChatBot() {
       }
       // Priority 2: manual_id from search params (?manual_id=...)
       else {
-        const id = searchParams.get('manual_id') || localStorage.getItem('manual_id');
-        if (id) {
-          setManualId(id);
-          localStorage.setItem('manual_id', id);
+        const id = searchParams.get('manual_id');
+        const token = localStorage.getItem('session_token');
 
+        if (id && token) {
+          // If the user is AUTHENTICATED, they can access any manual they own or have access to
+          setManualId(id);
           setMessages([{
             type: 'bot',
             text: "Welcome back! I'm ready to answer any questions about your appliance. What would you like to know?"
+          }]);
+        } else if (!id && !qrId) {
+          // If NO ID and NO QR, it's an invalid access
+          setMessages([{
+            type: 'bot',
+            text: "⚠️ **Security Required**: Please scan the official QR code located on your appliance to start a session."
           }]);
         }
       }
@@ -84,21 +92,59 @@ export default function ChatBot() {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API}/chat`, {
-        manual_id: manualId,
-        question: input
+      // Use fetch for streaming support instead of axios
+      const token = localStorage.getItem('session_token');
+      const response = await fetch(`${API}/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ 
+          manual_id: manualId, 
+          question: input,
+          qr_id: qrId // Send qrId for security validation
+        })
       });
 
-      const botMessage = {
-        type: 'bot',
-        text: response.data.answer,
-        sources: response.data.sources,
-        manual_info: response.data.manual_info
-      };
+      if (!response.ok) throw new Error('Stream request failed');
 
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let botMessage = { type: 'bot', text: '', sources: [] };
+      
       setMessages(prev => [...prev, botMessage]);
-      setManualInfo(response.data.manual_info);
-      setLastQueryId(response.data.query_id);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        
+        // Handle metadata (Sources)
+        if (chunk.startsWith('__METADATA__:')) {
+          const parts = chunk.split('\n');
+          const metaLine = parts[0].replace('__METADATA__:', '');
+          try {
+            const metadata = JSON.parse(metaLine);
+            botMessage.sources = metadata.sources || [];
+            // Continue with the rest of the chunk if any
+            const rest = parts.slice(1).join('\n');
+            if (rest) botMessage.text += rest;
+          } catch (e) { console.error('Meta parse error', e); }
+        } else {
+          botMessage.text += chunk;
+        }
+
+        // Update the last message in state
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { ...botMessage };
+          return updated;
+        });
+      }
+
+      setLoading(false);
       setShowFeedback(true);
     } catch (error) {
       console.error('Chat error:', error);
@@ -106,7 +152,6 @@ export default function ChatBot() {
         type: 'bot',
         text: "I apologize, but I'm having trouble connecting to my knowledge base right now. Please try again in a moment."
       }]);
-    } finally {
       setLoading(false);
     }
   };
@@ -182,9 +227,19 @@ export default function ChatBot() {
   if (loadingQR) {
     return (
       <div className="chat-page dark-theme">
-        <div className="full-screen-loader">
-          <Loader className="spinner" size={48} />
-          <h2>Syncing Workspace...</h2>
+        <div className="premium-full-loader">
+          <div className="loader-orbit">
+             <div className="orbit-dot"></div>
+             <Bot size={48} className="spin-bot" />
+          </div>
+          <motion.h2
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, repeat: Infinity, repeatType: 'reverse' }}
+          >
+            Agent Initializing...
+          </motion.h2>
+          <p className="loader-subtext">Syncing device knowledge base</p>
         </div>
       </div>
     );
@@ -224,16 +279,30 @@ export default function ChatBot() {
       {/* Main Chat Area */}
       <main className="messages-viewport">
         <div className="messages-list">
+          <AnimatePresence mode="popLayout">
           {!manualId && !loadingQR && (
-            <div className="no-manual-hero">
-              <Shield size={64} className="text-primary" />
-              <h2>Security Gateway</h2>
-              <p>This agent requires a valid resource signature. Please scan a verified QR code to access device intelligence.</p>
-            </div>
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="no-manual-hero"
+            >
+              <div className="hero-glow-icon">
+                 <Shield size={80} className="pulse-shield" />
+              </div>
+              <h2 className="space-font">Secure Resource Required</h2>
+              <p>This intelligence agent requires a valid device signature. Please scan a verified QR code to unlock specialized device assistance.</p>
+              <div className="hero-hint">Looking for the QR? It's usually found on the back or bottom of your device.</div>
+            </motion.div>
           )}
 
           {messages.map((m, i) => (
-            <div key={i} className={`message-row ${m.type}`}>
+            <motion.div 
+              key={i} 
+              initial={{ opacity: 0, y: 20, x: m.type === 'user' ? 20 : -20 }}
+              animate={{ opacity: 1, y: 0, x: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className={`message-row ${m.type}`}
+            >
               <div className="avatar-holder">
                 {m.type === 'bot' ? <Bot size={18} /> : <User size={18} />}
               </div>
@@ -242,22 +311,29 @@ export default function ChatBot() {
                 {m.sources && m.sources.length > 0 && (
                   <div className="sources-chips">
                     <Info size={12} />
-                    <span>Powered by {m.sources.length} document references</span>
+                    <span>
+                      References: {[...new Set(m.sources.map(s => s.page).filter(p => p > 0))].sort((a,b)=>a-b).map(p => `Page ${p}`).join(', ') || 'Manual context'}
+                    </span>
                   </div>
                 )}
               </div>
-            </div>
+            </motion.div>
           ))}
           {loading && (
-            <div className="message-row bot typing">
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="message-row bot typing"
+            >
               <div className="avatar-holder"><Bot size={18} /></div>
               <div className="message-bubble">
                 <div className="typing-indicator">
                   <span></span><span></span><span></span>
                 </div>
               </div>
-            </div>
+            </motion.div>
           )}
+          </AnimatePresence>
           <div ref={messagesEndRef} />
         </div>
       </main>
@@ -301,7 +377,7 @@ export default function ChatBot() {
               <Mic size={20} />
             </button>
             <button className="send-prime" onClick={handleSend} disabled={!input.trim() || loading}>
-              <Send size={18} />
+               <Send size={18} />
             </button>
           </div>
         </div>
@@ -320,60 +396,45 @@ export default function ChatBot() {
           overflow: hidden;
         }
 
-        .full-screen-loader {
-            height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5rem; color: #64748b;
-        }
-
-        .chat-header-glass {
-            background: rgba(15, 23, 42, 0.7);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            padding: 1rem 1.5rem;
-            z-index: 50;
-        }
-
-        .header-inner {
-            max-width: 1000px;
-            margin: 0 auto;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .bot-identity { display: flex; align-items: center; gap: 1rem; }
-        .bot-glow-box {
-            width: 44px; height: 44px;
-            background: rgba(59, 130, 246, 0.1);
-            border: 1px solid rgba(59, 130, 246, 0.2);
-            border-radius: 12px;
-            display: flex; align-items: center; justify-content: center;
-            color: #3b82f6;
-            box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
-        }
-
-        .bot-text h3 { font-size: 0.9375rem; font-weight: 800; margin: 0; }
-        .online-indicator { display: flex; align-items: center; gap: 0.5rem; font-size: 0.6875rem; color: #64748b; font-weight: 600; }
-        .dot { width: 6px; height: 6px; background: #10b981; border-radius: 50%; box-shadow: 0 0 5px #10b981; }
-
-        .manual-badge-box {
-            background: rgba(255,255,255,0.03);
-            padding: 0.5rem 1rem;
-            border-radius: 2rem;
-            border: 1px solid rgba(255,255,255,0.08);
-            display: flex; align-items: center; gap: 0.75rem;
-            font-size: 0.75rem;
-        }
-        .m-model { font-weight: 700; }
-        .m-ver { color: #64748b; font-weight: 600; padding-left: 0.75rem; border-left: 1px solid rgba(255,255,255,0.1); }
-
         .messages-viewport {
             flex: 1;
             overflow-y: auto;
             padding: 2rem 1rem;
             background-image: 
-                radial-gradient(circle at 100% 100%, rgba(59, 130, 246, 0.03) 0%, transparent 40%),
-                radial-gradient(circle at 0% 0%, rgba(16, 185, 129, 0.03) 0%, transparent 40%);
+                radial-gradient(circle at 100% 100%, rgba(59, 130, 246, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 0% 0%, rgba(16, 185, 129, 0.05) 0%, transparent 40%);
         }
+
+        .premium-full-loader {
+            height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; color: #f8fafc;
+        }
+        .premium-full-loader h2 { font-family: 'Space Grotesk', sans-serif; font-weight: 800; letter-spacing: -0.02em; }
+        .loader-subtext { color: #64748b; font-size: 0.875rem; letter-spacing: 0.05em; text-transform: uppercase; }
+
+        .loader-orbit {
+            position: relative; width: 100px; height: 100px; display: flex; align-items: center; justify-content: center;
+        }
+        .orbit-dot {
+            position: absolute; width: 100%; height: 100%; border: 2px solid rgba(59, 130, 246, 0.1); border-top-color: #3b82f6;
+            border-radius: 50%; animation: spin 1s linear infinite;
+        }
+        .spin-bot { color: #3b82f6; filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.4)); animation: pulse 2s infinite ease-in-out; }
+
+        .space-font { font-family: 'Space Grotesk', sans-serif; }
+
+        .hero-glow-icon {
+            position: relative; margin-bottom: 2rem;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .hero-glow-icon::after {
+            content: ''; position: absolute; width: 120px; height: 120px; background: rgba(59, 130, 246, 0.15);
+            filter: blur(40px); border-radius: 50%; z-index: -1;
+        }
+        .pulse-shield { color: #3b82f6; animation: float 3s infinite ease-in-out; }
+
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+        .hero-hint { margin-top: 2rem; font-size: 0.75rem; color: #475569; font-style: italic; }
 
         .messages-list { max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 2rem; }
 
