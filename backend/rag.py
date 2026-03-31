@@ -98,7 +98,8 @@ class RAGEngine:
                     chunks.append({
                         "content": match.metadata.get("content", ""),
                         "score": match.score,
-                        "chunk_index": int(match.metadata.get("chunk_index", 0))
+                        "chunk_index": int(match.metadata.get("chunk_index", 0)),
+                        "page_number": int(match.metadata.get("page_number", 0))
                     })
             
             return chunks
@@ -128,6 +129,7 @@ class RAGEngine:
                     "content": doc["content"],
                     "score": doc["score"] / 10.0,  # Normalize score roughly
                     "chunk_index": doc["chunk_index"],
+                    "page_number": doc.get("page_number", 0),
                     "source": "keyword"
                 })
             return chunks
@@ -135,24 +137,31 @@ class RAGEngine:
             logger.error(f"Error in keyword search: {e}")
             return []
     
-    async def generate_answer(self, question: str, context_chunks: List[Dict[str, Any]]) -> str:
-        """Generate answer using Groq (if available) or Ollama."""
+    async def log_rag_trace(self, db, trace_data: Dict[str, Any]):
+        """Store RAG observability data in MongoDB."""
+        if db is None: return
         try:
-            # Prepare context from chunks
+            trace_data["timestamp"] = datetime.now(timezone.utc).isoformat()
+            await db.rag_traces.insert_one(trace_data)
+        except Exception as e:
+            logger.error(f"Error logging RAG trace: {e}")
+
+    async def generate_answer(self, question: str, context_chunks: List[Dict[str, Any]]) -> Any:
+        """Generate answer using Groq (streaming) or Ollama."""
+        try:
+            # Prepare context from chunks with page numbers
             context = "\n\n".join([
-                f"[Chunk {chunk['chunk_index'] + 1}] {chunk['content']}"
+                f"[Page {chunk.get('page_number', '?')}] {chunk['content']}"
                 for chunk in context_chunks
             ])
             
-            # System prompt for instruction
             system_prompt = """You are an expert assistant answering questions about appliance manuals. Answer ONLY using the provided context.
 
-IMPORTANT INSTRUCTIONS:
-1. Answer questions exclusively using the retrieved context
-2. If the context does not contain information to answer the question, state: "I don't have sufficient information in this manual to answer that question."
-3. Always cite which section/chunk you're referencing
-4. Provide clear, concise, well-structured answers
-5. Do not make up information"""
+IMPORTANT:
+1. Answer questions exclusively using the retrieved context.
+2. If unsure, say "I don't have sufficient information in this manual".
+3. Always cite page numbers (e.g., "Page 3 notes that...").
+4. Provide structured, clear advice."""
 
             # User prompt with data
             user_msg_content = f"""RETRIEVED CONTEXT:
@@ -160,64 +169,47 @@ IMPORTANT INSTRUCTIONS:
 
 QUESTION: {question}"""
 
-            # Option 1: Use Groq if available
-            print(f"[RAG] generate_answer: groq_client={self.groq_client is not None}, model={self.groq_model}")
             if self.groq_client:
                 try:
-                    print(f"[RAG] Calling Groq API with model: {self.groq_model}")
-                    chat_completion = self.groq_client.chat.completions.create(
+                    stream = self.groq_client.chat.completions.create(
                         messages=[
-                            {
-                                "role": "system",
-                                "content": system_prompt
-                            },
-                            {
-                                "role": "user",
-                                "content": user_msg_content
-                            }
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": f"RETRIEVED CONTEXT:\n{context}\n\nQUESTION: {question}"}
                         ],
                         model=self.groq_model,
                         temperature=0.0,
-                        max_tokens=1024,
+                        stream=True,
                     )
-                    print(f"[RAG] Groq API SUCCESS")
-                    return chat_completion.choices[0].message.content
+                    for chunk in stream:
+                        if chunk.choices[0].delta.content:
+                            yield chunk.choices[0].delta.content
+                    return
                 except Exception as e:
-                    print(f"[RAG] Groq API FAILED: {type(e).__name__}: {e}")
-                    logger.error(f"Groq API error: {e}. Falling back to Ollama.")
-                    # Fallthrough to Ollama on error
+                    logger.error(f"Groq streaming error: {e}")
             
-            # Option 2: Use Ollama (Fallback or Primary if Groq not configured)
-            print(f"[RAG] Falling through to Ollama at {self.ollama_base_url}")
-            # Construct single prompt for Ollama
-            full_prompt = f"{system_prompt}\n\n{user_msg_content}\n\nANSWER:"
-            
-            # Call Ollama API
+            # Fallback to Ollama streaming
             async with httpx.AsyncClient(timeout=60.0) as client:
-                response = await client.post(
+                async with client.stream(
+                    "POST",
                     f"{self.ollama_base_url}/api/generate",
                     json={
                         "model": self.ollama_model,
-                        "prompt": full_prompt,
-                        "stream": False,
-                        "options": {
-                            "temperature": 0.0,
-                            "top_p": 0.95,
-                            "num_predict": 1024
-                        }
+                        "prompt": f"{system_prompt}\n\nCONTEXT:\n{context}\n\nQUESTION: {question}\n\nANSWER:",
+                        "stream": True,
                     }
-                )
-                
-                if response.status_code == 200:
-                    result = response.json()
-                    return result.get("response", "Error generating response")
-                else:
-                    logger.error(f"Ollama API error: {response.status_code}")
-                    return "Error: Unable to generate answer at this time."
-                    
+                ) as response:
+                    async for line in response.aiter_lines():
+                        if not line: continue
+                        import json
+                        try:
+                            data = json.loads(line)
+                            if "response" in data:
+                                yield data["response"]
+                            if data.get("done"): break
+                        except: continue
         except Exception as e:
-            logger.error(f"Error generating answer: {e}")
-            return f"Error generating answer: {str(e)}"
+            logger.error(f"Error in streaming generate_answer: {e}")
+            yield f"Error: {str(e)}"
 
     async def analyze_image(self, image_bytes: bytes) -> str:
         """Analyze an image using Groq Vision model to identify appliance issues."""
@@ -265,77 +257,50 @@ QUESTION: {question}"""
             logger.error(f"Error analyzing image: {e}")
             raise e
     
-    async def answer_question(self, manual_id: str, question: str, db=None) -> Dict[str, Any]:
-        """Complete RAG pipeline: hybrid retrieve and generate."""
-        logger.info(f"Processing chat for manual {manual_id}: {question}")
+    async def answer_question_stream(self, manual_id: str, question: str, db=None) -> Any:
+        """Full RAG pipeline with streaming tokens and trace logging."""
+        import time
+        start_time = time.time()
         
-        # 1. Semantic Retrieval (Pinecone)
+        # 1. Retrieval
         semantic_chunks = []
         if self.index:
             semantic_chunks = self.retrieve_relevant_chunks(question, manual_id, top_k=5)
-            for chunk in semantic_chunks:
-                chunk["source"] = "semantic"
         
-        # 2. Keyword Retrieval (MongoDB) - Hybrid model
         keyword_chunks = await self.retrieve_keyword_chunks(question, manual_id, db, top_k=5)
         
-        # 3. Combine and Rerank (Simple Fusion)
-        seen_indices = set()
-        combined_chunks = []
+        # Merge
+        seen = set()
+        combined = []
+        for c in semantic_chunks + keyword_chunks:
+            if c["chunk_index"] not in seen:
+                combined.append(c)
+                seen.add(c["chunk_index"])
         
-        # Priority to semantic, but include unique keyword hits
-        for chunk in semantic_chunks + keyword_chunks:
-            if chunk["chunk_index"] not in seen_indices:
-                combined_chunks.append(chunk)
-                seen_indices.add(chunk["chunk_index"])
+        retrieval_time = time.time() - start_time
         
-        logger.info(f"Retrieved {len(combined_chunks)} total chunks (semantic: {len(semantic_chunks)}, keyword: {len(keyword_chunks)})")
-        
-        # Check relevance threshold
-        max_score = max((chunk.get("score", 0) for chunk in combined_chunks), default=0)
-        if max_score < 0.4 or not combined_chunks:
-            return {
-                "answer": "I'm sorry, but I don't have sufficient information in this manual to answer your question accurately.",
-                "sources": [],
-                "manual_id": manual_id
-            }
-        
-        # Fallback: if low relevance but some chunks exist, still try to generate (LLM will handle)
-        if not combined_chunks:
-            # Fallback: if absolutely nothing found, try to get some general chunks for this manual
-            if db is not None:
-                cursor = db.manual_chunks.find({"manual_id": manual_id}).limit(2)
-                async for doc in cursor:
-                    combined_chunks.append({
-                        "content": doc["content"],
-                        "chunk_index": doc["chunk_index"],
-                        "score": 0.1,
-                        "source": "fallback"
-                    })
-            
-            if not combined_chunks:
-                return {
-                    "answer": "I couldn't find any information for this manual. It might still be processing or contains no searchable text.",
-                    "sources": [],
-                    "manual_id": manual_id
-                }
-        
-        # 4. Generate answer
-        answer = await self.generate_answer(question, combined_chunks)
-        
-        # 5. Format sources
+        # Log Trace
         sources = [
-            {
-                "chunk_index": chunk["chunk_index"],
-                "content_preview": chunk["content"][:200] + "...",
-                "relevance_score": round(chunk.get("score", 0), 3),
-                "source_type": chunk.get("source", "unknown")
-            }
-            for chunk in combined_chunks
+            {"page": c.get("page_number"), "score": round(c.get("score", 0), 3), "type": c.get("source", "semantic")}
+            for c in combined
         ]
         
-        return {
-            "answer": answer,
+        # 2. Log Trace with full context for Faithfulness evaluation
+        full_context = "\n\n".join([f"[Page {c.get('page_number', '?')}] {c['content']}" for c in combined])
+        import json
+        
+        trace = {
+            "manual_id": manual_id,
+            "question": question,
+            "retrieval_time": retrieval_time,
+            "source_count": len(combined),
             "sources": sources,
-            "manual_id": manual_id
+            "full_context": full_context
         }
+        await self.log_rag_trace(db, trace)
+
+        yield f"__METADATA__:{json.dumps({'sources': sources})}\n"
+        
+        # 3. Stream Answer
+        async for token in self.generate_answer(question, combined):
+            yield token
