@@ -81,6 +81,7 @@ class Query(BaseModel):
 class ChatRequest(BaseModel):
     manual_id: str
     question: str
+    qr_id: Optional[str] = None
 
 class ChatResponse(BaseModel):
     query_id: str
