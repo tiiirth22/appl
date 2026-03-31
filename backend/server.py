@@ -53,11 +53,46 @@ async def get_db_current_user(session_token: Optional[str] = Cookie(None), autho
         raise HTTPException(status_code=503, detail="Database not available")
     return await get_current_user(db, session_token, authorization)
 
+async def get_optional_user(session_token: Optional[str] = Cookie(None), authorization: Optional[str] = Header(None)):
+    """Dependency: Get current user if authenticated, otherwise return None (for QR-based access)."""
+    if db is None or not mongo_available:
+        return None
+    try:
+        return await get_current_user(db, session_token, authorization)
+    except Exception:
+        return None
+
 async def get_db_admin_user(session_token: Optional[str] = Cookie(None), authorization: Optional[str] = Header(None)):
     """Dependency: Get current admin user."""
     if db is None or not mongo_available:
         raise HTTPException(status_code=503, detail="Database not available")
     return await require_admin(db, session_token, authorization)
+
+# Rate Limiter implementation
+class RateLimiter:
+    def __init__(self, db, limit: int = 5, window_seconds: int = 60):
+        self.db = db
+        self.limit = limit
+        self.window = window_seconds
+
+    async def check(self, user_id: str):
+        if self.db is None: return True
+        now = datetime.now(timezone.utc)
+        start_period = (now - timedelta(seconds=self.window)).isoformat()
+        
+        # Clean old logs
+        await self.db.rate_limits.delete_many({"timestamp": {"$lt": start_period}})
+        
+        # Count recent
+        count = await self.db.rate_limits.count_documents({"user_id": user_id})
+        if count >= self.limit:
+            return False
+        
+        # Log this request
+        await self.db.rate_limits.insert_one({"user_id": user_id, "timestamp": now.isoformat()})
+        return True
+
+from datetime import timedelta
 
 async def get_db_business_user(session_token: Optional[str] = Cookie(None), authorization: Optional[str] = Header(None)):
     """Dependency: Get current business owner or admin user."""
@@ -149,6 +184,26 @@ async def lifespan(app: FastAPI):
 
 # Create the main app
 app = FastAPI(title="ApplianceIQ API", version="1.0.0", lifespan=lifespan)
+
+# Root route - Redirects to /docs and provides a quick API welcome
+@app.get("/", include_in_schema=False)
+async def root():
+    """Welcome to ApplianceIQ API - Redirects to Swagger UI."""
+    return RedirectResponse(url="/docs")
+
+@app.get("/api/welcome")
+async def welcome():
+    """Manual status check."""
+    return {
+        "message": "Welcome to ApplianceIQ API - Backend is LIVE",
+        "docs": "/docs",
+        "health": "/api/health",
+        "endpoints": [
+            {"path": route.path, "name": route.name} 
+            for route in app.routes if hasattr(route, 'path')
+        ]
+    }
+
 api_router = APIRouter(prefix="/api")
 
 # Configure logging
@@ -269,6 +324,11 @@ async def upload_manual(
     current_user: dict = Depends(get_db_business_user)
 ):
     """Upload a manual file."""
+    # Rate Limiting
+    limiter = RateLimiter(db, limit=3) # 3 uploads per min
+    if not await limiter.check(current_user["id"]):
+        raise HTTPException(status_code=429, detail="Upload rate limit exceeded. Please wait a minute.")
+
     if not doc_processor:
         detail = "Ingestion service not available"
         if initialization_error:
@@ -486,52 +546,38 @@ async def analyze_image(
         logger.error(f"Image analysis failed: {e}")
         raise HTTPException(status_code=500, detail=f"Image analysis failed: {str(e)}")
 
-@api_router.post("/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest):
-    """Chat endpoint for asking questions about a manual."""
+@api_router.post("/chat")
+async def chat(request: ChatRequest, current_user: Optional[dict] = Depends(get_optional_user)):
+    """Chat endpoint with streaming. Works for both authenticated users and QR-based (unauthenticated) access."""
     if not rag_engine:
-        raise HTTPException(status_code=503, detail="RAG service not available - ML dependencies not installed")
+        raise HTTPException(status_code=503, detail="RAG service not available")
     
-    # Rate Limiting (Simple in-memory)
-    # Note: In production, use Redis or similar
-    global rate_limit_data
-    if 'rate_limit_data' not in globals():
-        rate_limit_data = {}
-    
-    # Very simple rate limit: 5 requests per 10 seconds per IP or manual_id
-    # Since we don't have request object here easily without adding it to dependecy, 
-    # let's use manual_id as a proxy or skip for now if too complex.
-    # Actually, let's just implement the db pass for now.
-    
-    # Get manual info
-    manual = await db.manuals.find_one({"id": request.manual_id}, {"_id": 0})
-    if not manual:
-        raise HTTPException(status_code=404, detail="Manual not found")
+    # Access Control: Ensure user has rights to this manual
+    if not current_user:
+        if not request.qr_id:
+            raise HTTPException(status_code=403, detail="Security Required: Please scan a valid QR code to start chatting.")
+        
+        # Verify the QR ID matches the manual ID
+        qr_record = await db.qr_codes.find_one({"id": request.qr_id, "manual_id": request.manual_id})
+        if not qr_record:
+            raise HTTPException(status_code=403, detail="Invalid Session: This QR code is not valid for this device.")
+    else:
+        # Authenticated user - check if they own the manual or are admin
+        if current_user.get("role") != "admin":
+            manual = await db.manuals.find_one({"id": request.manual_id, "user_id": current_user["id"]})
+            if not manual:
+                raise HTTPException(status_code=403, detail="Access Denied: You do not have permission to access this manual.")
 
-    # Generate answer with Hybrid Search (passing db)
-    result = await rag_engine.answer_question(request.manual_id, request.question, db=db)
-    
-    # Save query
-    query = Query(
-        manual_id=request.manual_id,
-        qr_code_id=manual.get("qr_code_id", ""),
-        question=request.question,
-        answer=result["answer"],
-        sources=result["sources"]
-    )
-    
-    query_dict = query.model_dump()
-    query_dict['created_at'] = query_dict['created_at'].isoformat()
-    await db.queries.insert_one(query_dict)
-    
-    return ChatResponse(
-        query_id=query.id,
-        answer=result["answer"],
-        sources=result["sources"],
-        manual_info={
-            "model_name": manual["model_name"],
-            "version": manual["version"]
-        }
+    # Rate Limiting (only for authenticated users)
+    if current_user:
+        limiter = RateLimiter(db, limit=10)  # 10 queries per min
+        if not await limiter.check(current_user["id"]):
+            raise HTTPException(status_code=429, detail="Too many requests. Please slow down.")
+
+    from fastapi.responses import StreamingResponse
+    return StreamingResponse(
+        rag_engine.answer_question_stream(request.manual_id, request.question, db=db),
+        media_type="text/event-stream"
     )
 
 @api_router.post("/qr/assign")
@@ -699,4 +745,10 @@ app.add_middleware(
 
 if __name__ == "__main__":
     import uvicorn
+    # Print a clear message about where the API is running
+    print("\n" + "="*50)
+    print("ApplianceIQ API is starting...")
+    print(f"Docs: http://localhost:8000/docs")
+    print(f"Health: http://localhost:8000/api/health")
+    print("="*50 + "\n")
     uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)
