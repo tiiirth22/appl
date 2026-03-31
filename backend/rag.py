@@ -148,6 +148,7 @@ class RAGEngine:
 
     async def generate_answer(self, question: str, context_chunks: List[Dict[str, Any]]) -> Any:
         """Generate answer using Groq (streaming) or Ollama."""
+        is_local = "localhost" in self.ollama_base_url or "127.0.0.1" in self.ollama_base_url
         try:
             # Prepare context from chunks with page numbers
             context = "\n\n".join([
@@ -169,6 +170,12 @@ IMPORTANT:
 
 QUESTION: {question}"""
 
+            if not self.groq_client:
+                # Try fallback to Ollama, but check if base_url is likely reachable (not localhost in prod)
+                if is_local and os.getenv("K_SERVICE"): # K_SERVICE is set in Cloud Run
+                    yield "System Error: Remote AI services (Groq) are not configured, and local AI (Ollama) is not available in the cloud environment. Please contact the administrator to set GROQ_API_KEY."
+                    return
+
             if self.groq_client:
                 try:
                     stream = self.groq_client.chat.completions.create(
@@ -181,32 +188,42 @@ QUESTION: {question}"""
                         stream=True,
                     )
                     for chunk in stream:
-                        if chunk.choices[0].delta.content:
+                        if chunk.choices and chunk.choices[0].delta.content:
                             yield chunk.choices[0].delta.content
                     return
                 except Exception as e:
                     logger.error(f"Groq streaming error: {e}")
+                    if not is_local: # If not local, don't even try Ollama
+                         yield f"Groq Error: {str(e)}"
+                         return
             
-            # Fallback to Ollama streaming
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                async with client.stream(
-                    "POST",
-                    f"{self.ollama_base_url}/api/generate",
-                    json={
-                        "model": self.ollama_model,
-                        "prompt": f"{system_prompt}\n\nCONTEXT:\n{context}\n\nQUESTION: {question}\n\nANSWER:",
-                        "stream": True,
-                    }
-                ) as response:
-                    async for line in response.aiter_lines():
-                        if not line: continue
-                        import json
-                        try:
-                            data = json.loads(line)
-                            if "response" in data:
-                                yield data["response"]
-                            if data.get("done"): break
-                        except: continue
+            # Fallback to Ollama streaming (only if explicitly configured or local)
+            try:
+                async with httpx.AsyncClient(timeout=10.0) as client: # Shorter timeout for check
+                    async with client.stream(
+                        "POST",
+                        f"{self.ollama_base_url}/api/generate",
+                        json={
+                            "model": self.ollama_model,
+                            "prompt": f"{system_prompt}\n\nCONTEXT:\n{context}\n\nQUESTION: {question}\n\nANSWER:",
+                            "stream": True,
+                        }
+                    ) as response:
+                        if response.status_code != 200:
+                            yield f"AI Service Error: Ollama returned {response.status_code}. Please check GROQ_API_KEY for cloud deployment."
+                            return
+                        async for line in response.aiter_lines():
+                            if not line: continue
+                            import json
+                            try:
+                                data = json.loads(line)
+                                if "response" in data:
+                                    yield data["response"]
+                                if data.get("done"): break
+                            except: continue
+            except Exception as e:
+                logger.error(f"Ollama fallback failed: {e}")
+                yield "Error: AI services are currently unavailable. (Checked Groq and Ollama)"
         except Exception as e:
             logger.error(f"Error in streaming generate_answer: {e}")
             yield f"Error: {str(e)}"

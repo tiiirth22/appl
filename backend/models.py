@@ -42,7 +42,8 @@ class Manual(BaseModel):
     model_name: str
     version: str
     region: Optional[str] = "global"
-    file_path: str
+    file_path: Optional[str] = None
+    cloudinary_url: Optional[str] = None
     file_type: str  # pdf or image
     status: str = "processing"  # processing, completed, failed
     qr_code_id: Optional[str] = None
@@ -62,6 +63,7 @@ class QRCode(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     manual_id: str
     short_url: str
+    cloudinary_url: Optional[str] = None
     payload: Dict[str, Any]
     signature: str
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

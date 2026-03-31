@@ -220,10 +220,34 @@ class DocumentProcessor:
             logger.error(f"Error generating embeddings: {e}")
             return []
     
-    async def process_manual(self, manual_id: str, file_path: str, file_type: str, db) -> int:
+    async def process_manual(self, manual_id: str, file_path: Optional[str], file_type: str, db) -> int:
         """Process a manual file and store in Pinecone and MongoDB."""
+        temp_path = None
         try:
-            # Extract and chunk with page numbers
+            # 1. Resolve file_path (download if needed)
+            if not file_path or not os.path.exists(file_path):
+                # Check DB for cloudinary_url
+                manual = await db.manuals.find_one({"id": manual_id})
+                url = manual.get("cloudinary_url") if manual else None
+                
+                if url:
+                    import httpx
+                    logger.info(f"Downloading manual from Cloudinary: {url}")
+                    async with httpx.AsyncClient() as client:
+                        resp = await client.get(url)
+                        if resp.status_code == 200:
+                            temp_dir = os.path.join(os.getcwd(), "temp")
+                            os.makedirs(temp_dir, exist_ok=True)
+                            temp_path = os.path.join(temp_dir, f"{manual_id}.{file_type}")
+                            with open(temp_path, "wb") as f:
+                                f.write(resp.content)
+                            file_path = temp_path
+                        else:
+                            raise ValueError(f"Failed to download manual from {url}")
+                else:
+                    raise ValueError(f"Manual file not found locally and no Cloudinary URL available")
+
+            # 2. Extract and chunk with page numbers
             if file_type == "pdf":
                 pages = self.extract_text_by_page(file_path)
                 chunked_data = self.chunk_text_with_pages(pages)
@@ -294,4 +318,12 @@ class DocumentProcessor:
                 {"id": manual_id},
                 {"$set": {"status": "failed", "updated_at": datetime.now(timezone.utc).isoformat()}}
             )
-            raise
+            raise
+        finally:
+            if temp_path and os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                    logger.info(f"Cleaned up temp file: {temp_path}")
+                except Exception as e:
+                    logger.warning(f"Failed to clean up temp file {temp_path}: {e}")
+

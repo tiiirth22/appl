@@ -7,6 +7,8 @@ from io import BytesIO
 import base64
 from datetime import datetime
 import uuid
+import cloudinary
+import cloudinary.uploader
 
 class QRHandler:
     """Handles QR code generation and verification."""
@@ -14,6 +16,9 @@ class QRHandler:
     def __init__(self):
         self.secret_key = os.getenv("QR_SECRET_KEY", "change-me")
         self.app_base_url = os.getenv("APP_BASE_URL", "http://localhost:3000")
+        
+        # Cloudinary setup is handled globally in server.py, but we can verify here
+        self.cloudinary_available = os.getenv("CLOUDINARY_URL") is not None
     
     def generate_signature(self, payload: dict) -> str:
         """Generate HMAC signature for payload."""
@@ -61,18 +66,52 @@ class QRHandler:
         img_str = base64.b64encode(buffered.getvalue()).decode()
         return f"data:image/png;base64,{img_str}"
 
+    def _make_qr_image_bytes(self, url: str) -> BytesIO:
+        """Generate a QR code image as bytes."""
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(url)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+        buffered = BytesIO()
+        img.save(buffered, format="PNG")
+        buffered.seek(0)
+        return buffered
+
     def generate_qr_code(self, manual_id: str, version: str) -> tuple:
-        """Generate QR code image for a NEW manual (creates a new qr_id)."""
+        """Generate QR code image and upload to Cloudinary if available."""
         payload, qr_id = self.create_qr_payload(manual_id, version)
-        
         short_url = f"{self.app_base_url}/device/{qr_id}"
-        image_base64 = self._make_qr_image_base64(short_url)
+        
+        # 1. Always generate base64 for local fallback/immediate display
+        qr_bytes = self._make_qr_image_bytes(short_url)
+        image_base64 = f"data:image/png;base64,{base64.b64encode(qr_bytes.getvalue()).decode()}"
+        
+        cloudinary_url = None
+        if self.cloudinary_available:
+            try:
+                # 2. Upload to Cloudinary
+                upload_result = cloudinary.uploader.upload(
+                    qr_bytes,
+                    public_id=f"qr_{qr_id}",
+                    folder="appliance_iq/qrs",
+                    overwrite=True,
+                    resource_type="image"
+                )
+                cloudinary_url = upload_result.get("secure_url")
+            except Exception as e:
+                print(f"Cloudinary upload failed: {e}")
         
         return {
             "qr_id": qr_id,
             "short_url": short_url,
             "payload": payload,
-            "image_base64": image_base64
+            "image_base64": image_base64,
+            "cloudinary_url": cloudinary_url
         }
 
     def regenerate_qr_image(self, qr_id: str) -> str:

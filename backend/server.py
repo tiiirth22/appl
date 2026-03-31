@@ -38,11 +38,13 @@ try:
     from ingestion import DocumentProcessor, Pinecone as IngestionPinecone
     from rag import RAGEngine
     from qr_handler import QRHandler
+    import cloudinary
+    import cloudinary.uploader
     Pinecone = IngestionPinecone
     ml_imports_available = True
 except Exception as e:
     import traceback
-    logger.warning(f"Some ML services not available: {e}")
+    logger.warning(f"Some production services not available: {e}")
     logger.debug(traceback.format_exc())
     ml_import_error = str(e)
 
@@ -140,6 +142,18 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             print(f"MongoDB connection failed: {e}")
             mongo_available = False
+            
+    # Initialize Cloudinary
+    cloudinary_url = os.getenv("CLOUDINARY_URL")
+    if cloudinary_url:
+        try:
+            # Format: cloudinary://api_key:api_secret@cloud_name
+            config = cloudinary.config(
+                secure=True
+            )
+            print("Cloudinary configured")
+        except Exception as e:
+            print(f"Cloudinary configuration failed: {e}")
     
     # Initialize ML Services
     if ml_imports_available:
@@ -349,17 +363,42 @@ async def upload_manual(
     
     # Create manual record
     manual_id = str(uuid.uuid4())
-    uploads_dir = ROOT_DIR / "uploads"
-    uploads_dir.mkdir(exist_ok=True)
-    file_path = str(uploads_dir / f"{manual_id}.{file_ext}")
+    # Save file to Memory/Temp then Cloudinary
+    file_path = None
+    cloudinary_file_url = None
     
-    # Save file
     try:
+        content = await file.read()
+        # Upload to Cloudinary
+        if os.getenv("CLOUDINARY_URL"):
+            try:
+                # Determine resource type based on extension
+                res_type = "raw" if file_ext == "pdf" else "image"
+                upload_result = cloudinary.uploader.upload(
+                    content,
+                    public_id=f"manual_{manual_id}",
+                    folder="appliance_iq/manuals",
+                    resource_type=res_type,
+                    overwrite=True
+                )
+                cloudinary_file_url = upload_result.get("secure_url")
+                logger.info(f"Uploaded {file_ext} to Cloudinary: {cloudinary_file_url}")
+            except Exception as e:
+                logger.error(f"Cloudinary upload failed: {e}")
+                # Fallback to local if Cloudinary fails (mostly for local dev)
+                pass
+
+        # Always save a local copy for ingestion processing (DocumentProcessor expects a path or stream)
+        # In production, we might want to pass the buffer directly, but keeping file_path for now
+        # to minimize changes to ingestion.py
+        uploads_dir = ROOT_DIR / "uploads"
+        uploads_dir.mkdir(exist_ok=True)
+        file_path = str(uploads_dir / f"{manual_id}.{file_ext}")
         with open(file_path, "wb") as f:
-            content = await file.read()
             f.write(content)
+            
     except Exception as e:
-        logger.error(f"Failed to save file: {e}")
+        logger.error(f"Failed to handle file storage/upload: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
     
     # Create manual in DB
@@ -370,6 +409,7 @@ async def upload_manual(
         version=version,
         region=region,
         file_path=file_path,
+        cloudinary_url=cloudinary_file_url, # Add this to your model if not present!
         file_type=file_ext,
         status="processing"
     )
@@ -383,9 +423,10 @@ async def upload_manual(
     
     # Process document asynchronously
     try:
+        # Pass either the local path or the content
         chunks_count = await doc_processor.process_manual(manual_id, file_path, file_ext, db)
         
-        # Generate QR code
+        # Generate QR code (now supports Cloudinary)
         qr_data = qr_handler.generate_qr_code(manual_id, version)
         
         # Save QR code
@@ -393,6 +434,7 @@ async def upload_manual(
             id=qr_data["qr_id"],
             manual_id=manual_id,
             short_url=qr_data["short_url"],
+            cloudinary_url=qr_data.get("cloudinary_url"), # Add to model if needed
             payload=qr_data["payload"],
             signature=qr_data["payload"]["sig"]
         )
@@ -401,20 +443,25 @@ async def upload_manual(
         qr_dict['created_at'] = qr_dict['created_at'].isoformat()
         await db.qr_codes.insert_one(qr_dict)
         
-        # Update manual with QR code ID
+        # Update manual with QR code ID and final status
         await db.manuals.update_one(
             {"id": manual_id},
-            {"$set": {"qr_code_id": qr_data["qr_id"]}}
+            {"$set": {
+                "qr_code_id": qr_data["qr_id"],
+                "status": "completed",
+                "chunks_count": chunks_count
+            }}
         )
         
         return {
             "manual_id": manual_id,
             "status": "completed",
             "chunks_count": chunks_count,
+            "file_url": cloudinary_file_url,
             "qr_code": {
                 "id": qr_data["qr_id"],
                 "url": qr_data["short_url"],
-                "image": qr_data["image_base64"]
+                "image": qr_data["cloudinary_url"] or qr_data["image_base64"]
             }
         }
     except Exception as e:
