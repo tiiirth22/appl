@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Shield, LogOut } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 /**
  * Shared Navbar for all authenticated pages.
@@ -48,6 +49,13 @@ export default function Navbar({
                                 style={activePage === link.key ? { '--active-color': accentColor } : {}}
                             >
                                 {link.label}
+                                {activePage === link.key && (
+                                    <motion.div 
+                                        layoutId="nav-underline"
+                                        className="navbar-underline"
+                                        style={{ background: accentColor, boxShadow: `0 0 10px ${accentColor}` }}
+                                    />
+                                )}
                             </Link>
                         ))}
                     </div>
@@ -130,15 +138,13 @@ export default function Navbar({
           color: white;
         }
 
-        .shared-navbar-link.active::after {
-          content: '';
+        .navbar-underline {
           position: absolute;
           bottom: -22px;
           left: 0;
           width: 100%;
           height: 2px;
-          background: var(--active-color, #3b82f6);
-          box-shadow: 0 0 10px var(--active-color, #3b82f6);
+          z-index: 10;
         }
 
         .shared-navbar-user {
