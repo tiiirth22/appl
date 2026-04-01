@@ -168,8 +168,8 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 @app.get("/", include_in_schema=False)
 async def root_redirect():
-    """Redirect root to documentation or health"""
-    return RedirectResponse(url="/docs" if DEBUG else "/health")
+    """Redirect root to documentation"""
+    return RedirectResponse(url="/docs")
 
 
 @app.get("/api/welcome")
@@ -178,7 +178,7 @@ async def welcome():
     return {
         "message": "Welcome to ApplianceIQ ML Service",
         "status": "online",
-        "docs": "/docs" if DEBUG else "unavailable in production",
+        "docs": "/docs",
         "health": "/health"
     }
 
