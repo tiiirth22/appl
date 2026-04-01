@@ -1,0 +1,65 @@
+# Root Docker Ignore
+# This prevents massive build context sizes during 'docker build'
+
+# --- Version Control ---
+.git/
+.github/
+.gitignore
+
+# --- Dependency folders (HUGE) ---
+node_modules/
+**/node_modules/
+venv/
+**/venv/
+.venv/
+**/.venv/
+env/
+**/env/
+**/site-packages/
+
+# --- Service specific cross-pollination ---
+# If building FROM ROOT, we don't want these included in the other's image
+# But we use them in the COPY command instead of ignoring here to avoid breaking context
+# However, frontend is never needed for backend/ml_service
+frontend/
+assets/
+docs/
+tests/
+
+# --- Python specific ---
+**/__pycache__/
+**/*.py[cod]
+**/*$py.class
+*.ipynb
+.pytest_cache/
+.qodo/
+.emergent/
+.agent/
+
+# --- Logs and Data (HUGE) ---
+logs/
+**/logs/
+*.log
+uploads/
+**/uploads/
+tmp/
+**/tmp/
+data/
+**/data/
+datasets/
+**/datasets/
+
+# --- Build artifacts ---
+dist/
+build/
+*.exe
+lex.yy.c
+yarn.lock
+package-lock.json
+*.md
+
+# --- OS / IDE files ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
