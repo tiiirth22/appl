@@ -307,55 +307,53 @@ def get_rag_engine():
 async def lifespan(app: FastAPI):
     """
     Lightweight startup/shutdown for FastAPI.
-    Heavy initialization is deferred to lazy getters.
+    NO BLOCKING OPERATIONS - Heavy initialization is deferred to lazy getters.
+    MongoDB connection verified on first request, not at startup.
     """
-    print("🚀 StartingApplianceIQ API (fast initialization)...")
+    logger.info("🚀 Starting ApplianceIQ API (fast initialization)...")
     
     global client, db, mongo_available
     
-    # ONLY initialize MongoDB - quick operation with timeout
+    # Initialize MongoDB client WITHOUT verification (connection lazy on first use)
     if mongo_url:
         try:
             client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=5000)
-            # Non-blocking ping with short timeout
-            await asyncio.wait_for(client.admin.command('ping'), timeout=5.0)
             db = client[db_name]
             mongo_available = True
-            _log_initialization("MongoDB", True, f"Connected to {db_name}")
-        except asyncio.TimeoutError:
-            mongo_available = False
-            _log_initialization("MongoDB", False, "Ping timeout - will retry on first request")
+            logger.info("[MongoDB] Client initialized (connection verified on first request)")
         except Exception as e:
+            # If client creation itself fails, log but don't block startup
             mongo_available = False
-            _log_initialization("MongoDB", False, f"Connection failed: {str(e)}")
+            logger.warning(f"[MongoDB] Client initialization failed: {str(e)}")
     else:
-        _log_initialization("MongoDB", False, "MONGO_URL not configured")
+        mongo_available = False
+        logger.warning("[MongoDB] MONGO_URL not configured")
     
-    # Initialize Cloudinary (lightweight)
+    # Initialize Cloudinary (lightweight, non-blocking)
     cloudinary_url = os.getenv("CLOUDINARY_URL")
     if cloudinary_url:
         try:
             cloudinary.config(secure=True)
-            _log_initialization("Cloudinary", True, "Configured")
+            logger.info("[Cloudinary] Configured")
         except Exception as e:
-            _log_initialization("Cloudinary", False, f"Configuration failed: {str(e)}")
+            logger.warning(f"[Cloudinary] Configuration failed: {str(e)}")
     
-    # Log that heavy services will be initialized lazily
+    # Log lazy initialization notice
     if ml_imports_available:
         logger.info("[Startup] Heavy services (Pinecone, DocumentProcessor, RAGEngine) will initialize on-demand")
     else:
         logger.warning(f"[Startup] ML services not available: {ml_import_error}")
     
-    print("✓ API ready to handle requests\n")
+    logger.info("✓ API ready to handle requests (startup completed in <1 second)")
     
     yield
     
     # Shutdown logic
-    print("\n🛑 Shutting down ApplianceIQ API...")
+    logger.info("🛑 Shutting down ApplianceIQ API...")
     if client:
         client.close()
-        _log_initialization("MongoDB", True, "Connection closed")
-    print("✓ Shutdown complete\n")
+        logger.info("[MongoDB] Connection closed")
+    logger.info("✓ Shutdown complete")
 
 # Create the main app
 app = FastAPI(title="ApplianceIQ API", version="1.0.0", lifespan=lifespan)
