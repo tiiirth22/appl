@@ -3,50 +3,36 @@ from contextlib import asynccontextmanager
 from fastapi.responses import RedirectResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
-# Pinecone import moved to try-except below
 import os
 import logging
 from pathlib import Path
-
-# Initialize logger before imports that might trigger it
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
-
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional, List
 import uuid
+import httpx
 
 from dotenv import load_dotenv
 
 from auth import get_current_user, signup_user, login_user, require_admin, require_business_owner_or_admin
-
+from qr_handler import QRHandler
+from ml_client import MLServiceClient, MLServiceError
 from models import (
     User, UserSession, UserSignUp, UserLogin, Manual, ManualCreate,
     Query, ChatResponse, ChatRequest, Feedback, FeedbackCreate,
     QRCode
 )
 
-# Optional imports - will be None if not available
-DocumentProcessor = None
-RAGEngine = None
-QRHandler = None
-Pinecone = None
-ml_imports_available = False
-ml_import_error = None
+# Initialize logger
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
+# Setup Cloudinary if available
 try:
-    from ingestion import DocumentProcessor, Pinecone as IngestionPinecone
-    from rag import RAGEngine
-    from qr_handler import QRHandler
     import cloudinary
     import cloudinary.uploader
-    Pinecone = IngestionPinecone
-    ml_imports_available = True
-except Exception as e:
-    import traceback
-    logger.warning(f"Some production services not available: {e}")
-    logger.debug(traceback.format_exc())
-    ml_import_error = str(e)
+    cloudinary_available = os.getenv("CLOUDINARY_URL") is not None
+except Exception:
+    cloudinary_available = False
 
 # Dependency injection helpers
 async def get_db_current_user(session_token: Optional[str] = Cookie(None), authorization: Optional[str] = Header(None)):
@@ -102,215 +88,26 @@ async def get_db_business_user(session_token: Optional[str] = Cookie(None), auth
         raise HTTPException(status_code=503, detail="Database not available")
     return await require_business_owner_or_admin(db, session_token, authorization)
 
+# ============= CONFIGURATION =============
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
+# MongoDB configuration
 mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
 db_name = os.environ.get('DB_NAME', 'applianceiq_db')
 
-# Pinecone configuration
-pinecone_api_key = os.getenv("PINECONE_API_KEY")
-pinecone_index_name = os.getenv("PINECONE_INDEX_NAME", "appliance-manuals")
+# ML Service configuration
+ml_service_url = os.environ.get('ML_SERVICE_URL', 'http://localhost:8001')
 
-# Global clients/services - Lazy initialization pattern
+# Global clients
 client = None
 db = None
 mongo_available = False
+ml_client = MLServiceClient(ml_service_url)
 
-# These will be initialized lazily (on first use)
-_pinecone_client = None
-_pinecone_index = None
-_doc_processor = None
-_rag_engine = None
-_qr_handler = None
-
-# Initialization state tracking
-_pinecone_initialized = False
-_doc_processor_initialized = False
-_rag_engine_initialized = False
-_qr_handler_initialized = False
-_initialization_errors = {}
-
-import asyncio
-import threading
-
-# Lock for thread-safe lazy initialization
-_init_lock = threading.Lock()
-
-def _log_initialization(service_name: str, success: bool, message: str = ""):
-    """Log initialization events."""
-    status = "✓" if success else "✗"
-    msg = f"[{service_name}] {status} {message}" if message else f"[{service_name}] {status}"
-    if success:
-        logger.info(msg)
-    else:
-        logger.warning(msg)
-
-def get_qr_handler():
-    """Lazy initialization for QR Handler."""
-    global _qr_handler, _qr_handler_initialized
-    
-    if _qr_handler is not None:
-        return _qr_handler
-    
-    if _qr_handler_initialized:
-        return None  # Already tried and failed
-    
-    with _init_lock:
-        if _qr_handler is not None:
-            return _qr_handler
-        
-        if _qr_handler_initialized:
-            return None
-        
-        try:
-            if QRHandler:
-                _qr_handler = QRHandler()
-                _log_initialization("QRHandler", True, "Initialized on-demand")
-            else:
-                _log_initialization("QRHandler", False, "QRHandler class not available")
-        except Exception as e:
-            _initialization_errors["qr_handler"] = str(e)
-            _log_initialization("QRHandler", False, f"Failed: {str(e)}")
-        finally:
-            _qr_handler_initialized = True
-    
-    return _qr_handler
-
-def get_pinecone_client():
-    """Lazy initialization for Pinecone client."""
-    global _pinecone_client, _pinecone_initialized
-    
-    if _pinecone_client is not None:
-        return _pinecone_client
-    
-    if _pinecone_initialized:
-        return None  # Already tried and failed
-    
-    with _init_lock:
-        if _pinecone_client is not None:
-            return _pinecone_client
-        
-        if _pinecone_initialized:
-            return None
-        
-        try:
-            if not pinecone_api_key:
-                raise Exception("PINECONE_API_KEY environment variable not set")
-            
-            if not Pinecone:
-                raise Exception("Pinecone package not imported")
-            
-            _pinecone_client = Pinecone(api_key=pinecone_api_key)
-            # Non-blocking check - don't call list_indexes() as it might timeout
-            _log_initialization("Pinecone", True, "Client initialized on-demand")
-        except Exception as e:
-            _initialization_errors["pinecone"] = str(e)
-            _log_initialization("Pinecone", False, f"Failed: {str(e)}")
-        finally:
-            _pinecone_initialized = True
-    
-    return _pinecone_client
-
-def get_pinecone_index():
-    """Lazy initialization for Pinecone index."""
-    global _pinecone_index
-    
-    if _pinecone_index is not None:
-        return _pinecone_index
-    
-    client = get_pinecone_client()
-    if client is None:
-        return None
-    
-    with _init_lock:
-        if _pinecone_index is not None:
-            return _pinecone_index
-        
-        try:
-            _pinecone_index = client.Index(pinecone_index_name)
-            _log_initialization("PineconeIndex", True, f"Index '{pinecone_index_name}' initialized")
-        except Exception as e:
-            _initialization_errors["pinecone_index"] = str(e)
-            _log_initialization("PineconeIndex", False, f"Failed to get index: {str(e)}")
-    
-    return _pinecone_index
-
-def get_doc_processor():
-    """Lazy initialization for Document Processor."""
-    global _doc_processor, _doc_processor_initialized
-    
-    if _doc_processor is not None:
-        return _doc_processor
-    
-    if _doc_processor_initialized:
-        return None  # Already tried and failed
-    
-    with _init_lock:
-        if _doc_processor is not None:
-            return _doc_processor
-        
-        if _doc_processor_initialized:
-            return None
-        
-        try:
-            if not DocumentProcessor:
-                raise Exception("DocumentProcessor class not available")
-            
-            # Get Pinecone client but don't fail if it's None
-            pinecone_client = get_pinecone_client()
-            _doc_processor = DocumentProcessor(pinecone_client, pinecone_index_name)
-            _log_initialization("DocumentProcessor", True, "Initialized on-demand")
-        except Exception as e:
-            _initialization_errors["doc_processor"] = str(e)
-            _log_initialization("DocumentProcessor", False, f"Failed: {str(e)}")
-        finally:
-            _doc_processor_initialized = True
-    
-    return _doc_processor
-
-def get_rag_engine():
-    """Lazy initialization for RAG Engine."""
-    global _rag_engine, _rag_engine_initialized
-    
-    if _rag_engine is not None:
-        return _rag_engine
-    
-    if _rag_engine_initialized:
-        return None  # Already tried and failed
-    
-    with _init_lock:
-        if _rag_engine is not None:
-            return _rag_engine
-        
-        if _rag_engine_initialized:
-            return None
-        
-        try:
-            if not RAGEngine:
-                raise Exception("RAGEngine class not available")
-            
-            # Get Pinecone index but don't fail if it's None
-            pinecone_index = get_pinecone_index()
-            _rag_engine = RAGEngine(pinecone_index)
-            _log_initialization("RAGEngine", True, "Initialized on-demand")
-        except Exception as e:
-            _initialization_errors["rag_engine"] = str(e)
-            _log_initialization("RAGEngine", False, f"Failed: {str(e)}")
-        finally:
-            _rag_engine_initialized = True
-    
-    return _rag_engine
-
+# ============= LIFESPAN & STARTUP =============
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Lightweight startup/shutdown for FastAPI.
-    NO BLOCKING OPERATIONS - Heavy initialization is deferred to lazy getters.
-    MongoDB connection verified on first request, not at startup.
-    """
-    logger.info("🚀 Starting ApplianceIQ API (fast initialization)...")
     
     global client, db, mongo_available
     
@@ -338,12 +135,8 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning(f"[Cloudinary] Configuration failed: {str(e)}")
     
-    # Log lazy initialization notice
-    if ml_imports_available:
-        logger.info("[Startup] Heavy services (Pinecone, DocumentProcessor, RAGEngine) will initialize on-demand")
-    else:
-        logger.warning(f"[Startup] ML services not available: {ml_import_error}")
-    
+    # Log initialization status
+    logger.info("[Startup] Connected to ML Service: " + ("Available" if ml_service_url else "Not configured"))
     logger.info("✓ API ready to handle requests (startup completed in <1 second)")
     
     yield
@@ -458,15 +251,8 @@ async def delete_manual(manual_id: str, current_user: dict = Depends(get_db_busi
     except Exception as e:
         logger.warning(f"Failed to delete file {manual.get('file_path')}: {e}")
     
-    # Delete from Pinecone
-    pinecone_index = get_pinecone_index()
-    if pinecone_index:
-        try:
-            # Delete by manual_id metadata
-            pinecone_index.delete(filter={"manual_id": {"$eq": manual_id}})
-            logger.info(f"Deleted manual {manual_id} from Pinecone")
-        except Exception as e:
-            logger.warning(f"Failed to delete from Pinecone: {e}")
+    # Note: Pinecone deletion handled by ML Service
+    # Manual data will be cleaned up by ML Service when manual is accessed
             
     # Delete from MongoDB collections
     try:
@@ -494,52 +280,31 @@ async def upload_manual(
     model_name: str = Form(...),
     version: str = Form(...),
     region: str = Form("global"),
-    user_id: Optional[str] = Form(None),  # Admin can specify user_id
+    user_id: Optional[str] = Form(None),
     current_user: dict = Depends(get_db_business_user)
 ):
-    """Upload a manual file."""
-    # Rate Limiting
-    limiter = RateLimiter(db, limit=3) # 3 uploads per min
-    if not await limiter.check(current_user["id"]):
-        raise HTTPException(status_code=429, detail="Upload rate limit exceeded. Please wait a minute.")
-
-    # Lazy initialize DocumentProcessor
-    doc_processor = get_doc_processor()
-    if not doc_processor:
-        detail = "Ingestion service not available"
-        if "doc_processor" in _initialization_errors:
-            detail += f": {_initialization_errors['doc_processor']}"
-        raise HTTPException(status_code=503, detail=detail)
-    
-    # Lazy initialize QR Handler
-    qr_handler = get_qr_handler()
-    if not qr_handler:
-        raise HTTPException(status_code=503, detail="QR code service not available")
-    
+    """Upload a manual file and process via ML Service."""
     # Validate file type
     original_filename = file.filename
     file_ext = original_filename.split('.')[-1].lower()
     if file_ext not in ['pdf', 'png', 'jpg', 'jpeg']:
-        raise HTTPException(status_code=400, detail="Unsupported file type")
+        raise HTTPException(status_code=400, detail="Unsupported file type. Use PDF or image.")
     
     # Determine target user
     target_user_id = current_user["id"]
     if current_user.get("role") == "admin" and user_id:
-        # Admin can upload for any user
         target_user_id = user_id
     
-    # Create manual record
     manual_id = str(uuid.uuid4())
-    # Save file to Memory/Temp then Cloudinary
-    file_path = None
     cloudinary_file_url = None
     
     try:
+        # Read file content
         content = await file.read()
+        
         # Upload to Cloudinary
-        if os.getenv("CLOUDINARY_URL"):
+        if cloudinary_available and os.getenv("CLOUDINARY_URL"):
             try:
-                # Determine resource type based on extension
                 res_type = "raw" if file_ext == "pdf" else "image"
                 upload_result = cloudinary.uploader.upload(
                     content,
@@ -549,59 +314,56 @@ async def upload_manual(
                     overwrite=True
                 )
                 cloudinary_file_url = upload_result.get("secure_url")
-                logger.info(f"Uploaded {file_ext} to Cloudinary: {cloudinary_file_url}")
+                logger.info(f"Uploaded to Cloudinary: {cloudinary_file_url}")
             except Exception as e:
-                logger.error(f"Cloudinary upload failed: {e}")
-                # Fallback to local if Cloudinary fails (mostly for local dev)
-                pass
-
-        # Always save a local copy for ingestion processing (DocumentProcessor expects a path or stream)
-        # In production, we might want to pass the buffer directly, but keeping file_path for now
-        # to minimize changes to ingestion.py
-        uploads_dir = ROOT_DIR / "uploads"
-        uploads_dir.mkdir(exist_ok=True)
-        file_path = str(uploads_dir / f"{manual_id}.{file_ext}")
-        with open(file_path, "wb") as f:
-            f.write(content)
-            
-    except Exception as e:
-        logger.error(f"Failed to handle file storage/upload: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
-    
-    # Create manual in DB
-    manual = Manual(
-        id=manual_id,
-        user_id=target_user_id,
-        model_name=model_name,
-        version=version,
-        region=region,
-        file_path=file_path,
-        cloudinary_url=cloudinary_file_url, # Add this to your model if not present!
-        file_type=file_ext,
-        status="processing"
-    )
-    
-    manual_dict = manual.model_dump()
-    manual_dict['filename'] = original_filename
-    manual_dict['created_at'] = manual_dict['created_at'].isoformat()
-    manual_dict['updated_at'] = manual_dict['updated_at'].isoformat()
-    
-    await db.manuals.insert_one(manual_dict)
-    
-    # Process document asynchronously
-    try:
-        # Pass either the local path or the content
-        chunks_count = await doc_processor.process_manual(manual_id, file_path, file_ext, db)
+                logger.warning(f"Cloudinary upload failed: {e}")
         
-        # Generate QR code (now supports Cloudinary)
+        # Create manual record in DB
+        manual = Manual(
+            id=manual_id,
+            user_id=target_user_id,
+            model_name=model_name,
+            version=version,
+            region=region,
+            cloudinary_url=cloudinary_file_url,
+            file_type=file_ext,
+            status="processing"
+        )
+        
+        manual_dict = manual.model_dump()
+        manual_dict['filename'] = original_filename
+        manual_dict['created_at'] = manual_dict['created_at'].isoformat()
+        manual_dict['updated_at'] = manual_dict['updated_at'].isoformat()
+        await db.manuals.insert_one(manual_dict)
+        
+        # Call ML Service to process file
+        try:
+            ml_response = await ml_client.process_manual(
+                manual_id=manual_id,
+                manual_name=model_name,
+                version=version,
+                file_url=cloudinary_file_url,
+                file_type=file_ext
+            )
+            logger.info(f"ML Service processing initiated for manual {manual_id}")
+        except MLServiceError as e:
+            logger.error(f"ML Service error: {str(e)}")
+            await db.manuals.update_one(
+                {"id": manual_id},
+                {"$set": {"status": "failed", "error": str(e)}}
+            )
+            raise HTTPException(status_code=503, detail=f"ML Service error: {str(e)}")
+        
+        # Generate QR code
+        qr_handler = QRHandler()
         qr_data = qr_handler.generate_qr_code(manual_id, version)
         
-        # Save QR code
+        # Save QR code to DB
         qr_code = QRCode(
             id=qr_data["qr_id"],
             manual_id=manual_id,
-            short_url=qr_data["short_url"],
-            cloudinary_url=qr_data.get("cloudinary_url"), # Add to model if needed
+            qr_url=qr_data["qr_url"],
+            cloudinary_url=qr_data.get("cloudinary_url"),
             payload=qr_data["payload"],
             signature=qr_data["payload"]["sig"]
         )
@@ -610,35 +372,28 @@ async def upload_manual(
         qr_dict['created_at'] = qr_dict['created_at'].isoformat()
         await db.qr_codes.insert_one(qr_dict)
         
-        # Update manual with QR code ID and final status
+        # Update manual with QR code
         await db.manuals.update_one(
             {"id": manual_id},
-            {"$set": {
-                "qr_code_id": qr_data["qr_id"],
-                "status": "completed",
-                "chunks_count": chunks_count
-            }}
+            {"$set": {"qr_code_id": qr_data["qr_id"]}}
         )
         
         return {
             "manual_id": manual_id,
-            "status": "completed",
-            "chunks_count": chunks_count,
+            "status": "processing",
             "file_url": cloudinary_file_url,
             "qr_code": {
                 "id": qr_data["qr_id"],
-                "url": qr_data["short_url"],
+                "url": qr_data["qr_url"],
                 "image": qr_data["cloudinary_url"] or qr_data["image_base64"]
             }
         }
+    
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error processing manual: {e}")
-        # Manual status is updated to "failed" inside doc_processor.process_manual
-        return {
-            "manual_id": manual_id,
-            "status": "failed",
-            "error": str(e)
-        }
+        logger.error(f"Upload error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 @api_router.get("/manuals")
 async def get_manuals(current_user: dict = Depends(get_db_business_user)):
@@ -673,7 +428,7 @@ async def get_manual(manual_id: str, current_user: dict = Depends(get_db_busines
 @api_router.get("/manuals/{manual_id}/qr")
 async def get_manual_qr(manual_id: str, current_user: dict = Depends(get_db_business_user)):
     """Get QR code image for a manual."""
-    qr_handler = get_qr_handler()
+    qr_handler = QRHandler()
     if not qr_handler:
         raise HTTPException(status_code=503, detail="QR code service not available")
     
@@ -695,14 +450,12 @@ async def get_manual_qr(manual_id: str, current_user: dict = Depends(get_db_busi
     if not qr_code:
         raise HTTPException(status_code=404, detail="QR code record not found")
     
-    # Regenerate QR image using the EXISTING qr_id (not a new one)
-    stored_qr_id = manual["qr_code_id"]
-    qr_image = qr_handler.regenerate_qr_image(stored_qr_id)
-    short_url = f"{qr_handler.app_base_url}/device/{stored_qr_id}"
+    # Regenerate QR image for the manual
+    qr_image = qr_handler.regenerate_qr_image(manual_id)
     
     return {
-        "qr_id": stored_qr_id,
-        "url": short_url,
+        "qr_id": manual["qr_code_id"],
+        "url": qr_code.get("qr_url"),
         "image": qr_image
     }
 
@@ -715,10 +468,6 @@ async def get_users(current_user: dict = Depends(get_db_admin_user)):
 @api_router.post("/admin/users/{user_id}/assign-qr")
 async def assign_qr_to_user(user_id: str, manual_id: str, current_user: dict = Depends(get_db_admin_user)):
     """Assign QR code to a user's manual (admin only)."""
-    qr_handler = get_qr_handler()
-    if not qr_handler:
-        raise HTTPException(status_code=503, detail="QR code service not available")
-    
     # Verify manual exists
     manual = await db.manuals.find_one({"id": manual_id}, {"_id": 0})
     if not manual:
@@ -726,12 +475,13 @@ async def assign_qr_to_user(user_id: str, manual_id: str, current_user: dict = D
     
     # Generate QR code if not exists
     if not manual.get("qr_code_id"):
+        qr_handler = QRHandler()
         qr_data = qr_handler.generate_qr_code(manual_id, manual["version"])
         
         qr_code = QRCode(
             id=qr_data["qr_id"],
             manual_id=manual_id,
-            short_url=qr_data["short_url"],
+            qr_url=qr_data["qr_url"],
             payload=qr_data["payload"],
             signature=qr_data["payload"]["sig"]
         )
@@ -748,67 +498,53 @@ async def assign_qr_to_user(user_id: str, manual_id: str, current_user: dict = D
     
     return {"message": "QR code assigned successfully"}
 
-@api_router.post("/analyze-image")
-async def analyze_image(
-    file: UploadFile = File(...),
-    current_user: dict = Depends(get_db_business_user)  # Or allow any auth user
-):
-    """Analyze an uploaded image to identify appliance issues."""
-    rag_engine = get_rag_engine()
-    if not rag_engine:
-        detail = "RAG service not available"
-        if "rag_engine" in _initialization_errors:
-            detail += f": {_initialization_errors['rag_engine']}"
-        raise HTTPException(status_code=503, detail=detail)
-    
-    try:
-        contents = await file.read()
-        # Call the new method in RAGEngine (we need to update RAGEngine first or ensure it exists)
-        # Note: We added analyze_image to RAGEngine in the previous step
-        analysis_result = await rag_engine.analyze_image(contents)
-        
-        return {"analysis": analysis_result}
-    except Exception as e:
-        logger.error(f"Image analysis failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Image analysis failed: {str(e)}")
-
 @api_router.post("/chat")
 async def chat(request: ChatRequest, current_user: Optional[dict] = Depends(get_optional_user)):
-    """Chat endpoint with streaming. Works for both authenticated users and QR-based (unauthenticated) access."""
-    rag_engine = get_rag_engine()
-    if not rag_engine:
-        detail = "RAG service not available"
-        if "rag_engine" in _initialization_errors:
-            detail += f": {_initialization_errors['rag_engine']}"
-        raise HTTPException(status_code=503, detail=detail)
-    
-    # Access Control: Ensure user has rights to this manual
+    """Chat endpoint - Query manual using ML Service."""
+    # Access Control
     if not current_user:
-        if not request.qr_id:
-            raise HTTPException(status_code=403, detail="Security Required: Please scan a valid QR code to start chatting.")
-        
-        # Verify the QR ID matches the manual ID
+        # QR-based access (unauthenticated)
         qr_record = await db.qr_codes.find_one({"id": request.qr_id, "manual_id": request.manual_id})
         if not qr_record:
-            raise HTTPException(status_code=403, detail="Invalid Session: This QR code is not valid for this device.")
+            raise HTTPException(status_code=403, detail="Invalid QR code or manual ID")
     else:
-        # Authenticated user - check if they own the manual or are admin
+        # Authenticated user - verify ownership
         if current_user.get("role") != "admin":
             manual = await db.manuals.find_one({"id": request.manual_id, "user_id": current_user["id"]})
             if not manual:
-                raise HTTPException(status_code=403, detail="Access Denied: You do not have permission to access this manual.")
-
-    # Rate Limiting (only for authenticated users)
-    if current_user:
-        limiter = RateLimiter(db, limit=10)  # 10 queries per min
-        if not await limiter.check(current_user["id"]):
-            raise HTTPException(status_code=429, detail="Too many requests. Please slow down.")
-
-    from fastapi.responses import StreamingResponse
-    return StreamingResponse(
-        rag_engine.answer_question_stream(request.manual_id, request.question, db=db),
-        media_type="text/event-stream"
-    )
+                raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Call ML Service
+    try:
+        ml_response = await ml_client.query_manual(
+            manual_id=request.manual_id,
+            question=request.question,
+            top_k=getattr(request, 'top_k', 5)
+        )
+        
+        # Log query
+        query = Query(
+            id=str(uuid.uuid4()),
+            manual_id=request.manual_id,
+            question=request.question,
+            user_id=current_user["id"] if current_user else None,
+            response=ml_response.get("answer", ""),
+            confidence=ml_response.get("confidence", 0.0)
+        )
+        
+        query_dict = query.model_dump()
+        query_dict['created_at'] = query_dict['created_at'].isoformat()
+        await db.queries.insert_one(query_dict)
+        
+        return {
+            "answer": ml_response.get("answer"),
+            "sources": ml_response.get("sources", []),
+            "confidence": ml_response.get("confidence", 0.0)
+        }
+    
+    except MLServiceError as e:
+        logger.error(f"ML Service error: {str(e)}")
+        raise HTTPException(status_code=503, detail=f"Service error: {str(e)}")
 
 @api_router.post("/qr/assign")
 async def assign_qr_to_manual(
@@ -817,10 +553,6 @@ async def assign_qr_to_manual(
     admin: dict = Depends(get_db_admin_user)
 ):
     """Admin endpoint to assign/reassign a QR code to a manual."""
-    qr_handler = get_qr_handler()
-    if not qr_handler:
-        raise HTTPException(status_code=503, detail="QR code service not available")
-    
     # Verify QR code exists
     qr_code = await db.qr_codes.find_one({"id": qr_id})
     if not qr_code:
@@ -849,16 +581,13 @@ async def assign_qr_to_manual(
 @api_router.get("/qr-details/{qr_id}")
 async def get_qr_details(qr_id: str):
     """Get manual details for a QR code."""
-    qr_handler = get_qr_handler()
-    if not qr_handler:
-        raise HTTPException(status_code=503, detail="QR code service not available")
-    
     qr_code = await db.qr_codes.find_one({"id": qr_id}, {"_id": 0})
     
     if not qr_code:
         raise HTTPException(status_code=404, detail="QR code not found")
     
     # Verify signature
+    qr_handler = QRHandler()
     payload = qr_code["payload"].copy()
     signature = payload.pop("sig", "")
     
@@ -959,18 +688,14 @@ async def get_feedback(current_user: dict = Depends(get_db_business_user)):
 @api_router.get("/health")
 async def health_check():
     """Health check endpoint."""
-    # Lazy check - services are initialized only if accessed
     return {
         "status": "healthy",
-        "startup_time": "< 5 seconds",
         "services": {
             "mongodb": "connected" if mongo_available else "not configured",
-            "pinecone": "initialized" if _pinecone_initialized and _pinecone_client else "not yet initialized",
-            "rag": "initialized" if _rag_engine_initialized and _rag_engine else "not yet initialized",
-            "ingestion": "initialized" if _doc_processor_initialized and _doc_processor else "not yet initialized",
-            "qr_handler": "initialized" if _qr_handler_initialized and _qr_handler else "not yet initialized"
-        },
-        "initialization_errors": _initialization_errors if _initialization_errors else None
+            "ml_service": "configured" if ml_service_url else "not configured",
+            "qr_handler": "available",
+            "cloudinary": "available" if cloudinary_available else "not configured"
+        }
     }
 
 # Include router

@@ -85,10 +85,11 @@ class QRHandler:
     def generate_qr_code(self, manual_id: str, version: str) -> tuple:
         """Generate QR code image and upload to Cloudinary if available."""
         payload, qr_id = self.create_qr_payload(manual_id, version)
-        short_url = f"{self.app_base_url}/device/{qr_id}"
+        # QR now points directly to frontend chat page with manual_id
+        qr_url = f"{self.app_base_url}/chat/{manual_id}"
         
         # 1. Always generate base64 for local fallback/immediate display
-        qr_bytes = self._make_qr_image_bytes(short_url)
+        qr_bytes = self._make_qr_image_bytes(qr_url)
         image_base64 = f"data:image/png;base64,{base64.b64encode(qr_bytes.getvalue()).decode()}"
         
         cloudinary_url = None
@@ -108,13 +109,14 @@ class QRHandler:
         
         return {
             "qr_id": qr_id,
-            "short_url": short_url,
+            "qr_url": qr_url,
+            "manual_id": manual_id,
             "payload": payload,
             "image_base64": image_base64,
             "cloudinary_url": cloudinary_url
         }
 
-    def regenerate_qr_image(self, qr_id: str) -> str:
-        """Regenerate QR code image for an EXISTING qr_id (no new UUID)."""
-        short_url = f"{self.app_base_url}/device/{qr_id}"
-        return self._make_qr_image_base64(short_url)
+    def regenerate_qr_image(self, manual_id: str) -> str:
+        """Regenerate QR code image for a manual."""
+        qr_url = f"{self.app_base_url}/chat/{manual_id}"
+        return self._make_qr_image_base64(qr_url)

@@ -62,7 +62,7 @@ class QRCode(BaseModel):
     
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     manual_id: str
-    short_url: str
+    qr_url: str
     cloudinary_url: Optional[str] = None
     payload: Dict[str, Any]
     signature: str
