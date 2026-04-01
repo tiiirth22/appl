@@ -17,6 +17,7 @@ from errors import MLServiceException, ErrorType, ServiceUnavailableError
 from logger_config import setup_logging, get_processing_logger
 from processor import AsyncDocumentProcessor
 from rag_engine import RAGQueryEngine
+from model_manager import model_manager
 
 # Initialize logging
 setup_logging(log_level=LOG_LEVEL)
@@ -64,7 +65,9 @@ async def lifespan(app: FastAPI):
     """Startup and shutdown events"""
     logger.info(f"Starting {SERVICE_NAME} v{SERVICE_VERSION}")
     
-    # Startup: don't initialize heavy components yet (lazy loading)
+    # Startup: Initialize model in background immediately
+    model_manager.initialize()
+    
     yield
     
     # Shutdown
@@ -165,12 +168,13 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
+    """Health check endpoint - returns immediately"""
     import time
     return {
         "status": "healthy",
         "service": SERVICE_NAME,
         "version": SERVICE_VERSION,
+        "model_status": model_manager.status,
         "timestamp": time.time(),
     }
 
@@ -185,11 +189,11 @@ async def health_check_detailed(request_id: str = Depends(get_request_id)):
         "components": {},
     }
     
-    # Check embedding model availability
+    # Check embedding model availability (doesn't wait for load)
     try:
-        processor = AsyncDocumentProcessor(request_id=request_id)
-        model = await processor._get_embedding_model()
-        health_status["components"]["embedding_model"] = "ready"
+        health_status["components"]["embedding_model"] = model_manager.status
+        if model_manager.status == "not_initialized":
+             health_status["status"] = "degraded"
     except Exception as e:
         health_status["components"]["embedding_model"] = f"error: {str(e)}"
         health_status["status"] = "degraded"
