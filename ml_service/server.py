@@ -5,7 +5,7 @@ from typing import Optional
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Depends, Request, BackgroundTasks
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
@@ -79,8 +79,8 @@ app = FastAPI(
     title=SERVICE_NAME,
     version=SERVICE_VERSION,
     lifespan=lifespan,
-    docs_url="/docs" if DEBUG else None,
-    redoc_url="/redoc" if DEBUG else None,
+    docs_url="/docs",
+    redoc_url="/redoc",
 )
 
 # CORS middleware
@@ -162,6 +162,25 @@ async def general_exception_handler(request: Request, exc: Exception):
             "retryable": True,
         },
     )
+
+
+# ==================== PUBLIC ROUTES ====================
+
+@app.get("/", include_in_schema=False)
+async def root_redirect():
+    """Redirect root to documentation or health"""
+    return RedirectResponse(url="/docs" if DEBUG else "/health")
+
+
+@app.get("/api/welcome")
+async def welcome():
+    """ML Service welcome message"""
+    return {
+        "message": "Welcome to ApplianceIQ ML Service",
+        "status": "online",
+        "docs": "/docs" if DEBUG else "unavailable in production",
+        "health": "/health"
+    }
 
 
 # ==================== HEALTH CHECK ====================
