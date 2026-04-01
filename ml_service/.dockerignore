@@ -1,0 +1,24 @@
+# Ignore Python files
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+.env
+.env.*
+
+# Ignore IDE files
+.vscode/
+.idea/
+
+# Ignore logs
+logs/
+*.log
+
+# Ignore data/uploads if needed (they should be mounted or using cloud storage)
+uploads/
+
+# Ignore system files
+.DS_Store
+Thumbs.db
