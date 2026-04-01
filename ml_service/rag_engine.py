@@ -29,6 +29,7 @@ from config import (
     PINECONE_API_KEY, PINECONE_INDEX_NAME, PINECONE_NAMESPACE,
     QUERY_TIMEOUT, EMBEDDING_TIMEOUT, PINECONE_TIMEOUT,
 )
+from model_manager import model_manager
 from errors import (
     EmbeddingError, PineconeError, RAGError, TimeoutError as TimeoutErrorException,
     ServiceUnavailableError, MLServiceException,
@@ -121,22 +122,9 @@ class RAGQueryEngine:
             raise RAGError(str(e), retryable=True)
     
     async def _get_embedding_model(self):
-        """Lazy load embedding model"""
-        if self._embedding_model is not None:
-            return self._embedding_model
-        
-        if not SENTENCE_TRANSFORMER_AVAILABLE:
-            raise ServiceUnavailableError(
-                "sentence-transformers",
-                "sentence-transformers not installed",
-            )
-        
+        """Lazy load embedding model via ModelManager singleton"""
         try:
-            self.logger.info(f"Loading embedding model: {EMBEDDING_MODEL}")
-            self._embedding_model = await asyncio.to_thread(
-                SentenceTransformer, EMBEDDING_MODEL
-            )
-            return self._embedding_model
+            return await model_manager.get_model()
         except Exception as e:
             raise EmbeddingError(
                 f"Failed to load embedding model: {str(e)}",
