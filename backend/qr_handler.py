@@ -3,12 +3,16 @@ import json
 import hmac
 import hashlib
 import qrcode
+import logging
 from io import BytesIO
 import base64
 from datetime import datetime
 import uuid
 import cloudinary
 import cloudinary.uploader
+
+# Initialize logger
+logger = logging.getLogger(__name__)
 
 class QRHandler:
     """Handles QR code generation and verification."""
@@ -105,7 +109,7 @@ class QRHandler:
                 )
                 cloudinary_url = upload_result.get("secure_url")
             except Exception as e:
-                print(f"Cloudinary upload failed: {e}")
+                logger.error(f"Cloudinary upload failed: {e}", exc_info=True)
         
         return {
             "qr_id": qr_id,

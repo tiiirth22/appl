@@ -4,8 +4,12 @@ from datetime import datetime, timezone, timedelta
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import bcrypt
+import logging
 from typing import Optional
 from models import UserSignUp, UserLogin
+
+# Initialize logger
+logger = logging.getLogger(__name__)
 
 async def hash_password(password: str) -> str:
     """Hash a password using bcrypt."""
