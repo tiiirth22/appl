@@ -349,7 +349,7 @@ class AsyncDocumentProcessor:
             # Batch upsert with timeout
             indexed_count = await asyncio.wait_for(
                 asyncio.to_thread(
-                    lambda: self._batch_upsert(index, vectors_to_upsert)
+                    lambda: self._batch_upsert(index, vectors_to_upsert, namespace=PINECONE_NAMESPACE)
                 ),
                 timeout=timeout,
             )
@@ -360,9 +360,9 @@ class AsyncDocumentProcessor:
         except Exception as e:
             raise PineconeError(str(e), retryable=True)
     
-    def _batch_upsert(self, index, vectors: List[Tuple], batch_size: int = 100) -> int:
+    def _batch_upsert(self, index, vectors: List[Tuple], namespace: str = "default", batch_size: int = 100) -> int:
         """Batch upsert vectors to Pinecone"""
         for i in range(0, len(vectors), batch_size):
             batch = vectors[i:i + batch_size]
-            index.upsert(vectors=batch)
+            index.upsert(vectors=batch, namespace=namespace)
         return len(vectors)
