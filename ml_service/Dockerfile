@@ -22,6 +22,9 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 # Install CPU-specific Torch first to prevent fat CUDA version
 RUN pip install --no-cache-dir torch==2.2.0 --index-url https://download.pytorch.org/whl/cpu
 
+# Install numpy explicitly (CPU torch may not bundle it)
+RUN pip install --no-cache-dir numpy>=1.24.0
+
 # Install other requirements
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
