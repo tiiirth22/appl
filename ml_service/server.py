@@ -350,6 +350,49 @@ async def query_manual(
 
 # ==================== UTILITY ENDPOINTS ====================
 
+@app.get("/debug/pinecone")
+async def debug_pinecone(request_id: str = Depends(get_request_id)):
+    """Comprehensive Pinecone diagnostic endpoint"""
+    from config import PINECONE_API_KEY, PINECONE_INDEX_NAME
+    import time
+    
+    debug_info = {
+        "timestamp": time.time(),
+        "config": {
+            "index_name": PINECONE_INDEX_NAME,
+            "api_key_present": bool(PINECONE_API_KEY),
+        },
+        "connection": "failed",
+        "details": {}
+    }
+    
+    try:
+        # 1. Initialize Processor to get index
+        processor = AsyncDocumentProcessor(request_id=request_id)
+        index = await processor._get_pinecone_index()
+        debug_info["connection"] = "connected"
+        
+        # 2. Get Index Description
+        index_desc = await asyncio.to_thread(processor._pinecone_client.describe_index, PINECONE_INDEX_NAME)
+        debug_info["details"]["dimension"] = index_desc.dimension
+        debug_info["details"]["metric"] = index_desc.metric
+        debug_info["details"]["status"] = index_desc.status['ready']
+        
+        # 3. Get Stats
+        stats = await asyncio.to_thread(index.describe_index_stats)
+        debug_info["details"]["total_vector_count"] = stats.total_vector_count
+        debug_info["details"]["namespaces"] = stats.namespaces
+        
+        # 4. Success log
+        debug_info["details"]["status"] = "ok"
+            
+    except Exception as e:
+        debug_info["error"] = str(e)
+        logger.error(f"Pinecone debug failed: {str(e)}", exc_info=True)
+        
+    return debug_info
+
+
 @app.get("/status")
 async def status():
     """Service status endpoint"""
