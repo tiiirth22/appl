@@ -104,38 +104,43 @@ async def signup_user(db, signup_data: UserSignUp):
 
 async def login_user(db, login_data: UserLogin):
     """Authenticate user and create session."""
-    
-    # Find user
-    user = await db.users.find_one({"email": login_data.email}, {"_id": 0})
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    
-    # Verify password
-    if not await verify_password(login_data.password, user["password_hash"]):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    
-    # Create session
-    session_token = os.urandom(32).hex()
-    expires_at = datetime.now(timezone.utc) + timedelta(days=7)
-    
-    session_data = {
-        "user_id": user["id"],
-        "session_token": session_token,
-        "expires_at": expires_at.isoformat(),
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }
-    
-    await db.user_sessions.insert_one(session_data)
-    
-    return {
-        "session_token": session_token,
-        "user": {
-            "id": user["id"],
-            "email": user["email"],
-            "name": user["name"],
-            "role": user["role"]
+    try:
+        # Find user
+        user = await db.users.find_one({"email": login_data.email}, {"_id": 0})
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        
+        # Verify password
+        if not await verify_password(login_data.password, user["password_hash"]):
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        
+        # Create session
+        session_token = os.urandom(32).hex()
+        expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+        
+        session_data = {
+            "user_id": user["id"],
+            "session_token": session_token,
+            "expires_at": expires_at.isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
-    }
+        
+        await db.user_sessions.insert_one(session_data)
+        
+        return {
+            "session_token": session_token,
+            "user": {
+                "id": user["id"],
+                "email": user["email"],
+                "name": user["name"],
+                "role": user["role"]
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[LOGIN ERROR] {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Database error during login: {str(e)}")
 
 async def require_admin(db, session_token: Optional[str] = Cookie(None), authorization: Optional[str] = Header(None)):
     """Require admin role."""
