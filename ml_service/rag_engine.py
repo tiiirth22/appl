@@ -26,7 +26,7 @@ except ImportError:
 
 from config import (
     EMBEDDING_MODEL, LLM_MODEL, GROQ_API_KEY,
-    PINECONE_API_KEY, PINECONE_INDEX_NAME, PINECONE_NAMESPACE,
+    PINECONE_API_KEY, PINECONE_INDEX_NAME,
     QUERY_TIMEOUT, EMBEDDING_TIMEOUT, PINECONE_TIMEOUT,
 )
 from model_manager import model_manager
@@ -198,42 +198,40 @@ class RAGQueryEngine:
             index = await self._get_pinecone_index()
             
             # Log dimensions for troubleshooting mismatches
-            self.logger.info(f"Querying Pinecone with vector dimension: {len(embedding)} into namespace: '{PINECONE_NAMESPACE}'")
+            self.logger.info(f"Querying Pinecone | Dimension: {len(embedding)} | Manual ID: {manual_id}")
             
             # Check dimension of index
             index_desc = await asyncio.to_thread(self._pinecone_client.describe_index, PINECONE_INDEX_NAME)
             if len(embedding) != index_desc.dimension:
-                err_msg = f"Embedding dimension mismatch: model is {len(embedding)}, but index is {index_desc.dimension}. Re-index may be required."
+                err_msg = f"Embedding dimension mismatch: model is {len(embedding)}, but index is {index_desc.dimension}."
                 self.logger.critical(err_msg)
                 raise PineconeError(err_msg, retryable=False)
 
             # Query Pinecone with manual_id filter
+            start_query = time.time()
             results = await asyncio.wait_for(
                 asyncio.to_thread(
                     lambda: index.query(
                         vector=embedding,
                         top_k=top_k,
                         include_metadata=True,
-                        namespace=PINECONE_NAMESPACE,
                         filter={"manual_id": {"$eq": manual_id}},
                     )
                 ),
                 timeout=timeout,
             )
-            
-            # Check if namespace exists in stats for diagnostic logging
-            stats = await asyncio.to_thread(index.describe_index_stats)
-            if PINECONE_NAMESPACE not in stats.get("namespaces", {}) and PINECONE_NAMESPACE != "":
-                self.logger.error(f"Namespace '{PINECONE_NAMESPACE}' not found in index stats. Results will likely be empty.")
-            elif PINECONE_NAMESPACE == "" and "__default__" not in stats.get("namespaces", {}):
-                  # In the new Pinecone SDK, the empty namespace might not show up if it's empty
-                  pass
+            query_duration = (time.time() - start_query) * 1000
             
             # Extract sources from results
             sources = []
             confidence_scores = []
             
-            for match in results.get("matches", []):
+            matches = results.get("matches", [])
+            if not matches:
+                self.logger.warning(f"Retrieval Miss: 0 matches found for manual_id={manual_id} (took {query_duration:.2f}ms)")
+                return [], 0.0
+            
+            for match in matches:
                 source = {
                     "text": match.get("metadata", {}).get("text", ""),
                     "chunk_index": match.get("metadata", {}).get("chunk_index", 0),
@@ -245,7 +243,7 @@ class RAGQueryEngine:
             # Calculate average confidence
             avg_confidence = sum(confidence_scores) / len(confidence_scores) if confidence_scores else 0.0
             
-            self.logger.info(f"Retrieved {len(sources)} chunks with avg confidence {avg_confidence:.2f}")
+            self.logger.info(f"Retrieval Success: Found {len(sources)} chunks | Avg score: {avg_confidence:.4f} | Took: {query_duration:.2f}ms")
             
             return sources, avg_confidence
             
