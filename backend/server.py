@@ -151,15 +151,9 @@ async def lifespan(app: FastAPI):
 # Create the main app
 app = FastAPI(title="ApplianceIQ API", version="1.0.0", lifespan=lifespan)
 
-# Add a simple request logging middleware
-@app.middleware("http")
-async def log_requests(request, call_next):
-    origin = request.headers.get("origin")
-    method = request.method
-    path = request.url.path
-    logger.info(f"Incoming request: {method} {path} | Origin: {origin}")
-    response = await call_next(request)
-    return response
+# Include router
+# api_router prefix is set as "/api" earlier
+# Routes are defined here...
 
 # Root route - Redirects to /docs and provides a quick API welcome
 @app.get("/", include_in_schema=False)
@@ -745,17 +739,18 @@ async def global_exception_handler(request, exc):
     logger.error(f"Global error caught: {str(exc)}", exc_info=True)
     
     # Manually add CORS headers to ensure the browser doesn't block the error response
-    origin = request.headers.get("origin", "*")
+    origin = request.headers.get("origin")
     
-    # Only allow known origins if possible, but for error responses '*' or echoing origin is safer
     response = Response(
         content=f"Internal Server Error: {str(exc)}",
         status_code=500
     )
-    response.headers["Access-Control-Allow-Origin"] = origin
-    response.headers["Access-Control-Allow-Credentials"] = "true"
-    response.headers["Access-Control-Allow-Methods"] = "*"
-    response.headers["Access-Control-Allow-Headers"] = "*"
+    
+    # If we have an origin, echo it back (this is generally safe for error responses)
+    # Browsers require specific origin if credentials are included
+    if origin:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
     
     return response
 
