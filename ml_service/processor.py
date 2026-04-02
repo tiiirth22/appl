@@ -306,14 +306,10 @@ class AsyncDocumentProcessor:
         try:
             if self._pinecone_client is None:
                 self.logger.info("Initializing Pinecone client")
-                self._pinecone_client = await asyncio.to_thread(
-                    Pinecone, api_key=PINECONE_API_KEY
-                )
+                self._pinecone_client = Pinecone(api_key=PINECONE_API_KEY)
             
             self.logger.info(f"Connecting to Pinecone index: {PINECONE_INDEX_NAME}")
-            self._pinecone_index = await asyncio.to_thread(
-                self._pinecone_client.Index, PINECONE_INDEX_NAME
-            )
+            self._pinecone_index = self._pinecone_client.Index(PINECONE_INDEX_NAME)
             return self._pinecone_index
         except Exception as e:
             raise PineconeError(
