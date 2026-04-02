@@ -113,18 +113,25 @@ async def lifespan(app: FastAPI):
     
     # Initialize MongoDB client WITHOUT verification (connection lazy on first use)
     if mongo_url:
+        if "localhost" in mongo_url or "127.0.0.1" in mongo_url:
+            # If we are on Railway (PORT is set), we should NOT be using localhost
+            if os.environ.get("PORT"):
+                logger.error("🛑 CRITICAL: MONGO_URL is set to localhost in production!")
+                logger.error("Please add MONGO_URL to your Railway Variables dashboard.")
+                # We don't necessarily crash here to allow some debugging, 
+                # but we've logged it prominently now.
         try:
             client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=5000)
             db = client[db_name]
             mongo_available = True
-            logger.info("[MongoDB] Client initialized (connection verified on first request)")
+            logger.info(f"[MongoDB] Client initialized (Target: {mongo_url.split('@')[-1] if '@' in mongo_url else mongo_url})")
         except Exception as e:
             # If client creation itself fails, log but don't block startup
             mongo_available = False
             logger.warning(f"[MongoDB] Client initialization failed: {str(e)}")
     else:
         mongo_available = False
-        logger.warning("[MongoDB] MONGO_URL not configured")
+        logger.error("🛑 CRITICAL: MONGO_URL is NOT configured in environment!")
     
     # Initialize Cloudinary (lightweight, non-blocking)
     cloudinary_url = os.getenv("CLOUDINARY_URL")

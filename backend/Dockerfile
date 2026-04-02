@@ -27,12 +27,11 @@ ENV PYTHONUNBUFFERED=1
 # Copy ONLY installed packages (as prefix)
 COPY --from=builder /install /usr/local
 
-# Copy ONLY necessary backend source code to prevent "blind copying" of entire project
-COPY *.py requirements.txt /app/
+# Copy necessary backend files
+COPY . /app/
 
-# Remove ALL unnecessary files from the build context just in case
-RUN find . -maxdepth 1 -not -name "*.py" -not -name "requirements.txt" -not -name "." -exec rm -rf {} + && \
-    find . -type d -name "__pycache__" -exec rm -rf {} + && \
+# Clean up only build-time artifacts and caches, keeping config files
+RUN find . -type d -name "__pycache__" -exec rm -rf {} + && \
     find . -type f -name "*.pyc" -delete && \
     rm -rf tests/ .pytest_cache/
 
