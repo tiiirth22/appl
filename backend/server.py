@@ -359,8 +359,29 @@ async def upload_manual(
         manual_dict['updated_at'] = manual_dict['updated_at'].isoformat()
         await db.manuals.insert_one(manual_dict)
         
+        # Validate that we have a valid file URL before calling ML Service
+        if not cloudinary_file_url:
+            logger.error(f"[Upload] ✗ Cloudinary file URL is None for manual {manual_id} — ML Service cannot process without a downloadable URL")
+            await db.manuals.update_one(
+                {"id": manual_id},
+                {"$set": {"status": "failed", "error": "File upload to Cloudinary failed — no public URL"}}
+            )
+            raise HTTPException(
+                status_code=500,
+                detail="File upload failed: Could not generate a public URL for the manual. Check Cloudinary configuration."
+            )
+        
         # Call ML Service to process file
         try:
+            ml_payload = {
+                "manual_id": manual_id,
+                "manual_name": model_name,
+                "version": version,
+                "file_url": cloudinary_file_url,
+                "file_type": file_ext
+            }
+            logger.info(f"[Upload] Sending to ML Service: {ml_payload}")
+            
             ml_response = await ml_client.process_manual(
                 manual_id=manual_id,
                 manual_name=model_name,
@@ -368,9 +389,9 @@ async def upload_manual(
                 file_url=cloudinary_file_url,
                 file_type=file_ext
             )
-            logger.info(f"ML Service processing initiated for manual {manual_id}")
+            logger.info(f"[Upload] ✓ ML Service processing initiated for manual {manual_id}")
         except MLServiceError as e:
-            logger.error(f"ML Service error: {str(e)}")
+            logger.error(f"[Upload] ✗ ML Service error: {str(e)}")
             await db.manuals.update_one(
                 {"id": manual_id},
                 {"$set": {"status": "failed", "error": str(e)}}
@@ -732,6 +753,70 @@ async def get_feedback(current_user: dict = Depends(get_db_business_user)):
         ).sort("created_at", -1).to_list(100)
     
     return {"feedback": feedback_list, "count": len(feedback_list)}
+
+# ============= DEBUG & DIAGNOSTIC ENDPOINTS =============
+@api_router.get("/debug/qr-test/{manual_id}")
+async def debug_qr_test(manual_id: str):
+    """Debug endpoint: Test QR code generation independently.
+    
+    Tests the full QR pipeline (image generation + Cloudinary upload)
+    without requiring authentication or a real manual record.
+    """
+    qr_handler = QRHandler()
+    result = qr_handler.generate_qr_code_safe(manual_id, "debug-v1")
+    return {
+        "test": "qr_generation",
+        "manual_id": manual_id,
+        "result": result,
+    }
+
+
+@api_router.get("/debug/ml-test")
+async def debug_ml_test():
+    """Debug endpoint: Test ML service connectivity with a hardcoded valid URL.
+    
+    Bypasses QR/Cloudinary entirely to verify the ML + Pinecone pipeline
+    works independently. Uses a known-good test URL.
+    """
+    # Hardcoded test: verify ML service is reachable
+    test_results = {
+        "ml_service_url": ml_service_url,
+        "ml_service_reachable": False,
+        "health_response": None,
+        "query_test": None,
+    }
+    
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            # 1. Check ML service health
+            health_resp = await client.get(f"{ml_service_url}/health")
+            test_results["ml_service_reachable"] = True
+            test_results["health_response"] = health_resp.json()
+            
+            # 2. Try a test query against Pinecone (use a dummy manual_id)
+            try:
+                query_resp = await client.post(
+                    f"{ml_service_url}/query",
+                    json={
+                        "manual_id": "test-debug-manual",
+                        "question": "What is this appliance?",
+                        "top_k": 1
+                    },
+                    timeout=30
+                )
+                test_results["query_test"] = {
+                    "status_code": query_resp.status_code,
+                    "response": query_resp.json() if query_resp.status_code < 500 else query_resp.text[:500]
+                }
+            except Exception as e:
+                test_results["query_test"] = {"error": str(e)}
+                
+    except Exception as e:
+        test_results["error"] = str(e)
+        logger.error(f"[Debug] ML service test failed: {e}")
+    
+    return test_results
+
 
 # ============= HEALTH CHECK =============
 @api_router.get("/health")

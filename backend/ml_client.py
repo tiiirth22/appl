@@ -161,6 +161,14 @@ class MLServiceClient:
         Raises:
             MLServiceError: If processing fails
         """
+        # Validate file_url before making network call
+        if not file_url or not file_url.strip():
+            logger.error(f"[MLClient] BLOCKED: file_url is empty/None for manual {manual_id}")
+            raise MLServiceError(
+                f"Cannot process manual {manual_id}: file_url is empty. "
+                "The file was not uploaded to Cloudinary successfully."
+            )
+        
         url = f"{self.ml_service_url}/process_manual"
         data = {
             "manual_id": manual_id,
@@ -169,6 +177,7 @@ class MLServiceClient:
             "file_url": file_url,
             "file_type": file_type,
         }
+        logger.info(f"[MLClient] process_manual payload: {data}")
         return await self._make_request("POST", url, data)
     
     async def query_manual(
