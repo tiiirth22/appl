@@ -151,6 +151,16 @@ async def lifespan(app: FastAPI):
 # Create the main app
 app = FastAPI(title="ApplianceIQ API", version="1.0.0", lifespan=lifespan)
 
+# Add a simple request logging middleware
+@app.middleware("http")
+async def log_requests(request, call_next):
+    origin = request.headers.get("origin")
+    method = request.method
+    path = request.url.path
+    logger.info(f"Incoming request: {method} {path} | Origin: {origin}")
+    response = await call_next(request)
+    return response
+
 # Root route - Redirects to /docs and provides a quick API welcome
 @app.get("/", include_in_schema=False)
 async def root():
@@ -702,13 +712,38 @@ async def health_check():
 app.include_router(api_router)
 
 # Add CORS middleware
+cors_origins_str = os.environ.get('CORS_ORIGINS', '')
+if cors_origins_str:
+    allowed_origins = [o.strip() for o in cors_origins_str.split(',')]
+else:
+    # If credentials are allowed, we CANNOT use "*"
+    # Add common origins including production as fallbacks
+    allowed_origins = [
+        "http://localhost:3000", 
+        "http://127.0.0.1:3000",
+        "https://appliance-iq.vercel.app",
+        "https://appliance-iq.vercel.app/",
+        "https://appliance-iq-frontend.up.railway.app",
+        "https://appliance-iq-frontend.up.railway.app/"
+    ]
+
 app.add_middleware(
     CORSMiddleware,
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_origins=[o.strip() for o in os.environ.get('CORS_ORIGINS', '*').split(',')],
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
+
+# Global Error Handler for 500s to see them in logs
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    logger.error(f"Global error caught: {str(exc)}", exc_info=True)
+    return Response(
+        content=f"Internal Server Error: {str(exc)}",
+        status_code=500
+    )
 
 if __name__ == "__main__":
     import uvicorn
