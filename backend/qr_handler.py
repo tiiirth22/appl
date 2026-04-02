@@ -19,7 +19,9 @@ class QRHandler:
     
     def __init__(self):
         self.secret_key = os.getenv("QR_SECRET_KEY", "change-me")
-        self.app_base_url = os.getenv("APP_BASE_URL", "http://localhost:3000")
+        self.app_base_url = os.getenv("APP_BASE_URL", "http://localhost:3000").strip().rstrip("/")
+        if not self.app_base_url:
+            self.app_base_url = "http://localhost:3000"
         
         # Cloudinary setup is handled globally in server.py, but we can verify here
         self.cloudinary_available = os.getenv("CLOUDINARY_URL") is not None

@@ -471,7 +471,33 @@ async def get_manual_qr(manual_id: str, current_user: dict = Depends(get_db_busi
     
     qr_code = await db.qr_codes.find_one({"id": manual["qr_code_id"]}, {"_id": 0})
     if not qr_code:
-        raise HTTPException(status_code=404, detail="QR code record not found")
+        # Fallback: Generate the QR record if missing but assigned (data integrity fix)
+        logger.warning(f"QR code record {manual['qr_code_id']} missing for manual {manual_id}. Auto-regenerating.")
+        qr_data = qr_handler.generate_qr_code(manual_id, manual.get("version", "1.0"))
+        
+        # Re-verify/Update the manual's qr_code_id if it changed
+        await db.manuals.update_one(
+            {"id": manual_id},
+            {"$set": {"qr_code_id": qr_data["qr_id"]}}
+        )
+        
+        # Create the record
+        qr_code_doc = {
+            "id": qr_data["qr_id"],
+            "manual_id": manual_id,
+            "qr_url": qr_data["qr_url"],
+            "cloudinary_url": qr_data.get("cloudinary_url"),
+            "payload": qr_data["payload"],
+            "signature": qr_data["payload"]["sig"],
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.qr_codes.insert_one(qr_code_doc)
+        
+        return {
+            "qr_id": qr_data["qr_id"],
+            "url": qr_data["qr_url"],
+            "image": qr_data["image_base64"]
+        }
     
     # Regenerate QR image for the manual
     qr_image = qr_handler.regenerate_qr_image(manual_id)
