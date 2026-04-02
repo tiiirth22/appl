@@ -41,7 +41,7 @@ except ImportError:
     PINECONE_AVAILABLE = False
 
 from config import (
-    PINECONE_API_KEY, PINECONE_INDEX_NAME, PINECONE_NAMESPACE,
+    PINECONE_API_KEY, PINECONE_INDEX_NAME,
     EMBEDDING_MODEL, MAX_FILE_SIZE_BYTES, CHUNK_SIZE, CHUNK_OVERLAP,
     DOWNLOAD_TIMEOUT, OCR_TIMEOUT, EMBEDDING_TIMEOUT, PINECONE_TIMEOUT,
     TESSERACT_PATH, POPPLER_PATH,
@@ -349,7 +349,7 @@ class AsyncDocumentProcessor:
             # Batch upsert with timeout
             indexed_count = await asyncio.wait_for(
                 asyncio.to_thread(
-                    lambda: self._batch_upsert(index, vectors_to_upsert, namespace=PINECONE_NAMESPACE)
+                    lambda: self._batch_upsert(index, vectors_to_upsert)
                 ),
                 timeout=timeout,
             )
@@ -360,9 +360,9 @@ class AsyncDocumentProcessor:
         except Exception as e:
             raise PineconeError(str(e), retryable=True)
     
-    def _batch_upsert(self, index, vectors: List[Tuple], namespace: str = "", batch_size: int = 100) -> int:
+    def _batch_upsert(self, index, vectors: List[Tuple], batch_size: int = 100) -> int:
         """Batch upsert vectors to Pinecone"""
         for i in range(0, len(vectors), batch_size):
             batch = vectors[i:i + batch_size]
-            index.upsert(vectors=batch, namespace=namespace)
+            index.upsert(vectors=batch)
         return len(vectors)
