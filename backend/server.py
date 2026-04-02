@@ -10,6 +10,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional, List
 import uuid
 import httpx
+import certifi
 
 from dotenv import load_dotenv
 
@@ -123,11 +124,17 @@ async def lifespan(app: FastAPI):
                 elif os.environ.get("RAILWAY_STATIC_URL"):
                     logger.error("👉 ACTION REQUIRED: Add MONGO_URL to your Railway Variables dashboard.")
         try:
-            client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=5000)
+            # Use certifi for explicit CA verification (better for Railway/slim images)
+            ca = certifi.where()
+            client = AsyncIOMotorClient(
+                mongo_url, 
+                serverSelectionTimeoutMS=5000,
+                tlsCAFile=ca
+            )
             db = client[db_name]
             mongo_available = True
             safe_url = mongo_url.split('@')[-1] if '@' in mongo_url else mongo_url
-            logger.info(f"[MongoDB] Client initialized (Target: {safe_url})")
+            logger.info(f"[MongoDB] Client initialized with certifi CA (Target: {safe_url})")
         except Exception as e:
             # If client creation itself fails, log but don't block startup
             mongo_available = False
