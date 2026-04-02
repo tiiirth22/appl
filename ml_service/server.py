@@ -149,7 +149,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
-    """Handle unexpected exceptions"""
+    """Handle unexpected exceptions — expose real error for debugging"""
     request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
     logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
     
@@ -157,7 +157,8 @@ async def general_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={
             "error": "internal_error",
-            "message": "Internal server error",
+            "message": f"Internal server error: {str(exc)}",
+            "exception_type": type(exc).__name__,
             "request_id": request_id,
             "retryable": True,
         },
@@ -402,6 +403,75 @@ async def status():
         "status": "running",
         "debug": DEBUG,
     }
+
+
+@app.post("/debug/test-process")
+async def debug_test_process(
+    request_data: dict,
+    request_id: str = Depends(get_request_id),
+):
+    """Debug endpoint: test process_manual with full error details exposed."""
+    import traceback
+    try:
+        required_fields = ["file_url", "manual_id", "manual_name", "version", "file_type"]
+        for field in required_fields:
+            if field not in request_data:
+                return {"error": f"Missing field: {field}"}
+        
+        processor = AsyncDocumentProcessor(
+            manual_id=request_data["manual_id"],
+            request_id=request_id,
+        )
+        
+        result = await processor.process_manual(
+            file_url=request_data["file_url"],
+            manual_id=request_data["manual_id"],
+            manual_name=request_data["manual_name"],
+            version=request_data["version"],
+            file_type=request_data["file_type"],
+        )
+        return {"success": True, "result": result}
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "error_type": type(e).__name__,
+            "traceback": traceback.format_exc(),
+        }
+
+
+@app.post("/debug/test-query")
+async def debug_test_query(
+    request_data: dict,
+    request_id: str = Depends(get_request_id),
+):
+    """Debug endpoint: test query with full error details exposed."""
+    import traceback
+    try:
+        manual_id = request_data.get("manual_id", "")
+        question = request_data.get("question", "")
+        
+        if not manual_id or not question:
+            return {"error": "manual_id and question are required"}
+        
+        rag_engine = RAGQueryEngine(
+            manual_id=manual_id,
+            request_id=request_id,
+        )
+        
+        result = await rag_engine.answer_question(
+            manual_id=manual_id,
+            question=question,
+            top_k=request_data.get("top_k", 5),
+        )
+        return {"success": True, "result": result}
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "error_type": type(e).__name__,
+            "traceback": traceback.format_exc(),
+        }
 
 
 if __name__ == "__main__":
