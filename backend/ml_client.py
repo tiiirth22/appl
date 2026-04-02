@@ -28,7 +28,11 @@ class MLServiceClient:
         timeout: float = 120,
         max_retries: int = 2,
     ):
-        self.ml_service_url = ml_service_url.rstrip("/")
+        # Ensure protocol is present
+        url = ml_service_url.strip().rstrip("/")
+        if not url.startswith(("http://", "https://")):
+            url = f"https://{url}"
+        self.ml_service_url = url
         self.timeout = timeout
         self.max_retries = max_retries
         self._client: Optional[httpx.AsyncClient] = None
