@@ -19,7 +19,7 @@ if load_dotenv_file.exists():
 # Pinecone Configuration
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY", "")
 PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "appliance-manuals")
-PINECONE_NAMESPACE = os.getenv("PINECONE_NAMESPACE", "default")
+PINECONE_NAMESPACE = os.getenv("PINECONE_NAMESPACE", "")
 
 # Groq/LLM Configuration
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")

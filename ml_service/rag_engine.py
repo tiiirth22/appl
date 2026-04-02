@@ -197,6 +197,16 @@ class RAGQueryEngine:
         try:
             index = await self._get_pinecone_index()
             
+            # Log dimensions for troubleshooting mismatches
+            self.logger.info(f"Querying Pinecone with vector dimension: {len(embedding)} into namespace: '{PINECONE_NAMESPACE}'")
+            
+            # Check dimension of index
+            index_desc = await asyncio.to_thread(self._pinecone_client.describe_index, PINECONE_INDEX_NAME)
+            if len(embedding) != index_desc.dimension:
+                err_msg = f"Embedding dimension mismatch: model is {len(embedding)}, but index is {index_desc.dimension}. Re-index may be required."
+                self.logger.critical(err_msg)
+                raise PineconeError(err_msg, retryable=False)
+
             # Query Pinecone with manual_id filter
             results = await asyncio.wait_for(
                 asyncio.to_thread(
@@ -210,6 +220,14 @@ class RAGQueryEngine:
                 ),
                 timeout=timeout,
             )
+            
+            # Check if namespace exists in stats for diagnostic logging
+            stats = await asyncio.to_thread(index.describe_index_stats)
+            if PINECONE_NAMESPACE not in stats.get("namespaces", {}) and PINECONE_NAMESPACE != "":
+                self.logger.error(f"Namespace '{PINECONE_NAMESPACE}' not found in index stats. Results will likely be empty.")
+            elif PINECONE_NAMESPACE == "" and "__default__" not in stats.get("namespaces", {}):
+                  # In the new Pinecone SDK, the empty namespace might not show up if it's empty
+                  pass
             
             # Extract sources from results
             sources = []
