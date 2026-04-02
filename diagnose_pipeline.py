@@ -26,7 +26,6 @@ async def diagnose():
     
     # 1. Check Environment Variables
     print(f"PINECONE_INDEX_NAME: {config.PINECONE_INDEX_NAME}")
-    print(f"PINECONE_NAMESPACE: {config.PINECONE_NAMESPACE}")
     print(f"EMBEDDING_MODEL: {config.EMBEDDING_MODEL}")
     
     # 2. Check Embedding Model
@@ -65,13 +64,9 @@ async def diagnose():
         else:
             print(f"SUCCESS: Embedding model dimension ({dim}) matches Pinecone index dimension ({index_dim}).")
             
-        # 4. Check Namespaces
-        namespaces = stats.get('namespaces', {})
-        if config.PINECONE_NAMESPACE not in namespaces and config.PINECONE_NAMESPACE != "":
-            print(f"Warning: Namespace '{config.PINECONE_NAMESPACE}' not found in index stats. Results may be empty.")
-        else:
-            vector_count = namespaces.get(config.PINECONE_NAMESPACE, {}).get('vector_count', 0)
-            print(f"Namespace '{config.PINECONE_NAMESPACE}' has {vector_count} vectors.")
+        # 4. Check Index Stats
+        print(f"Total vector count: {stats.total_vector_count}")
+        print(f"Namespaces present: {stats.get('namespaces', {})}")
 
     except Exception as e:
         print(f"Error connecting to Pinecone: {e}")
