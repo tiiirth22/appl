@@ -74,9 +74,10 @@ class Query(BaseModel):
     
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     manual_id: str
-    qr_code_id: str
+    user_id: Optional[str] = None
     question: str
-    answer: str
+    response: str
+    confidence: float = 0.0
     sources: List[Dict[str, Any]] = []
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
