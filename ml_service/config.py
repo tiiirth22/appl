@@ -19,10 +19,6 @@ if load_dotenv_file.exists():
 # Pinecone Configuration
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY", "")
 PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "appliance-manuals")
-# Normalize namespace for production (treat "default", "none", etc. as "")
-_raw_namespace = os.getenv("PINECONE_NAMESPACE", "")
-PINECONE_NAMESPACE = _raw_namespace if _raw_namespace.lower() not in ["", "default", "none", "null", "\"\"", "''", "__default__"] else ""
-
 # Groq/LLM Configuration
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
