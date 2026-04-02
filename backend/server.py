@@ -716,13 +716,15 @@ cors_origins_str = os.environ.get('CORS_ORIGINS', '')
 if cors_origins_str:
     allowed_origins = [o.strip() for o in cors_origins_str.split(',')]
 else:
-    # If credentials are allowed, we CANNOT use "*"
+    # If credentials are allowed, we CANNOT use "*" for Origins
     # Add common origins including production as fallbacks
     allowed_origins = [
         "http://localhost:3000", 
         "http://127.0.0.1:3000",
         "https://appliance-iq.vercel.app",
         "https://appliance-iq.vercel.app/",
+        "https://www.appliance-iq.vercel.app",
+        "https://www.appliance-iq.vercel.app/",
         "https://appliance-iq-frontend.up.railway.app",
         "https://appliance-iq-frontend.up.railway.app/"
     ]
@@ -731,8 +733,10 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600,
 )
 
 # Global Error Handler for 500s to see them in logs
