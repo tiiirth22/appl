@@ -570,29 +570,44 @@ async def assign_qr_to_user(user_id: str, manual_id: str, current_user: dict = D
 
 @api_router.post("/chat")
 async def chat(request: ChatRequest, current_user: Optional[dict] = Depends(get_optional_user)):
-    """Chat endpoint - Query manual using ML Service."""
+    """Chat endpoint - Query manual using ML Service.
+    
+    Returns a streaming response compatible with the frontend's getReader() protocol:
+    1. First line: __METADATA__:{sources, confidence} 
+    2. Remaining: answer text streamed as chunks
+    """
+    from fastapi.responses import StreamingResponse
+    import json as _json
+    
     # Access Control
-    if not current_user:
-        # QR-based access (unauthenticated)
-        qr_record = await db.qr_codes.find_one({"id": request.qr_id, "manual_id": request.manual_id})
-        if not qr_record:
-            raise HTTPException(status_code=403, detail="Invalid QR code or manual ID")
-    else:
-        # Authenticated user - verify ownership
+    if current_user:
+        # Authenticated user - verify ownership (admins can access all)
         if current_user.get("role") != "admin":
             manual = await db.manuals.find_one({"id": request.manual_id, "user_id": current_user["id"]})
             if not manual:
                 raise HTTPException(status_code=403, detail="Access denied")
+    else:
+        # Unauthenticated access — must have a valid QR code
+        if not request.qr_id:
+            raise HTTPException(
+                status_code=403,
+                detail="Authentication required. Please log in or scan a QR code."
+            )
+        qr_record = await db.qr_codes.find_one({"id": request.qr_id, "manual_id": request.manual_id})
+        if not qr_record:
+            raise HTTPException(status_code=403, detail="Invalid QR code or manual ID")
     
     # Call ML Service
     try:
+        logger.info(f"[Chat] Query: manual_id={request.manual_id}, question='{request.question[:80]}...', user={'authenticated' if current_user else 'qr-based'}")
+        
         ml_response = await ml_client.query_manual(
             manual_id=request.manual_id,
             question=request.question,
             top_k=getattr(request, 'top_k', 5)
         )
         
-        # Log query
+        # Log query to DB
         query = Query(
             id=str(uuid.uuid4()),
             manual_id=request.manual_id,
@@ -606,14 +621,22 @@ async def chat(request: ChatRequest, current_user: Optional[dict] = Depends(get_
         query_dict['created_at'] = query_dict['created_at'].isoformat()
         await db.queries.insert_one(query_dict)
         
-        return {
-            "answer": ml_response.get("answer"),
-            "sources": ml_response.get("sources", []),
-            "confidence": ml_response.get("confidence", 0.0)
-        }
+        # Build streaming response matching frontend getReader() protocol
+        answer_text = ml_response.get("answer", "No answer available.")
+        sources = ml_response.get("sources", [])
+        confidence = ml_response.get("confidence", 0.0)
+        
+        async def stream_response():
+            # 1. Send metadata line first
+            metadata = _json.dumps({"sources": sources, "confidence": confidence})
+            yield f"__METADATA__:{metadata}\n"
+            # 2. Stream the answer text
+            yield answer_text
+        
+        return StreamingResponse(stream_response(), media_type="text/plain")
     
     except MLServiceError as e:
-        logger.error(f"ML Service error: {str(e)}")
+        logger.error(f"[Chat] ML Service error: {str(e)}")
         raise HTTPException(status_code=503, detail=f"Service error: {str(e)}")
 
 @api_router.post("/qr/assign")
