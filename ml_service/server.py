@@ -440,6 +440,17 @@ async def debug_test_process(
         }
 
 
+@app.get("/debug/pip-list")
+async def debug_pip_list():
+    """Debug endpoint: list all installed packages."""
+    import subprocess
+    try:
+        result = subprocess.run(["pip", "list"], capture_output=True, text=True)
+        return {"success": True, "output": result.stdout}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 @app.post("/debug/test-query")
 async def debug_test_query(
     request_data: dict,
