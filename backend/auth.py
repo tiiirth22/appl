@@ -89,8 +89,8 @@ async def signup_user(db, signup_data: UserSignUp):
         
         await db.user_sessions.insert_one(session_data)
     except Exception as e:
-        print(f"[SIGNUP ERROR] {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+        logger.error(f"[SIGNUP ERROR] {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Database error during signup: {str(e)}")
     
     return {
         "session_token": session_token,
