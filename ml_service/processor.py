@@ -360,7 +360,7 @@ class AsyncDocumentProcessor:
         except Exception as e:
             raise PineconeError(str(e), retryable=True)
     
-    def _batch_upsert(self, index, vectors: List[Tuple], namespace: str = "default", batch_size: int = 100) -> int:
+    def _batch_upsert(self, index, vectors: List[Tuple], namespace: str = "", batch_size: int = 100) -> int:
         """Batch upsert vectors to Pinecone"""
         for i in range(0, len(vectors), batch_size):
             batch = vectors[i:i + batch_size]
