@@ -260,7 +260,7 @@ async def process_manual(
     }
     """
     try:
-        logger.info(f"Processing request from {client_ip}", extra={"request_id": request_id})
+        logger.info(f"Processing request from {client_ip}")
         
         # Validate request
         required_fields = ["file_url", "manual_id", "manual_name", "version", "file_type"]
@@ -310,7 +310,7 @@ async def query_manual(
     }
     """
     try:
-        logger.info(f"Query request from {client_ip}", extra={"request_id": request_id})
+        logger.info(f"Query request from {client_ip}")
         
         # Validate request
         if "manual_id" not in request_data:
