@@ -20,7 +20,8 @@ from rag_engine import RAGQueryEngine
 from model_manager import model_manager
 from errors import (
     MLServiceException, ErrorType, ServiceUnavailableError,
-    ProcessManualRequest, QueryRequest, AnalyzeImageRequest, HealthCheckResponse
+    ProcessManualRequest, QueryRequest, AnalyzeImageRequest, HealthCheckResponse,
+    QueryResponse
 )
 
 # Initialize logging with absolute safety
@@ -71,34 +72,6 @@ class SimpleRateLimiter:
 
 
 rate_limiter = SimpleRateLimiter(RATE_LIMIT_REQUESTS, RATE_LIMIT_WINDOW_SEC)
-
-@app.post("/analyze-image", response_model=QueryResponse)
-async def analyze_image(request: AnalyzeImageRequest):
-    """Analyze image and query RAG"""
-    try:
-        response = await query_engine.analyze_image(
-            image_b64=request.image_b64,
-            manual_id=request.manual_id,
-            history=request.history,
-            top_k=request.top_k
-        )
-        return response
-    except MLServiceException as e:
-        raise HTTPException(
-            status_code=500 if e.retryable else 400,
-            detail=e.to_response().dict()
-        )
-    except Exception as e:
-        logger.error(f"Unhandled error in analyze_image: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=MLServiceException(
-                ErrorType.INTERNAL_ERROR,
-                str(e)
-            ).to_response().dict()
-        )
-
-
 # Health check state
 _service_health = {
     "pinecone": "unknown",
@@ -387,6 +360,42 @@ async def query_manual(
     except Exception as e:
         logger.error(f"Query failed: {str(e)}", exc_info=True)
         raise
+
+
+@app.post("/analyze-image", response_model=QueryResponse)
+async def analyze_image(
+    request: AnalyzeImageRequest,
+    request_id: str = Depends(get_request_id),
+    client_ip: str = Depends(check_rate_limit),
+):
+    """Analyze image and query RAG"""
+    try:
+        logger.info(f"Analyze image request from {client_ip}")
+        
+        # Create RAG engine
+        rag_engine = RAGQueryEngine(
+            manual_id=request.manual_id,
+            request_id=request_id,
+        )
+        
+        response = await rag_engine.analyze_image(
+            image_b64=request.image_b64,
+            manual_id=request.manual_id,
+            history=request.history,
+            top_k=request.top_k
+        )
+        return response
+    except MLServiceException:
+        raise
+    except Exception as e:
+        logger.error(f"Unhandled error in analyze_image: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=MLServiceException(
+                ErrorType.INTERNAL_ERROR,
+                str(e)
+            ).to_response().dict()
+        )
 
 
 # ==================== UTILITY ENDPOINTS ====================

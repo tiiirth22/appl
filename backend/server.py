@@ -106,12 +106,14 @@ db_name = os.environ.get('DB_NAME', 'applianceiq_db')
 
 # ML Service configuration
 ml_service_url = os.environ.get('ML_SERVICE_URL', 'http://localhost:8001')
+ingestion_service_url = os.environ.get('INGESTION_SERVICE_URL', ml_service_url)
 
 # Global clients
 client = None
 db = None
 mongo_available = False
 ml_client = MLServiceClient(ml_service_url)
+ingestion_client = MLServiceClient(ingestion_service_url)
 
 # ============= LIFESPAN & STARTUP =============
 @asynccontextmanager
@@ -433,18 +435,18 @@ async def upload_manual(
                 "file_url": cloudinary_file_url,
                 "file_type": file_ext
             }
-            logger.info(f"[Upload] Sending to ML Service: {ml_payload}")
+            logger.info(f"[Upload] Sending to Ingestion Service: {ml_payload}")
             
-            ml_response = await ml_client.process_manual(
+            ml_response = await ingestion_client.process_manual(
                 manual_id=manual_id,
                 manual_name=model_name,
                 version=version,
                 file_url=cloudinary_file_url,
                 file_type=file_ext
             )
-            logger.info(f"[Upload] ✓ ML Service processing initiated for manual {manual_id}")
+            logger.info(f"[Upload] ✓ Ingestion Service processing initiated for manual {manual_id}")
         except MLServiceError as e:
-            logger.error(f"[Upload] ✗ ML Service error: {str(e)}")
+            logger.error(f"[Upload] ✗ Ingestion Service error: {str(e)}")
             await db.manuals.update_one(
                 {"id": manual_id},
                 {"$set": {"status": "failed", "error": str(e)}}

@@ -64,21 +64,29 @@ class ProcessingLogger:
     def info(self, message: str, **kwargs):
         """Log info with context"""
         extra = {"manual_id": self.manual_id, "request_id": self.request_id}
+        if "extra" in kwargs:
+            extra.update(kwargs.pop("extra"))
         self.logger.info(message, extra=extra, **kwargs)
     
     def warning(self, message: str, **kwargs):
         """Log warning with context"""
         extra = {"manual_id": self.manual_id, "request_id": self.request_id}
+        if "extra" in kwargs:
+            extra.update(kwargs.pop("extra"))
         self.logger.warning(message, extra=extra, **kwargs)
     
     def error(self, message: str, **kwargs):
         """Log error with context"""
         extra = {"manual_id": self.manual_id, "request_id": self.request_id}
+        if "extra" in kwargs:
+            extra.update(kwargs.pop("extra"))
         self.logger.error(message, extra=extra, **kwargs)
     
     def debug(self, message: str, **kwargs):
         """Log debug with context"""
         extra = {"manual_id": self.manual_id, "request_id": self.request_id}
+        if "extra" in kwargs:
+            extra.update(kwargs.pop("extra"))
         self.logger.debug(message, extra=extra, **kwargs)
 
 
