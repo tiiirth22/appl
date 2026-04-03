@@ -149,7 +149,7 @@ async def ml_service_exception_handler(request: Request, exc: MLServiceException
     
     return JSONResponse(
         status_code=status_code,
-        content=error_response.model_dump(),
+        content=error_response.model_dump(mode='json'),
     )
 
 
