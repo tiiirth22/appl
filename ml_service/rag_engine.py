@@ -38,6 +38,10 @@ from logger_config import get_processing_logger
 
 logger = get_processing_logger(__name__)
 
+_global_pinecone_client = None
+_global_pinecone_index = None
+_global_groq_client = None
+
 
 class RAGQueryEngine:
     """RAG-based query answering engine"""
@@ -152,9 +156,13 @@ class RAGQueryEngine:
             raise EmbeddingError(str(e), retryable=True)
     
     async def _get_pinecone_index(self):
-        """Lazy load Pinecone client and index"""
-        if self._pinecone_index is not None:
-            return self._pinecone_index
+        """Lazy load Pinecone client and index as a global pool"""
+        global _global_pinecone_client, _global_pinecone_index
+        
+        if _global_pinecone_index is not None:
+            self._pinecone_client = _global_pinecone_client
+            self._pinecone_index = _global_pinecone_index
+            return _global_pinecone_index
         
         if not PINECONE_AVAILABLE:
             raise ServiceUnavailableError(
@@ -169,13 +177,16 @@ class RAGQueryEngine:
             )
         
         try:
-            if self._pinecone_client is None:
-                self.logger.info("Initializing Pinecone client")
-                self._pinecone_client = Pinecone(api_key=PINECONE_API_KEY)
+            if _global_pinecone_client is None:
+                self.logger.info("Initializing global Pinecone client pool")
+                _global_pinecone_client = Pinecone(api_key=PINECONE_API_KEY)
             
             self.logger.info(f"Connecting to Pinecone index: {PINECONE_INDEX_NAME}")
-            self._pinecone_index = self._pinecone_client.Index(PINECONE_INDEX_NAME)
-            return self._pinecone_index
+            _global_pinecone_index = _global_pinecone_client.Index(PINECONE_INDEX_NAME)
+            
+            self._pinecone_client = _global_pinecone_client
+            self._pinecone_index = _global_pinecone_index
+            return _global_pinecone_index
         except Exception as e:
             raise PineconeError(
                 f"Failed to initialize Pinecone: {str(e)}",
@@ -249,9 +260,12 @@ class RAGQueryEngine:
             raise PineconeError(str(e), retryable=True)
     
     async def _get_groq_client(self):
-        """Lazy load Groq client"""
-        if self._groq_client is not None:
-            return self._groq_client
+        """Lazy load Groq client globally"""
+        global _global_groq_client
+        
+        if _global_groq_client is not None:
+            self._groq_client = _global_groq_client
+            return _global_groq_client
         
         if not GROQ_AVAILABLE:
             raise ServiceUnavailableError(
@@ -266,11 +280,12 @@ class RAGQueryEngine:
             )
         
         try:
-            self.logger.info("Initializing Groq client")
-            self._groq_client = await asyncio.to_thread(
+            self.logger.info("Initializing global Groq client")
+            _global_groq_client = await asyncio.to_thread(
                 Groq, api_key=GROQ_API_KEY
             )
-            return self._groq_client
+            self._groq_client = _global_groq_client
+            return _global_groq_client
         except Exception as e:
             raise RAGError(
                 f"Failed to initialize Groq: {str(e)}",

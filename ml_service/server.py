@@ -57,6 +57,19 @@ class SimpleRateLimiter:
             return False
         
         self.request_times[key].append(now)
+        
+        # Memory leak fix - periodically clear completely empty keys
+        # We process this randomly or when we are here to avoid O(N) lag on every hit if not needed,
+        # but the simplest is just checking if we can delete this one key when empty (which actually
+        # won't happen here since we just appended, but we can do a background sweep or just skip 
+        # cleanup if too complex. Actually, the easiest memory management is to clean empty keys here).
+        
+        # Clear empty lists across the whole rate limiter once in a while to prevent IP bloated leaks
+        if len(self.request_times) > 1000:
+            empty_keys = [k for k, v in self.request_times.items() if not v or max(v) <= cutoff]
+            for k in empty_keys:
+                del self.request_times[k]
+                
         return True
 
 
