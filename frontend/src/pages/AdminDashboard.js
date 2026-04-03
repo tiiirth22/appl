@@ -5,8 +5,7 @@ import { Upload, BarChart, LogOut, FileText, QrCode, Loader, Users, Trash2, Shie
 import { StatCard } from '../components/ui/stat-card';
 import Navbar from '../components/ui/Navbar';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+import { API_BASE_URL as API } from '../config';
 
 export default function AdminDashboard({ user, onLogout }) {
   const [manuals, setManuals] = useState([]);
