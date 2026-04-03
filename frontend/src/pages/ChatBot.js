@@ -3,7 +3,6 @@ import { useSearchParams, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { Send, Loader, Bot, User, Star, Mic, Image as ImageIcon, X, Shield, Paperclip, Maximize2, Info, ChevronDown, Youtube, ChevronRight, ChevronLeft, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MorphingButton } from '../components/ui/morphing-button';
 
 import { API_BASE_URL as API } from '../config';
 
@@ -407,12 +406,13 @@ export default function ChatBot() {
             <button className={`voice-btn ${isListening ? 'active' : ''}`} onClick={startListening}>
               <Mic size={20} />
             </button>
-            <MorphingButton 
+            <button 
+              className="send-prime"
               onClick={handleSend} 
               disabled={loading || (!input.trim() && !imageFile)}
             >
               {loading ? <Loader className="animate-spin" size={20} /> : <Send size={20} />}
-            </MorphingButton>
+            </button>
           </div>
         </div>
         
