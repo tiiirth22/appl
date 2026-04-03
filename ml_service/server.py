@@ -199,16 +199,37 @@ async def welcome():
 # ==================== HEALTH CHECK ====================
 
 @app.get("/health")
-async def health_check():
-    """Health check endpoint - returns immediately"""
-    import time
-    return {
-        "status": "healthy",
-        "service": SERVICE_NAME,
-        "version": SERVICE_VERSION,
-        "model_status": model_manager.status,
-        "timestamp": time.time(),
-    }
+async def health_check(request_id: str = Depends(get_request_id)):
+    """Comprehensive health check returning status of Pinecone, embedding model, and Groq API.
+    Returns a JSON with overall status and per-component details.
+    """
+    logger.info("Health check requested")
+    health_status = {"status": "healthy", "components": {}}
+    # Embedding model status
+    try:
+        health_status["components"]["embedding_model"] = model_manager.status
+        if model_manager.status == "not_initialized":
+            health_status["status"] = "degraded"
+    except Exception as e:
+        health_status["components"]["embedding_model"] = f"error: {str(e)}"
+        health_status["status"] = "degraded"
+    # Pinecone connectivity
+    try:
+        processor = AsyncDocumentProcessor(request_id=request_id)
+        index = await processor._get_pinecone_index()
+        health_status["components"]["pinecone"] = "ready"
+    except Exception as e:
+        health_status["components"]["pinecone"] = f"error: {str(e)}"
+        health_status["status"] = "degraded"
+    # Groq API reachability
+    try:
+        rag_engine = RAGQueryEngine(request_id=request_id)
+        client = await rag_engine._get_groq_client()
+        health_status["components"]["groq"] = "ready"
+    except Exception as e:
+        health_status["components"]["groq"] = f"error: {str(e)}"
+        health_status["status"] = "degraded"
+    return health_status
 
 
 @app.get("/health/detailed")
