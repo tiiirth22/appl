@@ -25,7 +25,7 @@ class MLServiceClient:
     def __init__(
         self,
         ml_service_url: str,
-        timeout: float = 120,
+        timeout: float = 300,
         max_retries: int = 2,
     ):
         # Ensure protocol is present

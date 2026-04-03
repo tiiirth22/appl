@@ -68,9 +68,10 @@ async def lifespan(app: FastAPI):
     """Startup and shutdown events"""
     logger.info(f"Starting {SERVICE_NAME} v{SERVICE_VERSION}")
     
-    # Startup: Initialize model and wait for it to be ready
-    # This prevents worker timeouts and ensures the service is ready when Railway routes traffic
-    await model_manager.get_model()
+    # Don't block startup on model loading to prevent Gunicorn/Railway boot timeouts
+    # Instead, trigger it in the background
+    logger.info("Triggering background model initialization...")
+    model_manager.initialize()
     
     yield
     
