@@ -348,6 +348,7 @@ async def query_manual(
             manual_id=request.manual_id,
             question=question,
             top_k=request.top_k,
+            history=request.history,
         )
         
         logger.info(f"Query answered in {result['processing_time_ms']:.2f}ms")

@@ -86,6 +86,7 @@ class ChatRequest(BaseModel):
     question: str
     qr_id: Optional[str] = None
     top_k: Optional[int] = 5
+    history: Optional[List[Dict[str, str]]] = None # Allow frontend to pass history
 
 class ChatResponse(BaseModel):
     query_id: str

@@ -62,6 +62,7 @@ class RAGQueryEngine:
         manual_id: str,
         question: str,
         top_k: int = 5,
+        history: Optional[List[Dict[str, str]]] = None,
     ) -> Dict[str, Any]:
         """
         Answer question via RAG pipeline:
@@ -105,7 +106,7 @@ class RAGQueryEngine:
             
             # Step 3: Generate answer
             self.logger.info("Step 3/3: Generating answer")
-            answer = await self._generate_answer(question, sources)
+            answer = await self._generate_answer(question, sources, history=history)
             
             processing_time_ms = (time.time() - start_time) * 1000
             self.logger.info(f"Query completed in {processing_time_ms:.2f}ms")
@@ -242,9 +243,11 @@ class RAGQueryEngine:
                 return [], 0.0
             
             for match in matches:
+                metadata = match.get("metadata", {})
                 source = {
-                    "text": match.get("metadata", {}).get("text", ""),
-                    "chunk_index": match.get("metadata", {}).get("chunk_index", 0),
+                    "text": metadata.get("text", ""),
+                    "chunk_index": metadata.get("chunk_index", 0),
+                    "page": metadata.get("page_number", 0),  # Frontend expects 'page'
                     "score": match.get("score", 0.0),
                 }
                 sources.append(source)
@@ -296,7 +299,11 @@ class RAGQueryEngine:
             )
     
     async def _generate_answer(
-        self, question: str, sources: List[Dict[str, Any]], timeout: int = QUERY_TIMEOUT
+        self, 
+        question: str, 
+        sources: List[Dict[str, Any]], 
+        history: Optional[List[Dict[str, str]]] = None,
+        timeout: int = QUERY_TIMEOUT
     ) -> str:
         """Generate answer using Groq LLM"""
         try:
@@ -318,23 +325,34 @@ QUESTION: {question}
 
 ANSWER (be concise and direct):"""
             
+            # Base system message
+            messages = [
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant answering questions about appliance manuals. Be concise and accurate. Use the provided context to answer the user's question, but acknowledge previous turns in the conversation if they are relevant.",
+                }
+            ]
+            
+            # Add history if provided
+            if history:
+                # Add up to 10 previous messages (5 turns)
+                messages.extend(history[-10:])
+                self.logger.info(f"Added {len(history[-10:])} history messages to context")
+            
+            # Add current turns
+            messages.append({
+                "role": "user",
+                "content": prompt,
+            })
+            
             # Call Groq with timeout
             response = await asyncio.wait_for(
                 asyncio.to_thread(
                     lambda: client.chat.completions.create(
                         model=LLM_MODEL,
-                        messages=[
-                            {
-                                "role": "system",
-                                "content": "You are a helpful assistant answering questions about appliance manuals. Be concise and accurate.",
-                            },
-                            {
-                                "role": "user",
-                                "content": prompt,
-                            },
-                        ],
+                        messages=messages,
                         temperature=0.3,
-                        max_tokens=500,
+                        max_tokens=600,
                     )
                 ),
                 timeout=timeout,

@@ -671,10 +671,38 @@ async def chat(request: ChatRequest, current_user: Optional[dict] = Depends(get_
     try:
         logger.info(f"[Chat] Query: manual_id={request.manual_id}, question='{request.question[:80]}...', user={'authenticated' if current_user else 'qr-based'}")
         
+        # 1. Fetch conversation history if not provided by frontend
+        history = request.history
+        if history is None and db is not None:
+            try:
+                # Define filter for history: same manual and same user
+                history_filter = {"manual_id": request.manual_id}
+                if current_user:
+                    history_filter["user_id"] = current_user["id"]
+                
+                # Fetch last 3 queries to build context (6 messages total)
+                # This keeps context focused and prevents token bloat
+                cursor = db.queries.find(history_filter).sort("created_at", -1).limit(3)
+                recent_queries = await cursor.to_list(length=3)
+                
+                if recent_queries:
+                    history = []
+                    # Reverse to get chronological order [oldest -> newest]
+                    recent_queries.reverse()
+                    for q in recent_queries:
+                        history.append({"role": "user", "content": q.get("question", "")})
+                        history.append({"role": "assistant", "content": q.get("response", "")})
+                    logger.info(f"[Chat] Injected {len(history)} history messages from DB")
+            except Exception as history_err:
+                logger.warning(f"[Chat] History retrieval failed: {history_err}")
+                history = None
+
+        # 2. Call ML Service with history
         ml_response = await ml_client.query_manual(
             manual_id=request.manual_id,
             question=request.question,
-            top_k=request.top_k
+            top_k=request.top_k,
+            history=history
         )
         
         # Log query to DB

@@ -10,8 +10,11 @@ import httpx
 
 # Optional imports - lazy loaded
 try:
-    from pdfminer.high_level import extract_text
+    from pdfminer.high_level import extract_text, extract_pages
     from pdfminer.layout import LTTextContainer, LAParams
+    from pdfminer.pdfpage import PDFPage
+    from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
+    from pdfminer.converter import TextConverter
     PDF_AVAILABLE = True
 except ImportError:
     PDF_AVAILABLE = False
@@ -179,8 +182,8 @@ class AsyncDocumentProcessor:
     
     async def _extract_text(
         self, file_content: bytes, file_type: str, timeout: int = OCR_TIMEOUT
-    ) -> str:
-        """Extract text from PDF or image"""
+    ) -> List[Tuple[str, int]]:
+        """Extract text from PDF or image with page numbers"""
         try:
             if file_type.lower() == "pdf":
                 return await asyncio.wait_for(
@@ -188,22 +191,37 @@ class AsyncDocumentProcessor:
                     timeout=timeout,
                 )
             else:  # image
-                return await asyncio.wait_for(
+                text = await asyncio.wait_for(
                     asyncio.to_thread(self._extract_text_image, file_content),
                     timeout=timeout,
                 )
+                return [(text, 1)]  # Images are treated as a single page
         except asyncio.TimeoutError:
             raise TimeoutErrorException("extract_text", timeout)
     
-    def _extract_text_pdf(self, file_content: bytes) -> str:
-        """Extract text from PDF (blocking)"""
+    def _extract_text_pdf(self, file_content: bytes) -> List[Tuple[str, int]]:
+        """Extract text from PDF page-by-page (blocking)"""
         if not PDF_AVAILABLE:
             raise ServiceUnavailableError("pdfminer", "pdfminer.six not installed")
         
         try:
             pdf_file = io.BytesIO(file_content)
-            text = extract_text(pdf_file)
-            return text or ""
+            resource_manager = PDFResourceManager()
+            laparams = LAParams()
+            
+            pages_text = []
+            
+            for page_num, page in enumerate(PDFPage.get_pages(pdf_file), start=1):
+                fake_file_handle = io.StringIO()
+                with TextConverter(resource_manager, fake_file_handle, laparams=laparams) as converter:
+                    interpreter = PDFPageInterpreter(resource_manager, converter)
+                    interpreter.process_page(page)
+                    text = fake_file_handle.getvalue()
+                    if text.strip():
+                        pages_text.append((text, page_num))
+                fake_file_handle.close()
+                
+            return pages_text
         except Exception as e:
             raise OCRError(f"PDF extraction failed: {str(e)}", retryable=True)
     
@@ -226,36 +244,45 @@ class AsyncDocumentProcessor:
     
     def _chunk_text(
         self,
-        text: str,
+        pages_text: List[Tuple[str, int]],
         chunk_size: int = CHUNK_SIZE,
         overlap: int = CHUNK_OVERLAP,
-    ) -> List[str]:
-        """Split text into overlapping chunks"""
+    ) -> List[Dict[str, Any]]:
+        """Split page-based text into chunks, preserving page associations"""
         chunks = []
-        words = text.split()
         
-        current_chunk = []
-        current_size = 0
-        
-        for word in words:
-            current_chunk.append(word)
-            current_size += len(word) + 1  # +1 for space
+        for text, page_num in pages_text:
+            words = text.split()
+            current_chunk = []
+            current_size = 0
             
-            if current_size >= chunk_size:
+            # Simple chunking within each page for now
+            # If a page is very long, it splits. If short, it's one chunk.
+            # We don't merge across pages to keep page mapping simple and accurate.
+            for word in words:
+                current_chunk.append(word)
+                current_size += len(word) + 1
+                
+                if current_size >= chunk_size:
+                    chunk_text = " ".join(current_chunk)
+                    if chunk_text.strip():
+                        chunks.append({
+                            "text": chunk_text,
+                            "page_number": page_num
+                        })
+                    
+                    # Overlap
+                    overlap_words = min(overlap // 5, len(current_chunk) - 1)
+                    current_chunk = current_chunk[-overlap_words:] if overlap_words > 0 else []
+                    current_size = sum(len(w) + 1 for w in current_chunk)
+                    
+            if current_chunk:
                 chunk_text = " ".join(current_chunk)
                 if chunk_text.strip():
-                    chunks.append(chunk_text)
-                
-                # Keep last overlap words
-                overlap_words = min(overlap // 5, len(current_chunk) - 1)  # ~5 chars per word
-                current_chunk = current_chunk[-overlap_words:] if overlap_words > 0 else []
-                current_size = sum(len(w) + 1 for w in current_chunk)
-        
-        # Add final chunk
-        if current_chunk:
-            chunk_text = " ".join(current_chunk)
-            if chunk_text.strip():
-                chunks.append(chunk_text)
+                    chunks.append({
+                        "text": chunk_text,
+                        "page_number": page_num
+                    })
         
         return chunks
     
@@ -270,15 +297,16 @@ class AsyncDocumentProcessor:
             )
     
     async def _generate_embeddings(
-        self, chunks: List[str], timeout: int = EMBEDDING_TIMEOUT
+        self, chunks: List[Dict[str, Any]], timeout: int = EMBEDDING_TIMEOUT
     ) -> List[List[float]]:
         """Generate embeddings for chunks"""
         try:
             model = await self._get_embedding_model()
+            texts = [c["text"] for c in chunks]
             
             embeddings = await asyncio.wait_for(
                 asyncio.to_thread(
-                    lambda: model.encode(chunks, convert_to_tensor=False)
+                    lambda: model.encode(texts, convert_to_tensor=False)
                 ),
                 timeout=timeout,
             )
@@ -341,13 +369,14 @@ class AsyncDocumentProcessor:
             
             # Prepare vectors for upsert
             vectors_to_upsert = []
-            for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
+            for i, (chunk_data, embedding) in enumerate(zip(chunks, embeddings)):
                 vector_id = f"{manual_id}_{i}_{uuid.uuid4().hex[:8]}"
                 metadata = {
                     "manual_id": manual_id,
                     "manual_name": manual_name,
                     "chunk_index": i,
-                    "text": chunk[:1000],  # Store first 1000 chars as preview
+                    "page_number": chunk_data.get("page_number", 1),
+                    "text": chunk_data["text"][:1000],  # Store first 1000 chars as preview
                     "indexed_at": datetime.now(timezone.utc).isoformat(),
                 }
                 vectors_to_upsert.append((vector_id, embedding, metadata))

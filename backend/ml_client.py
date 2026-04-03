@@ -185,6 +185,7 @@ class MLServiceClient:
         manual_id: str,
         question: str,
         top_k: int = 5,
+        history: Optional[List[Dict[str, str]]] = None,
     ) -> Dict[str, Any]:
         """
         Query manual using RAG.
@@ -193,6 +194,7 @@ class MLServiceClient:
             manual_id: ID of processed manual
             question: User question
             top_k: Number of results
+            history: Optional conversation history
             
         Returns:
             Query result with answer and sources
@@ -205,6 +207,7 @@ class MLServiceClient:
             "manual_id": manual_id,
             "question": question,
             "top_k": min(top_k, 20),
+            "history": history,
         }
         return await self._make_request("POST", url, data)
     

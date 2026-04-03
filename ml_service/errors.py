@@ -67,6 +67,7 @@ class QueryRequest(BaseModel):
     manual_id: str
     question: str
     top_k: int = Field(default=5, ge=1, le=20)
+    history: Optional[List[Dict[str, str]]] = Field(default=None, description="Conversation history as list of role/content dicts")
 
 
 class QueryResponse(BaseModel):
