@@ -1,0 +1,85 @@
+{
+  "info": {
+    "name": "ApplianceIQ RAG Debugging",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "ML Service Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "https://upbeat-contentment-production-ed5c.up.railway.app/health",
+          "protocol": "https",
+          "host": ["upbeat-contentment-production-ed5c", "up", "railway", "app"],
+          "path": ["health"]
+        }
+      }
+    },
+    {
+      "name": "ML Service Pinecone Debug",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "https://upbeat-contentment-production-ed5c.up.railway.app/debug/pinecone",
+          "protocol": "https",
+          "host": ["upbeat-contentment-production-ed5c", "up", "railway", "app"],
+          "path": ["debug", "pinecone"]
+        }
+      }
+    },
+    {
+      "name": "ML Service RAG Query",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"manual_id\": \"example-manual-id\",\n  \"question\": \"What is the warranty period for a washing machine?\",\n  \"top_k\": 5\n}"
+        },
+        "url": {
+          "raw": "https://upbeat-contentment-production-ed5c.up.railway.app/query",
+          "protocol": "https",
+          "host": ["upbeat-contentment-production-ed5c", "up", "railway", "app"],
+          "path": ["query"]
+        }
+      }
+    },
+    {
+      "name": "Backend Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "https://applianceiq-production.up.railway.app/api/health",
+          "protocol": "https",
+          "host": ["applianceiq-production", "up", "railway", "app"],
+          "path": ["api", "health"]
+        }
+      }
+    },
+    {
+      "name": "Backend RAG Query",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"manual_id\": \"example-manual-id\",\n  \"question\": \"What is the warranty period for a washing machine?\",\n  \"top_k\": 5\n}"
+        },
+        "url": {
+          "raw": "https://applianceiq-production.up.railway.app/api/chat",
+          "protocol": "https",
+          "host": ["applianceiq-production", "up", "railway", "app"],
+          "path": ["api", "chat"]
+        }
+      }
+    }
+  ]
+}

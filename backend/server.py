@@ -1,6 +1,6 @@
 from fastapi import FastAPI, APIRouter, UploadFile, File, Form, HTTPException, Depends, Response, Cookie, Header
 from contextlib import asynccontextmanager
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
@@ -202,7 +202,9 @@ async def root():
     """Welcome to ApplianceIQ API - Redirects to Swagger UI."""
     return RedirectResponse(url="/docs")
 
-@app.get("/api/welcome")
+api_router = APIRouter(prefix="/api")
+
+@api_router.get("/welcome")
 async def welcome():
     """Manual status check."""
     return {
@@ -214,8 +216,6 @@ async def welcome():
             for route in app.routes if hasattr(route, 'path')
         ]
     }
-
-api_router = APIRouter(prefix="/api")
 
 # Configure logging
 logging.basicConfig(
@@ -912,6 +912,13 @@ else:
         "https://upbeat-contentment-production-ed5c.up.railway.app/"
     ]
 
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logger.info(f"Incoming request: {request.method} {request.url.path}")
+    response = await call_next(request)
+    logger.info(f"Response status: {response.status_code}")
+    return response
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
@@ -921,6 +928,18 @@ app.add_middleware(
     expose_headers=["*"],
     max_age=3600,
 )
+
+@app.exception_handler(405)
+async def method_not_allowed_handler(request: Request, exc):
+    logger.warning(f"Method Not Allowed: {request.method} {request.url.path}")
+    return JSONResponse(
+        status_code=405,
+        content={
+            "detail": f"Method {request.method} not allowed for this endpoint. Check if you are sending POST to a GET-only route or if there is a trailing slash issue.",
+            "method": request.method,
+            "path": request.url.path
+        }
+    )
 
 # Global Error Handler for 500s to see them in logs
 @app.exception_handler(Exception)
