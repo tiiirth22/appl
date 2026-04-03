@@ -784,7 +784,7 @@ async def chat_image(
         return StreamingResponse(stream_response(), media_type="text/plain")
 
     except Exception as e:
-        _logging.error(f"Image chat error: {str(e)}")
+        logger.error(f"Image chat error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.post("/qr/assign")
