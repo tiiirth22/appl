@@ -207,8 +207,11 @@ class RAGQueryEngine:
             # Log dimensions for troubleshooting mismatches
             self.logger.info(f"Querying Pinecone | Dimension: {len(embedding)} | Manual ID: {manual_id}")
             
-            # Check dimension of index
-            index_desc = self._pinecone_client.describe_index(PINECONE_INDEX_NAME)
+            # Check dimension of index asynchronously to prevent blocking event loop
+            index_desc = await asyncio.to_thread(
+                self._pinecone_client.describe_index, PINECONE_INDEX_NAME
+            )
+            
             if len(embedding) != index_desc.dimension:
                 err_msg = f"Embedding dimension mismatch: model is {len(embedding)}, but index is {index_desc.dimension}."
                 self.logger.critical(err_msg)
