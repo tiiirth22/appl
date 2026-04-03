@@ -7,7 +7,8 @@ import { MorphingButton } from '../components/ui/morphing-button';
 import { FloatingInput } from '../components/ui/floating-input';
 import Navbar from '../components/ui/Navbar';
 
-import { API_BASE_URL as API } from '../config';
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
 
 export default function ManualUpload({ user, onLogout }) {
   const navigate = useNavigate();

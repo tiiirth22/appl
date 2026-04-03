@@ -11,7 +11,8 @@ import ManualUpload from './pages/ManualUpload';
 import Analytics from './pages/Analytics';
 import ChatBot from './pages/ChatBot';
 
-import { API_BASE_URL as API } from './config';
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+const API = `${BACKEND_URL.replace(/\/$/, '')}/api`;
 const SESSION_TOKEN_KEY = 'session_token';
 
 function App() {

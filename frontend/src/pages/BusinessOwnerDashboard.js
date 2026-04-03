@@ -33,7 +33,8 @@ const ManualCard = ({ title, description, icon, onSecondaryClick, onPrimaryClick
   </div>
 );
 
-import { API_BASE_URL as API } from '../config';
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
 
 export default function BusinessOwnerDashboard({ user, onLogout }) {
   const [manuals, setManuals] = useState([]);
