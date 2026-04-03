@@ -98,8 +98,8 @@ class QRHandler:
     def generate_qr_code(self, manual_id: str, version: str) -> dict:
         """Generate QR code image and upload to Cloudinary if available."""
         payload, qr_id = self.create_qr_payload(manual_id, version)
-        # QR now points directly to frontend chat page with manual_id
-        qr_url = f"{self.app_base_url}/chat/{manual_id}"
+        # QR now points directly to frontend chat page with manual_id as a query string
+        qr_url = f"{self.app_base_url}/chat?manual_id={manual_id}"
         logger.info(f"[QRHandler] Generating QR — manual_id={manual_id}, qr_id={qr_id}, target_url={qr_url}")
         
         # 1. Generate QR image bytes
@@ -172,5 +172,5 @@ class QRHandler:
 
     def regenerate_qr_image(self, manual_id: str) -> str:
         """Regenerate QR code image for a manual."""
-        qr_url = f"{self.app_base_url}/chat/{manual_id}"
+        qr_url = f"{self.app_base_url}/chat?manual_id={manual_id}"
         return self._make_qr_image_base64(qr_url)
