@@ -4,8 +4,7 @@ import axios from 'axios';
 import { UserPlus, Eye, EyeOff, Shield, ArrowLeft, Mail, Lock, User, Briefcase, Info } from 'lucide-react';
 import { MorphingButton } from '../components/ui/morphing-button';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+import { API_BASE_URL as API } from '../config';
 
 export default function Signup({ onLogin }) {
   const [formData, setFormData] = useState({

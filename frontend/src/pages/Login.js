@@ -4,8 +4,7 @@ import axios from 'axios';
 import { LogIn, Eye, EyeOff, Shield, ArrowLeft, Loader2, Mail, Lock, Info } from 'lucide-react';
 import { MorphingButton } from '../components/ui/morphing-button';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+import { API_BASE_URL as API } from '../config';
 
 export default function Login({ onLogin }) {
   // Diagnostic log

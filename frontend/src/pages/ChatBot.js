@@ -5,8 +5,7 @@ import { Send, Loader, Bot, User, Star, Mic, Image as ImageIcon, X, Shield, Pape
 import { motion, AnimatePresence } from 'framer-motion';
 import { MorphingButton } from '../components/ui/morphing-button';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+import { API_BASE_URL as API } from '../config';
 
 export default function ChatBot() {
   const [searchParams] = useSearchParams();

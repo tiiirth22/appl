@@ -4,8 +4,7 @@ import axios from 'axios';
 import { Upload, BarChart, FileText, QrCode, Loader } from 'lucide-react';
 import Navbar from '../components/ui/Navbar';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+import { API_BASE_URL as API } from '../config';
 
 export default function Dashboard({ user, onLogout }) {
   const [manuals, setManuals] = useState([]);
