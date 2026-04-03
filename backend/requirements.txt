@@ -10,6 +10,7 @@ bcrypt==4.1.3
 passlib>=1.7.4
 cloudinary>=1.38.0
 gunicorn==21.2.0
+numpy>=1.24.0
 
 # utilities
 requests>=2.31.0
