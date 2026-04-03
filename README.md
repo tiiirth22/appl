@@ -54,6 +54,8 @@ Users can retrieve maintenance and operation details directly through a chat int
 - **Database**: [MongoDB](https://www.mongodb.com/) (Motor Async Driver)
 - **Vector Search**: [Pinecone](https://www.pinecone.io/) (for high-performance RAG)
 - **AI/ML**: Transformers, Embeddings, and NLP models.
+- **Image/PDF Storage**: [Cloudinary](https://cloudinary.com/) (Media Management)
+- **Generative AI**: [Groq](https://groq.com/) (for low-latency LLM inference)
 - **Security**: JWT Authentication & Bcrypt password hashing.
 
 ### Frontend
@@ -87,11 +89,26 @@ venv\Scripts\activate
 source venv/bin/activate
 
 pip install -r requirements.txt
-# Create a .env file based on the provided configuration
+# Create a .env file with the following variables:
+# MONGO_URL, PINECONE_API_KEY, GROQ_API_KEY, CLOUDINARY_URL, 
+# CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET
 python server.py
 ```
 
-### 3. Frontend Setup
+### 3. ML Service Setup (Optional for local RAG)
+```bash
+cd ml_service
+python -m venv venv
+# Windows
+venv\Scripts\activate
+# Linux/macOS
+source venv/bin/activate
+
+pip install -r requirements.txt
+python server.py
+```
+
+### 4. Frontend Setup
 ```bash
 cd frontend
 npm install
@@ -104,14 +121,18 @@ npm start
 
 ```text
 .
-├── backend/               # FastAPI Server logic
+├── backend/               # FastAPI Server logic (Port 8000)
 │   ├── auth.py            # JWT & Authentication
 │   ├── models.py          # Pydantic & DB Models
-│   ├── ingestion.py       # Document processing (optional)
-│   ├── rag.py             # RAG Engine (Vector search)
-│   ├── qr_handler.py      # QR code generation
+│   ├── ml_client.py       # Client for ML service communication
+│   ├── qr_handler.py      # QR code generation & Cloudinary sync
 │   └── server.py          # API Entry point
-├── frontend/              # React Application
+├── ml_service/            # Heavy ML Processing (Port 8001)
+│   ├── processor.py       # PDF/Image text extraction & embedding
+│   ├── rag_engine.py      # Vector search & LLM prompt logic
+│   ├── model_manager.py   # Lazy model loading for better performance
+│   └── server.py          # ML service endpoints
+├── frontend/              # React Application (Port 3000)
 │   ├── src/pages/         # Dashboard & Auth views
 │   ├── src/components/    # Reusable UI components
 │   ├── src/hooks/         # Custom React hooks

@@ -31,7 +31,12 @@ logging.basicConfig(level=logging.INFO)
 try:
     import cloudinary
     import cloudinary.uploader
-    cloudinary_available = os.getenv("CLOUDINARY_URL") is not None
+    # More robust check: require credentials to be present
+    cloudinary_available = all([
+        os.getenv("CLOUDINARY_CLOUD_NAME"),
+        os.getenv("CLOUDINARY_API_KEY"),
+        os.getenv("CLOUDINARY_API_SECRET")
+    ]) or os.getenv("CLOUDINARY_URL") is not None
 except Exception:
     cloudinary_available = False
 
@@ -146,11 +151,28 @@ async def lifespan(app: FastAPI):
             logger.error("👉 ACTION REQUIRED: Go to Render Dashboard > Environment and add MONGO_URL.")
     
     # Initialize Cloudinary (lightweight, non-blocking)
-    cloudinary_url = os.getenv("CLOUDINARY_URL")
-    if cloudinary_url:
+    if cloudinary_available:
         try:
-            cloudinary.config(secure=True)
-            logger.info("[Cloudinary] Configured")
+            # Use explicit credentials if available, falling back to URL
+            cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME")
+            api_key = os.getenv("CLOUDINARY_API_KEY")
+            api_secret = os.getenv("CLOUDINARY_API_SECRET")
+            cloudinary_url = os.getenv("CLOUDINARY_URL")
+
+            if cloud_name and api_key and api_secret:
+                cloudinary.config(
+                    cloud_name=cloud_name,
+                    api_key=api_key,
+                    api_secret=api_secret,
+                    secure=True
+                )
+                logger.info(f"[Cloudinary] Configured with explicit credentials (Cloud: {cloud_name})")
+            elif cloudinary_url:
+                cloudinary.config(cloudinary_url=cloudinary_url, secure=True)
+                logger.info("[Cloudinary] Configured via CLOUDINARY_URL")
+            else:
+                logger.warning("[Cloudinary] Configuration skipped: No credentials provided")
+                mongo_available = False # Not really, but Cloudinary is not
         except Exception as e:
             logger.warning(f"[Cloudinary] Configuration failed: {str(e)}")
     
@@ -326,7 +348,7 @@ async def upload_manual(
         content = await file.read()
         
         # Upload to Cloudinary
-        if cloudinary_available and os.getenv("CLOUDINARY_URL"):
+        if cloudinary_available:
             try:
                 res_type = "raw" if file_ext == "pdf" else "image"
                 upload_result = cloudinary.uploader.upload(
@@ -337,9 +359,21 @@ async def upload_manual(
                     overwrite=True
                 )
                 cloudinary_file_url = upload_result.get("secure_url")
-                logger.info(f"Uploaded to Cloudinary: {cloudinary_file_url}")
+                
+                if not cloudinary_file_url:
+                    logger.error(f"[Cloudinary] Upload returned empty secure_url for manual {manual_id}")
+                    # Try to get the URL from the response some other way
+                    cloudinary_file_url = upload_result.get("url")
+                
+                if cloudinary_file_url:
+                    logger.info(f"Uploaded to Cloudinary: {cloudinary_file_url}")
+                else:
+                    logger.error(f"[Cloudinary] Critical failure: No URL in upload result for {manual_id}. Result: {upload_result}")
             except Exception as e:
-                logger.warning(f"Cloudinary upload failed: {e}")
+                logger.error(f"Cloudinary upload failed: {str(e)}", exc_info=True)
+                # We'll catch this in the validation below
+        else:
+            logger.warning(f"Cloudinary not available for upload of manual {manual_id}")
         
         # Create manual record in DB
         manual = Manual(
