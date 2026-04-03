@@ -115,7 +115,7 @@ ml_client = MLServiceClient(ml_service_url)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     
-    global client, db, mongo_available
+    global client, db, mongo_available, cloudinary_available
     
     # Initialize MongoDB client WITHOUT verification (connection lazy on first use)
     if mongo_url:
@@ -151,7 +151,7 @@ async def lifespan(app: FastAPI):
             logger.error("👉 ACTION REQUIRED: Go to Render Dashboard > Environment and add MONGO_URL.")
     
     # Initialize Cloudinary (lightweight, non-blocking)
-    if cloudinary_available:
+    if globals().get('cloudinary_available', False):
         try:
             # Use explicit credentials if available, falling back to URL
             cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME")
@@ -172,10 +172,10 @@ async def lifespan(app: FastAPI):
                 logger.info("[Cloudinary] Configured via CLOUDINARY_URL")
             else:
                 logger.warning("[Cloudinary] Configuration skipped: No credentials provided")
-                cloudinary_available = False 
+                globals()['cloudinary_available'] = False 
         except Exception as e:
             logger.warning(f"[Cloudinary] Configuration failed: {str(e)}")
-            cloudinary_available = False
+            globals()['cloudinary_available'] = False
     
     # Log initialization status
     logger.info("[Startup] Connected to ML Service: " + ("Available" if ml_service_url else "Not configured"))

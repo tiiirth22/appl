@@ -24,7 +24,12 @@ class QRHandler:
             self.app_base_url = "http://localhost:3000"
         
         # Cloudinary setup is handled globally in server.py, but we can verify here
-        self.cloudinary_available = os.getenv("CLOUDINARY_URL") is not None
+        # More robust check: match server.py logic
+        self.cloudinary_available = all([
+            os.getenv("CLOUDINARY_CLOUD_NAME"),
+            os.getenv("CLOUDINARY_API_KEY"),
+            os.getenv("CLOUDINARY_API_SECRET")
+        ]) or os.getenv("CLOUDINARY_URL") is not None
         
         logger.info(f"[QRHandler] Initialized — base_url={self.app_base_url}, cloudinary={'yes' if self.cloudinary_available else 'no'}")
     
