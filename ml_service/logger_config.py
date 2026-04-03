@@ -7,9 +7,15 @@ from pathlib import Path
 from typing import Optional
 import sys
 
-# Log directory setup
+# Log directory setup - handle read-only filesystems by falling back to /tmp
 LOG_DIR = Path(__file__).parent / "logs"
-LOG_DIR.mkdir(exist_ok=True)
+try:
+    LOG_DIR.mkdir(exist_ok=True)
+except (OSError, PermissionError):
+    # Fallback for systems like Railway with read-only root filesystems
+    import tempfile
+    LOG_DIR = Path(tempfile.gettempdir()) / "ml_service_logs"
+    LOG_DIR.mkdir(exist_ok=True)
 
 class JSONFormatter(logging.Formatter):
     """JSON formatter for structured logging"""

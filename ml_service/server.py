@@ -22,9 +22,16 @@ from errors import (
     ProcessManualRequest, QueryRequest, HealthCheckResponse
 )
 
-# Initialize logging
-setup_logging(log_level=LOG_LEVEL)
-logger = get_processing_logger(__name__)
+# Initialize logging with absolute safety
+try:
+    setup_logging(log_level=LOG_LEVEL)
+    logger = get_processing_logger(__name__)
+    logger.info("Logging initialized successfully")
+except Exception as e:
+    import sys
+    print(f"CRITICAL: Failed to initialize logging: {str(e)}", file=sys.stderr)
+    # Define a basic logger if setup_logging fails
+    logger = logging.getLogger(__name__)
 
 # Rate limiter (simple in-memory implementation)
 class SimpleRateLimiter:
