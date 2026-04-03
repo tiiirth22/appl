@@ -163,8 +163,8 @@ We welcome contributions! Please follow these steps:
 
 ## Key Contacts
 
-- **Maintainer**: Tiirth Patel (tiirth22)
-- **Email**: support@applianceiq.ai
+- **Maintainer**: Tirth Dalal (tiirth22)
+- **Email**: tirth2216@gmail.com
 - **Project Link**: [https://github.com/tiirth22/Appliance_IQ](https://github.com/tiirth22/Appliance_IQ)
 
 ---
