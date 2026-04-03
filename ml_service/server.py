@@ -266,6 +266,7 @@ async def health_check_detailed(request_id: str = Depends(get_request_id)):
 @app.post("/process_manual")
 async def process_manual(
     request: ProcessManualRequest,
+    background_tasks: BackgroundTasks,
     request_id: str = Depends(get_request_id),
     client_ip: str = Depends(check_rate_limit),
 ):
@@ -273,15 +274,19 @@ async def process_manual(
     Process a manual document
     """
     try:
-        logger.info(f"Processing request from {client_ip}")
+        logger.info(f"Processing request from {client_ip} for manual {request.manual_id}")
         
-        # Create processor and start processing
+        # Create processor
         processor = AsyncDocumentProcessor(
             manual_id=request.manual_id,
             request_id=request_id,
         )
         
-        result = await processor.process_manual(
+        # Enqueue processing in the background to prevent proxy timeouts
+        # This allows the API to return immediately while the SentenceTransformer
+        # loads and processes the document in the background.
+        background_tasks.add_task(
+            processor.process_manual,
             file_url=request.file_url,
             manual_id=request.manual_id,
             manual_name=request.manual_name,
@@ -289,14 +294,19 @@ async def process_manual(
             file_type=request.file_type,
         )
         
-        logger.info(f"Processing completed: {result['chunks_count']} chunks")
+        logger.info(f"Processing queued in background for manual {request.manual_id}")
         
-        return result
+        return {
+            "manual_id": request.manual_id,
+            "status": "pending",
+            "chunks_count": 0,
+            "message": "Manual processing queued in background"
+        }
         
     except MLServiceException:
         raise
     except Exception as e:
-        logger.error(f"Processing failed: {str(e)}", exc_info=True)
+        logger.error(f"Queueing failed: {str(e)}", exc_info=True)
         raise
 
 

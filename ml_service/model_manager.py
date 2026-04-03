@@ -1,7 +1,17 @@
 import asyncio
 import logging
+import os
 from typing import Optional
+
+# Optimize PyTorch threading to prevent OOM/CPU explosion in production
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 from sentence_transformers import SentenceTransformer
+import torch
+torch.set_num_threads(1)
+
 from config import EMBEDDING_MODEL
 
 logger = logging.getLogger(__name__)
@@ -42,7 +52,7 @@ class ModelManager:
         try:
             # Use asyncio.to_thread to avoid blocking the event loop during heavy IO/Model loading
             self._model = await asyncio.to_thread(
-                SentenceTransformer, EMBEDDING_MODEL
+                SentenceTransformer, EMBEDDING_MODEL, device="cpu"
             )
             self._initialized = True
             logger.info(f"Model {EMBEDDING_MODEL} loaded successfully and ready.")

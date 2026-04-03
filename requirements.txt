@@ -23,7 +23,7 @@ sentence-transformers==3.0.1
 transformers>=4.38.0
 tokenizers>=0.15.0
 huggingface-hub>=0.20.0
-pinecone-client>=3.1.0
+pinecone>=3.1.0
 groq>=0.5.0
 python-json-logger>=2.0.0
 tqdm>=4.66.0
