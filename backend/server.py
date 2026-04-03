@@ -747,7 +747,7 @@ async def chat(request: ChatRequest, current_user: Optional[dict] = Depends(get_
 async def chat_image(
     manual_id: str = Form(...),
     file: UploadFile = File(...),
-    current_user: dict = Depends(get_current_user_optional)
+    current_user: dict = Depends(get_optional_user)
 ):
     """Handle image-based RAG query"""
     try:
