@@ -15,12 +15,11 @@ from config import (
     REQUEST_SIZE_LIMIT, RATE_LIMIT_REQUESTS, RATE_LIMIT_WINDOW_SEC,
 )
 from logger_config import setup_logging, get_processing_logger
-from processor import AsyncDocumentProcessor
 from rag_engine import RAGQueryEngine
 from model_manager import model_manager
 from errors import (
     MLServiceException, ErrorType, ServiceUnavailableError,
-    ProcessManualRequest, QueryRequest, AnalyzeImageRequest, HealthCheckResponse,
+    QueryRequest, AnalyzeImageRequest, HealthCheckResponse,
     QueryResponse
 )
 
@@ -253,8 +252,8 @@ async def health_check_detailed(request_id: str = Depends(get_request_id)):
     
     # Check Pinecone availability
     try:
-        processor = AsyncDocumentProcessor(request_id=request_id)
-        index = await processor._get_pinecone_index()
+        rag = RAGQueryEngine(request_id=request_id)
+        index = await rag._get_pinecone_index()
         health_status["components"]["pinecone"] = "ready"
     except Exception as e:
         health_status["components"]["pinecone"] = f"error: {str(e)}"
@@ -273,53 +272,6 @@ async def health_check_detailed(request_id: str = Depends(get_request_id)):
 
 
 # ==================== PROCESSING ENDPOINTS ====================
-
-@app.post("/process_manual")
-async def process_manual(
-    request: ProcessManualRequest,
-    background_tasks: BackgroundTasks,
-    request_id: str = Depends(get_request_id),
-    client_ip: str = Depends(check_rate_limit),
-):
-    """
-    Process a manual document
-    """
-    try:
-        logger.info(f"Processing request from {client_ip} for manual {request.manual_id}")
-        
-        # Create processor
-        processor = AsyncDocumentProcessor(
-            manual_id=request.manual_id,
-            request_id=request_id,
-        )
-        
-        # Enqueue processing in the background to prevent proxy timeouts
-        # This allows the API to return immediately while the SentenceTransformer
-        # loads and processes the document in the background.
-        background_tasks.add_task(
-            processor.process_manual,
-            file_url=request.file_url,
-            manual_id=request.manual_id,
-            manual_name=request.manual_name,
-            version=request.version,
-            file_type=request.file_type,
-        )
-        
-        logger.info(f"Processing queued in background for manual {request.manual_id}")
-        
-        return {
-            "manual_id": request.manual_id,
-            "status": "pending",
-            "chunks_count": 0,
-            "message": "Manual processing queued in background"
-        }
-        
-    except MLServiceException:
-        raise
-    except Exception as e:
-        logger.error(f"Queueing failed: {str(e)}", exc_info=True)
-        raise
-
 
 @app.post("/query")
 async def query_manual(
@@ -419,8 +371,8 @@ async def debug_pinecone(request_id: str = Depends(get_request_id)):
     
     try:
         # 1. Initialize Processor to get index
-        processor = AsyncDocumentProcessor(request_id=request_id)
-        index = await processor._get_pinecone_index()
+        rag = RAGQueryEngine(request_id=request_id)
+        index = await rag._get_pinecone_index()
         debug_info["pinecone_connected"] = True
         
         # 2. Get Index Description (Safe extract)
