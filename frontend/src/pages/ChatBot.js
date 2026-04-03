@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useParams } from 'react-router-dom';
 import axios from 'axios';
-import { Send, Loader, Bot, User, Star, Mic, Image as ImageIcon, X, Shield, Paperclip, Maximize2, Info, ChevronDown, Youtube, ChevronRight, ChevronLeft, AlertCircle } from 'lucide-react';
+import { Send, Loader, Bot, User, Star, Mic, Image as ImageIcon, X, Shield, Paperclip, Maximize2, Info, ChevronDown, Youtube, ChevronRight, ChevronLeft, AlertCircle, Camera } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { API_BASE_URL as API } from '../config';
+import LiveCameraOverlay from '../components/LiveCameraOverlay';
 
 export default function ChatBot() {
   const [searchParams] = useSearchParams();
@@ -21,6 +22,7 @@ export default function ChatBot() {
   const [isScanning, setIsScanning] = useState(false);
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -95,17 +97,18 @@ export default function ChatBot() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleSend = async () => {
-    if ((!input.trim() && !imageFile) || loading || !manualId) return;
+  const handleSend = async (overrideText = null) => {
+    const textToSend = typeof overrideText === 'string' ? overrideText : input;
+    if ((!textToSend.trim() && !imageFile) || loading || !manualId) return;
 
     const userMessage = { 
       type: 'user', 
-      text: input, 
+      text: textToSend, 
       image: imagePreview 
     };
     setMessages(prev => [...prev, userMessage]);
     
-    const currentInput = input;
+    const currentInput = textToSend;
     const currentImage = imageFile;
     const token = localStorage.getItem('session_token');
     
@@ -169,6 +172,8 @@ export default function ChatBot() {
             botMessage.sources = metadata.sources || [];
             botMessage.video_url = metadata.video_url;
             botMessage.steps = metadata.steps || [];
+            botMessage.severity = metadata.severity;
+            botMessage.cost = metadata.cost;
             botMessage.extracted_problem = metadata.extracted_problem;
             botMessage.is_vision = metadata.is_vision;
             
@@ -204,6 +209,11 @@ export default function ChatBot() {
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const triggerAutoSend = (query) => {
+    setIsCameraOpen(false);
+    handleSend(query);
   };
 
   const submitFeedback = async (rating) => {
@@ -341,6 +351,21 @@ export default function ChatBot() {
                 {m.type === 'bot' && m.steps && m.steps.length > 0 && (
                   <RepairSteps steps={m.steps} />
                 )}
+
+                {/* Severity Badge */}
+                {m.type === 'bot' && m.severity && (
+                  <SeverityBadge severity={m.severity} />
+                )}
+
+                {/* Cost Estimator */}
+                {m.type === 'bot' && m.cost && (
+                  <CostEstimator cost={m.cost} />
+                )}
+
+                {/* Repair Steps Swipeable Cards */}
+                {m.type === 'bot' && m.steps && m.steps.length > 0 && (
+                  <RepairSteps steps={m.steps} />
+                )}
               </div>
             </motion.div>
           ))}
@@ -403,6 +428,9 @@ export default function ChatBot() {
           </div>
 
           <div className="input-actions">
+            <button className="utility-btn" onClick={() => setIsCameraOpen(true)}>
+              <Camera size={20} />
+            </button>
             <button className={`voice-btn ${isListening ? 'active' : ''}`} onClick={startListening}>
               <Mic size={20} />
             </button>
@@ -440,6 +468,14 @@ export default function ChatBot() {
               <div className="scanner-line" />
               <p>Analyzing problem image...</p>
             </motion.div>
+          )}
+          
+          {isCameraOpen && (
+            <LiveCameraOverlay 
+              onClose={() => setIsCameraOpen(false)}
+              onIssueDetected={triggerAutoSend}
+              manualId={manualId}
+            />
           )}
         </AnimatePresence>
       </footer>
@@ -860,6 +896,66 @@ function RepairSteps({ steps }) {
             <ChevronRight size={18} />
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function SeverityBadge({ severity }) {
+  const getStyle = () => {
+    switch(severity) {
+      case 'minor': return { bg: 'rgba(34, 197, 94, 0.1)', border: 'rgba(34, 197, 94, 0.2)', color: '#22c55e' };
+      case 'moderate': return { bg: 'rgba(234, 179, 8, 0.1)', border: 'rgba(234, 179, 8, 0.2)', color: '#eab308' };
+      case 'critical': return { bg: 'rgba(239, 68, 68, 0.1)', border: 'rgba(239, 68, 68, 0.2)', text: '#ef4444' };
+      default: return { bg: 'rgba(148, 163, 184, 0.1)', border: 'rgba(148, 163, 184, 0.2)', color: '#94a3b8' };
+    }
+  };
+  const style = getStyle();
+  
+  return (
+    <>
+      <div style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '6px',
+        padding: '6px 12px',
+        borderRadius: '12px',
+        backgroundColor: style.bg,
+        border: `1px solid ${style.border}`,
+        color: style.color || style.text,
+        fontSize: '0.75rem',
+        fontWeight: 'bold',
+        marginTop: '1rem',
+        marginBottom: '0.5rem',
+        textTransform: 'uppercase'
+      }}>
+        <AlertCircle size={14} />
+        {severity} Severity
+      </div>
+      {severity === 'critical' && (
+        <div style={{ fontSize: '0.8rem', color: '#ef4444', marginBottom: '0.5rem', fontStyle: 'italic', fontWeight: 600 }}>
+          * We strongly recommend calling a certified technician for this issue.
+        </div>
+      )}
+    </>
+  );
+}
+
+function CostEstimator({ cost }) {
+  if (!cost) return null;
+  return (
+    <div style={{
+      marginTop: '1rem',
+      padding: '0.75rem 1rem',
+      backgroundColor: 'rgba(30, 41, 59, 0.5)',
+      borderRadius: '12px',
+      borderLeft: '4px solid #3b82f6',
+      fontSize: '0.85rem'
+    }}>
+      <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#f8fafc' }}>Estimated Repair Cost:</div>
+      <div style={{ display: 'flex', gap: '1.5rem', color: '#94a3b8' }}>
+        <span><strong style={{ color: '#fff' }}>DIY:</strong> {cost.diy}</span>
+        <span><strong style={{ color: '#fff' }}>Professional:</strong> {cost.professional}</span>
       </div>
     </div>
   );

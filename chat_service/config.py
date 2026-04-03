@@ -27,6 +27,7 @@ GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 LLM_MODEL = os.getenv("LLM_MODEL", GROQ_MODEL)
 LLM_MODEL_SECONDARY = os.getenv("LLM_MODEL_SECONDARY", "llama-3.1-8b-instant")
 GROQ_VISION_MODEL = os.getenv("GROQ_VISION_MODEL", "llama-3.2-11b-vision-preview")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 # Embedding Configuration
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")

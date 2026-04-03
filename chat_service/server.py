@@ -20,7 +20,7 @@ from model_manager import model_manager
 from errors import (
     MLServiceException, ErrorType, ServiceUnavailableError,
     QueryRequest, AnalyzeImageRequest, HealthCheckResponse,
-    QueryResponse
+    QueryResponse, AnalyzeFrameRequest, AnalyzeFrameResponse
 )
 
 # Initialize logging with absolute safety
@@ -346,7 +346,37 @@ async def analyze_image(
             detail=MLServiceException(
                 ErrorType.INTERNAL_ERROR,
                 str(e)
-            ).to_response().dict()
+            ).to_response().model_dump()
+        )
+
+
+@app.post("/analyze-frame", response_model=AnalyzeFrameResponse)
+async def analyze_frame(
+    request: AnalyzeFrameRequest,
+    request_id: str = Depends(get_request_id),
+    client_ip: str = Depends(check_rate_limit),
+):
+    """Analyze single video frame with Gemini 1.5 Flash"""
+    try:
+        # Create RAG engine
+        rag_engine = RAGQueryEngine(
+            request_id=request_id,
+        )
+        
+        response = await rag_engine.analyze_frame(
+            image_b64=request.image_b64
+        )
+        return response
+    except MLServiceException:
+        raise
+    except Exception as e:
+        logger.error(f"Unhandled error in analyze_frame: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=MLServiceException(
+                ErrorType.INTERNAL_ERROR,
+                str(e)
+            ).to_response().model_dump()
         )
 
 

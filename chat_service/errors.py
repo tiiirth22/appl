@@ -78,6 +78,19 @@ class AnalyzeImageRequest(BaseModel):
     history: Optional[List[Dict[str, str]]] = Field(default=None)
 
 
+class AnalyzeFrameRequest(BaseModel):
+    """Live camera frame analysis request"""
+    image_b64: str
+
+
+class AnalyzeFrameResponse(BaseModel):
+    """Live camera frame analysis response"""
+    issue: Optional[str] = None
+    part: Optional[str] = None
+    severity: Optional[str] = None
+    suggested_query: Optional[str] = None
+
+
 class QueryResponse(BaseModel):
     """RAG query response"""
     query_id: str
@@ -88,6 +101,9 @@ class QueryResponse(BaseModel):
     extracted_problem: Optional[str] = None
     video_url: Optional[str] = None
     steps: List[dict] = []
+    severity: Optional[str] = None
+    cost: Optional[Dict[str, str]] = None
+    history: Optional[List[Dict[str, str]]] = []
 
 
 class HealthCheckResponse(BaseModel):

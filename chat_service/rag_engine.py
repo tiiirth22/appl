@@ -27,11 +27,20 @@ except ImportError:
 from config import (
     EMBEDDING_MODEL, LLM_MODEL, GROQ_API_KEY,
     GROQ_API_KEY_SECONDARY, LLM_MODEL_SECONDARY,
-    GROQ_VISION_MODEL,
+    GROQ_VISION_MODEL, GEMINI_API_KEY,
     PINECONE_API_KEY, PINECONE_INDEX_NAME,
     QUERY_TIMEOUT, EMBEDDING_TIMEOUT, PINECONE_TIMEOUT,
 )
 from model_manager import model_manager
+
+HARDCODED_COST_MAP = {
+    "water_leak": {"diy": "$10–$30", "professional": "$100–$200"},
+    "cooling_issue": {"diy": "$50–$100", "professional": "$200–$400"},
+    "noise_vibration": {"diy": "$5–$20", "professional": "$80–$150"},
+    "door_seal": {"diy": "$20–$60", "professional": "$100–$150"},
+    "electrical": {"diy": "Not recommended", "professional": "$150–$350"},
+    "unknown": {"diy": "Cost estimate unavailable", "professional": "Cost estimate unavailable"}
+}
 from errors import (
     EmbeddingError, PineconeError, RAGError, TimeoutError as TimeoutErrorException,
     ServiceUnavailableError, MLServiceException,
@@ -115,18 +124,17 @@ class RAGQueryEngine:
             video_url = self._construct_youtube_url(question)
             
             # Run LLM calls in parallel
-            # We use a wrapper for steps to handle errors gracefully
-            async def get_steps_safely():
+            async def get_secondary_info_safely():
                 try:
-                    return await self._generate_repair_steps(question, sources)
+                    return await self._generate_secondary_info(question, sources)
                 except Exception as e:
-                    self.logger.error(f"Repair steps generation failed: {str(e)}")
-                    return []
+                    self.logger.error(f"Secondary info generation failed: {str(e)}")
+                    return {"steps": [], "severity": None, "cost": None}
 
             answer_task = self._generate_answer(question, sources, history=history)
-            steps_task = get_steps_safely()
+            info_task = get_secondary_info_safely()
             
-            answer, steps = await asyncio.gather(answer_task, steps_task)
+            answer, secondary_info = await asyncio.gather(answer_task, info_task)
             
             processing_time_ms = (time.time() - start_time) * 1000
             self.logger.info(f"Query completed in {processing_time_ms:.2f}ms")
@@ -138,7 +146,10 @@ class RAGQueryEngine:
                 "confidence": confidence,
                 "processing_time_ms": processing_time_ms,
                 "video_url": video_url,
-                "steps": steps,
+                "steps": secondary_info.get("steps", []),
+                "severity": secondary_info.get("severity", None),
+                "cost": secondary_info.get("cost", None),
+                "history": history if history else []
             }
             
         except MLServiceException as e:
@@ -357,9 +368,35 @@ ANSWER (be concise and direct):"""
             
             # Add history if provided
             if history:
-                # Add up to 10 previous messages (5 turns)
-                messages.extend(history[-10:])
-                self.logger.info(f"Added {len(history[-10:])} history messages to context")
+                if len(history) > 6:
+                    self.logger.info("History exceeds 6 messages, summarizing older messages")
+                    old_history = history[:-6]
+                    recent_history = history[-6:]
+                    
+                    try:
+                        # Quick inline summarization without blocking main flow too much
+                        client_sec = await self._get_secondary_groq_client() or client
+                        summary_prompt = "Summarize the following past conversation concisely regarding appliance repair:\n" + "\n".join([f"{m['role']}: {m['content']}" for m in old_history])
+                        sum_resp = await asyncio.wait_for(
+                            asyncio.to_thread(
+                                lambda: client_sec.chat.completions.create(
+                                    model=LLM_MODEL_SECONDARY,
+                                    messages=[{"role": "user", "content": summary_prompt}],
+                                    temperature=0.1, max_tokens=150
+                                )
+                            ),
+                            timeout=10
+                        )
+                        summary_text = sum_resp.choices[0].message.content.strip()
+                        messages.append({"role": "system", "content": f"Previous conversation summary: {summary_text}"})
+                    except Exception as e:
+                        self.logger.error(f"Failed to summarize history: {e}")
+                    
+                    messages.extend(recent_history)
+                    self.logger.info(f"Added summary + {len(recent_history)} recent history messages to context")
+                else:
+                    messages.extend(history)
+                    self.logger.info(f"Added {len(history)} history messages to context")
             
             # Add current turns
             messages.append({
@@ -425,17 +462,17 @@ ANSWER (be concise and direct):"""
         encoded_query = urllib.parse.quote_plus(search_terms)
         return f"https://www.youtube.com/results?search_query={encoded_query}"
 
-    async def _generate_repair_steps(
+    async def _generate_secondary_info(
         self, 
         question: str, 
         sources: List[Dict[str, Any]], 
         timeout: int = QUERY_TIMEOUT
-    ) -> List[Dict[str, Any]]:
-        """Generate structured repair steps using secondary LLM"""
+    ) -> Dict[str, Any]:
+        """Generate structured repair steps, severity, and cost using secondary LLM"""
         try:
             client = await self._get_secondary_groq_client()
             if not client:
-                return []
+                return {}
                 
             # Build context from sources
             context = "\n\n".join([
@@ -443,11 +480,22 @@ ANSWER (be concise and direct):"""
                 for i, s in enumerate(sources[:3])
             ])
             
+            cost_map_str = str(HARDCODED_COST_MAP)
+            
             prompt = f"""You are a home appliance repair assistant.
-Given the following context from an appliance manual, generate a step-by-step repair guide for the user's query.
-Return ONLY a JSON array, no explanation, no markdown.
+Given the context from an appliance manual and the user query, return ONLY a valid JSON object.
+No explanation, no markdown, no extra text.
 
-Format: [{{ "step": 1, "title": "Step Title", "description": "Short description", "warning": "Any safety warning" }}]
+Format:
+{{
+  "steps": [{{ "step": 1, "title": "...", "description": "...", "warning": "..." }}],
+  "severity": "minor" | "moderate" | "critical",
+  "cost": {{ "diy": "$10–$20", "professional": "$80–$150" }}
+}}
+
+Classify the issue's cost using this map based on the issue type:
+{cost_map_str}
+If no exact match, return "cost": {{"diy": "Cost estimate unavailable", "professional": "Cost estimate unavailable"}}.
 
 Context: {context}
 Query: {question}"""
@@ -475,17 +523,17 @@ Query: {question}"""
                 
             import json
             try:
-                steps = json.loads(content)
-                if isinstance(steps, list):
-                    return steps
-                return []
+                info = json.loads(content)
+                if isinstance(info, dict):
+                    return info
+                return {}
             except json.JSONDecodeError:
-                self.logger.error(f"Failed to parse repair steps JSON: {content[:100]}")
-                return []
+                self.logger.error(f"Failed to parse secondary info JSON: {content[:100]}")
+                return {}
                 
         except Exception as e:
-            self.logger.error(f"Error generating repair steps: {str(e)}")
-            return []
+            self.logger.error(f"Error generating secondary info: {str(e)}")
+            return {}
 
     async def analyze_image(
         self,
@@ -546,4 +594,53 @@ Query: {question}"""
                 ErrorType.RAG_ERROR,
                 f"Failed to analyze image: {str(e)}",
                 retryable=True,
+            )
+
+    async def analyze_frame(self, image_b64: str) -> Dict[str, Any]:
+        """Analyze live camera frame with Gemini 1.5 Flash"""
+        import google.generativeai as genai
+        import PIL.Image
+        import io
+        import base64
+        import json
+        
+        try:
+            if not GEMINI_API_KEY:
+                raise ServiceUnavailableError("gemini", "GEMINI_API_KEY not configured")
+                
+            genai.configure(api_key=GEMINI_API_KEY)
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            
+            image_bytes = base64.b64decode(image_b64.split(",")[-1] if "," in image_b64 else image_b64)
+            image = PIL.Image.open(io.BytesIO(image_bytes))
+            
+            prompt = '''You are an appliance and device repair assistant.
+Look at this image and identify any visible issue.
+Return ONLY JSON, no explanation, no markdown:
+{
+  "issue": "one line description or null if nothing detected",
+  "part": "specific part name",
+  "severity": "minor|moderate|critical|none",
+  "suggested_query": "how to fix ..."
+}'''
+
+            response = await asyncio.to_thread(
+                model.generate_content,
+                [prompt, image]
+            )
+            
+            content = response.text.strip()
+            if content.startswith("```json"):
+                content = content.split("```json")[1].split("```")[0].strip()
+            elif content.startswith("```"):
+                content = content.split("```")[1].split("```")[0].strip()
+                
+            result = json.loads(content)
+            return result
+        except Exception as e:
+            self.logger.error(f"Gemini frame analysis failed: {str(e)}")
+            raise MLServiceException(
+                ErrorType.SERVICE_UNAVAILABLE, 
+                f"Frame analysis failed: {str(e)}", 
+                retryable=True
             )
