@@ -30,11 +30,11 @@ class ModelManager:
         return "not_initialized"
 
     def initialize(self):
-        """Start background initialization of the model"""
+        """Start background initialization of the model if not already started"""
         if self._model or (self._loading_task and not self._loading_task.done()):
             return
         
-        logger.info(f"Starting background initialization for model: {EMBEDDING_MODEL}")
+        logger.info(f"Starting initialization for model: {EMBEDDING_MODEL}")
         self._loading_task = asyncio.create_task(self._load_model())
 
     async def _load_model(self):

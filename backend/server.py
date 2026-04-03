@@ -872,8 +872,10 @@ else:
         "https://appliance-iq.vercel.app/",
         "https://www.appliance-iq.vercel.app",
         "https://www.appliance-iq.vercel.app/",
-        "https://appliance-iq-frontend.up.railway.app",
-        "https://appliance-iq-frontend.up.railway.app/"
+        "https://applianceiq-production.up.railway.app",
+        "https://applianceiq-production.up.railway.app/",
+        "https://upbeat-contentment-production-ed5c.up.railway.app",
+        "https://upbeat-contentment-production-ed5c.up.railway.app/"
     ]
 
 app.add_middleware(

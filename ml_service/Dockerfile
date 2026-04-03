@@ -63,7 +63,8 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
 EXPOSE 8080
 
 # Start server
-CMD exec uvicorn server:app \
-    --host 0.0.0.0 \
-    --port ${PORT:-8080} \
-    --workers 1
+CMD exec gunicorn server:app \
+    --workers 1 \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --bind 0.0.0.0:${PORT:-8080} \
+    --timeout 120

@@ -65,8 +65,9 @@ async def lifespan(app: FastAPI):
     """Startup and shutdown events"""
     logger.info(f"Starting {SERVICE_NAME} v{SERVICE_VERSION}")
     
-    # Startup: Initialize model in background immediately
-    model_manager.initialize()
+    # Startup: Initialize model and wait for it to be ready
+    # This prevents worker timeouts and ensures the service is ready when Railway routes traffic
+    await model_manager.get_model()
     
     yield
     
@@ -86,7 +87,18 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://appliance-iq.vercel.app",
+        "https://appliance-iq.vercel.app/",
+        "https://www.appliance-iq.vercel.app",
+        "https://www.appliance-iq.vercel.app/",
+        "https://applianceiq-production.up.railway.app",
+        "https://applianceiq-production.up.railway.app/",
+        "https://upbeat-contentment-production-ed5c.up.railway.app",
+        "https://upbeat-contentment-production-ed5c.up.railway.app/"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
