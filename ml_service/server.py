@@ -203,59 +203,15 @@ async def welcome():
 # ==================== HEALTH CHECK ====================
 
 @app.get("/health")
-async def health_check(request_id: str = Depends(get_request_id)):
-    """Comprehensive health check returning status of Pinecone, embedding model, and Groq API.
-    Returns 200 with status dict or 500 with what failed.
+async def health_check():
+    """Liveness check - returns immediately if the server process is up.
+    This prevents Railway from killing the container while the model is still loading.
     """
-    from config import GROQ_API_KEY
-    logger.info("Health check requested")
-    
-    health_status = {
-        "status": "healthy",
+    return {
+        "status": "alive",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "components": {
-            "pinecone": "unknown",
-            "embedding_model": "unknown",
-            "groq": "ready" if GROQ_API_KEY else "not_configured"
-        },
         "version": SERVICE_VERSION
     }
-    
-    is_healthy = True
-    
-    # 1. Embedding model status
-    try:
-        health_status["components"]["embedding_model"] = model_manager.status
-        if model_manager.status != "ready":
-            is_healthy = False
-    except Exception as e:
-        health_status["components"]["embedding_model"] = f"error: {str(e)}"
-        is_healthy = False
-    
-    # 2. Pinecone connectivity
-    try:
-        processor = AsyncDocumentProcessor(request_id=request_id)
-        index = await processor._get_pinecone_index()
-        # Active check: try to get stats
-        await asyncio.to_thread(index.describe_index_stats)
-        health_status["components"]["pinecone"] = "ready"
-    except Exception as e:
-        health_status["components"]["pinecone"] = f"error: {str(e)}"
-        is_healthy = False
-    
-    # 3. Groq API check
-    if not GROQ_API_KEY:
-        health_status["components"]["groq"] = "error: GROQ_API_KEY missing"
-        is_healthy = False
-    
-    if not is_healthy:
-        health_status["status"] = "unhealthy"
-        return JSONResponse(
-            status_code=500,
-            content=health_status
-        )
-    
-    return health_status
 
 
 @app.get("/health/detailed")

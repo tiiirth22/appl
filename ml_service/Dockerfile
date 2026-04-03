@@ -29,6 +29,9 @@ RUN pip install --no-cache-dir "numpy>=1.24.0,<2.0.0"
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Bake model weights into the image to speed up runtime startup
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')"
+
 # --- Stage 2: Final Runtime Image ---
 FROM python:3.11-slim
 
@@ -48,7 +51,10 @@ WORKDIR /app
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Copy ONLY necessary service source code to prevent "blind copying" of entire project
+# Copy pre-downloaded model cache from builder stage
+COPY --from=builder /root/.cache/huggingface /root/.cache/huggingface
+
+# Copy ONLY necessary service source code
 COPY *.py requirements.txt /app/
 
 # Remove ALL unnecessary files from the build context if any leaked in
@@ -56,8 +62,8 @@ RUN find . -maxdepth 1 -not -name "*.py" -not -name "requirements.txt" -not -nam
     find . -type d -name "__pycache__" -exec rm -rf {} + && \
     find . -type f -name "*.pyc" -delete
 
-# Health check (optional but good practice)
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+# Health check - Use a longer start period to allow for model verification
+HEALTHCHECK --interval=30s --timeout=15s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8080/health || exit 1
 
 EXPOSE 8080
