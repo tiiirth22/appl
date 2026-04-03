@@ -72,7 +72,7 @@ class RateLimiter:
     async def check(self, user_id: str):
         if self.db is None: return True
         now = datetime.now(timezone.utc)
-        start_period = (now - timedelta(seconds=self.window)).isoformat()
+        start_period = now - timedelta(seconds=self.window)
         
         # Clean old logs
         await self.db.rate_limits.delete_many({"timestamp": {"$lt": start_period}})
@@ -83,7 +83,7 @@ class RateLimiter:
             return False
         
         # Log this request
-        await self.db.rate_limits.insert_one({"user_id": user_id, "timestamp": now.isoformat()})
+        await self.db.rate_limits.insert_one({"user_id": user_id, "timestamp": now})
         return True
 
 from datetime import timedelta
@@ -172,9 +172,10 @@ async def lifespan(app: FastAPI):
                 logger.info("[Cloudinary] Configured via CLOUDINARY_URL")
             else:
                 logger.warning("[Cloudinary] Configuration skipped: No credentials provided")
-                mongo_available = False # Not really, but Cloudinary is not
+                cloudinary_available = False 
         except Exception as e:
             logger.warning(f"[Cloudinary] Configuration failed: {str(e)}")
+            cloudinary_available = False
     
     # Log initialization status
     logger.info("[Startup] Connected to ML Service: " + ("Available" if ml_service_url else "Not configured"))
@@ -299,6 +300,22 @@ async def delete_manual(manual_id: str, current_user: dict = Depends(get_db_busi
             logger.info(f"Deleted file: {file_path}")
     except Exception as e:
         logger.warning(f"Failed to delete file {manual.get('file_path')}: {e}")
+        
+    # Delete from Cloudinary
+    if cloudinary_available:
+        try:
+            # Cloudinary uploader destroys fallback to 'image' if resource_type isn't specified.
+            # PDFs are uploaded as 'raw', so we must specify resource_type="raw" for it to actually delete.
+            import cloudinary.uploader
+            res_type = "raw" if manual.get("file_type") == "pdf" else "image"
+            cloudinary.uploader.destroy(f"appliance_iq/manuals/manual_{manual_id}", resource_type=res_type)
+            
+            if manual.get("qr_code_id"):
+                cloudinary.uploader.destroy(f"appliance_iq/qrs/qr_{manual['qr_code_id']}", resource_type="image")
+                
+            logger.info(f"Deleted Cloudinary assets for manual {manual_id}")
+        except Exception as e:
+            logger.error(f"Failed to delete Cloudinary assets for {manual_id}: {e}")
     
     # Note: Pinecone deletion handled by ML Service
     # Manual data will be cleaned up by ML Service when manual is accessed
@@ -380,6 +397,14 @@ async def upload_manual(
         else:
             logger.warning(f"Cloudinary not available for upload of manual {manual_id}")
         
+        # Validate that we have a valid file URL before calling ML Service and DB
+        if not cloudinary_file_url:
+            logger.error(f"[Upload] ✗ Cloudinary file URL is None for manual {manual_id} — ML Service cannot process without a downloadable URL")
+            raise HTTPException(
+                status_code=500,
+                detail="File upload failed: Could not generate a public URL for the manual. Check Cloudinary configuration."
+            )
+
         # Create manual record in DB
         manual = Manual(
             id=manual_id,
@@ -394,21 +419,8 @@ async def upload_manual(
         
         manual_dict = manual.model_dump()
         manual_dict['filename'] = original_filename
-        manual_dict['created_at'] = manual_dict['created_at'].isoformat()
-        manual_dict['updated_at'] = manual_dict['updated_at'].isoformat()
+        # Motor handles datetime objects directly - no need for isoformat()
         await db.manuals.insert_one(manual_dict)
-        
-        # Validate that we have a valid file URL before calling ML Service
-        if not cloudinary_file_url:
-            logger.error(f"[Upload] ✗ Cloudinary file URL is None for manual {manual_id} — ML Service cannot process without a downloadable URL")
-            await db.manuals.update_one(
-                {"id": manual_id},
-                {"$set": {"status": "failed", "error": "File upload to Cloudinary failed — no public URL"}}
-            )
-            raise HTTPException(
-                status_code=500,
-                detail="File upload failed: Could not generate a public URL for the manual. Check Cloudinary configuration."
-            )
         
         # Call ML Service to process file
         try:
@@ -452,13 +464,15 @@ async def upload_manual(
         )
         
         qr_dict = qr_code.model_dump()
-        qr_dict['created_at'] = qr_dict['created_at'].isoformat()
         await db.qr_codes.insert_one(qr_dict)
         
         # Update manual with QR code
         await db.manuals.update_one(
             {"id": manual_id},
-            {"$set": {"qr_code_id": qr_data["qr_id"]}}
+            {"$set": {
+                "qr_code_id": qr_data["qr_id"],
+                "updated_at": datetime.now(timezone.utc)
+            }}
         )
         
         return {
@@ -549,18 +563,20 @@ async def get_manual_qr(manual_id: str, current_user: dict = Depends(get_db_busi
             "cloudinary_url": qr_data.get("cloudinary_url"),
             "payload": qr_data["payload"],
             "signature": qr_data["payload"]["sig"],
-            "created_at": datetime.now(timezone.utc).isoformat()
+            "created_at": datetime.now(timezone.utc)
         }
         await db.qr_codes.insert_one(qr_code_doc)
         
         return {
             "qr_id": qr_data["qr_id"],
             "url": qr_data["qr_url"],
-            "image": qr_data["image_base64"]
+            "image": qr_data.get("cloudinary_url") or qr_data.get("image_base64")
         }
     
-    # Regenerate QR image for the manual
-    qr_image = qr_handler.regenerate_qr_image(manual_id)
+    # Regenerate QR image for the manual only if there is no Cloudinary URL
+    qr_image = qr_code.get("cloudinary_url")
+    if not qr_image:
+        qr_image = qr_handler.regenerate_qr_image(manual_id)
     
     return {
         "qr_id": manual["qr_code_id"],
@@ -592,18 +608,31 @@ async def assign_qr_to_user(user_id: str, manual_id: str, current_user: dict = D
             id=qr_data["qr_id"],
             manual_id=manual_id,
             qr_url=qr_data["qr_url"],
+            cloudinary_url=qr_data.get("cloudinary_url"),
             payload=qr_data["payload"],
             signature=qr_data["payload"]["sig"]
         )
         
         qr_dict = qr_code.model_dump()
-        qr_dict['created_at'] = qr_dict['created_at'].isoformat()
         await db.qr_codes.insert_one(qr_dict)
         
-        # Update manual
+        # Update manual to ensure it belongs to the assigned user
         await db.manuals.update_one(
             {"id": manual_id},
-            {"$set": {"qr_code_id": qr_data["qr_id"]}}
+            {"$set": {
+                "qr_code_id": qr_data["qr_id"],
+                "user_id": user_id,
+                "updated_at": datetime.now(timezone.utc)
+            }}
+        )
+    else:
+        # Even if QR code already exists, ensure the manual is assigned to the specified user
+        await db.manuals.update_one(
+            {"id": manual_id},
+            {"$set": {
+                "user_id": user_id,
+                "updated_at": datetime.now(timezone.utc)
+            }}
         )
     
     return {"message": "QR code assigned successfully"}
@@ -659,7 +688,6 @@ async def chat(request: ChatRequest, current_user: Optional[dict] = Depends(get_
         )
         
         query_dict = query.model_dump()
-        query_dict['created_at'] = query_dict['created_at'].isoformat()
         await db.queries.insert_one(query_dict)
         
         # Build streaming response matching frontend getReader() protocol
@@ -701,13 +729,13 @@ async def assign_qr_to_manual(
     # Update QR code mapping
     await db.qr_codes.update_one(
         {"id": qr_id},
-        {"$set": {"manual_id": manual_id, "updated_at": datetime.now(timezone.utc).isoformat()}}
+        {"$set": {"manual_id": manual_id}}
     )
     
     # Update manual's qr_code_id
     await db.manuals.update_one(
         {"id": manual_id},
-        {"$set": {"qr_code_id": qr_id}}
+        {"$set": {"qr_code_id": qr_id, "updated_at": datetime.now(timezone.utc)}}
     )
     
     return {"message": f"Successfully assigned QR {qr_id} to manual {manual_id}"}
@@ -792,7 +820,6 @@ async def submit_feedback(feedback: FeedbackCreate):
     )
     
     feedback_dict = feedback_obj.model_dump()
-    feedback_dict['created_at'] = feedback_dict['created_at'].isoformat()
     
     await db.feedback.insert_one(feedback_dict)
     

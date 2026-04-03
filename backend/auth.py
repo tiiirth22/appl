@@ -39,9 +39,14 @@ async def get_current_user(db, session_token: Optional[str] = Cookie(None), auth
     
     # Check if session expired
     expires_at = session.get("expires_at")
+    # Compatibility fallback for old ISO string sessions
     if isinstance(expires_at, str):
         expires_at = datetime.fromisoformat(expires_at)
     
+    # Ensure expires_at is timezone-aware for comparison if it's not
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+        
     if expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=401, detail="Session expired")
     
@@ -74,7 +79,7 @@ async def signup_user(db, signup_data: UserSignUp):
         "name": signup_data.name,
         "password_hash": password_hash,
         "role": signup_data.role,
-        "created_at": datetime.now(timezone.utc).isoformat()
+        "created_at": datetime.now(timezone.utc)
     }
     
     try:
@@ -87,8 +92,8 @@ async def signup_user(db, signup_data: UserSignUp):
         session_data = {
             "user_id": user_data["id"],
             "session_token": session_token,
-            "expires_at": expires_at.isoformat(),
-            "created_at": datetime.now(timezone.utc).isoformat()
+            "expires_at": expires_at,
+            "created_at": datetime.now(timezone.utc)
         }
         
         await db.user_sessions.insert_one(session_data)
@@ -125,8 +130,8 @@ async def login_user(db, login_data: UserLogin):
         session_data = {
             "user_id": user["id"],
             "session_token": session_token,
-            "expires_at": expires_at.isoformat(),
-            "created_at": datetime.now(timezone.utc).isoformat()
+            "expires_at": expires_at,
+            "created_at": datetime.now(timezone.utc)
         }
         
         await db.user_sessions.insert_one(session_data)
