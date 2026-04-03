@@ -1,16 +1,18 @@
-from fastapi import FastAPI, APIRouter, UploadFile, File, Form, HTTPException, Depends, Response, Cookie, Header, Request
+from fastapi import FastAPI, APIRouter, UploadFile, File, Form, HTTPException, Depends, Response, Cookie, Header, Request, StreamingResponse
 from contextlib import asynccontextmanager
 from fastapi.responses import RedirectResponse, JSONResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
+import json as _json
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List
 import uuid
 import httpx
 import certifi
+import base64
 
 from dotenv import load_dotenv
 
@@ -740,6 +742,50 @@ async def chat(request: ChatRequest, current_user: Optional[dict] = Depends(get_
     except MLServiceError as e:
         logger.error(f"[Chat] ML Service error: {str(e)}")
         raise HTTPException(status_code=503, detail=f"Service error: {str(e)}")
+
+@api_router.post("/chat/image")
+async def chat_image(
+    manual_id: str = Form(...),
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user_optional)
+):
+    """Handle image-based RAG query"""
+    try:
+        # Read and encode image to base64
+        image_data = await file.read()
+        image_b64 = base64.b64encode(image_data).decode('utf-8')
+        
+        # Call ML Service for analysis and RAG
+        ml_response = await ml_client.analyze_image(
+            image_b64=image_b64,
+            manual_id=manual_id,
+            history=[] 
+        )
+        
+        extracted_problem = ml_response.get("extracted_problem", "Analyzed image issue")
+        
+        # Build streaming-compatible response
+        answer_text = ml_response.get("answer", "No answer available.")
+        sources = ml_response.get("sources", [])
+        confidence = ml_response.get("confidence", 0.0)
+        
+        async def stream_response():
+            metadata = _json.dumps({
+                "sources": sources, 
+                "confidence": confidence,
+                "video_url": ml_response.get("video_url"),
+                "steps": ml_response.get("steps", []),
+                "extracted_problem": extracted_problem,
+                "is_vision": True
+            })
+            yield f"__METADATA__:{metadata}\n"
+            yield answer_text
+        
+        return StreamingResponse(stream_response(), media_type="text/plain")
+
+    except Exception as e:
+        _logging.error(f"Image chat error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.post("/qr/assign")
 @api_router.post("/qr/assign/")

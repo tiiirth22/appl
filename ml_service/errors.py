@@ -70,6 +70,14 @@ class QueryRequest(BaseModel):
     history: Optional[List[Dict[str, str]]] = Field(default=None, description="Conversation history as list of role/content dicts")
 
 
+class AnalyzeImageRequest(BaseModel):
+    """Image analysis request"""
+    manual_id: str
+    image_b64: str
+    top_k: int = Field(default=5, ge=1, le=20)
+    history: Optional[List[Dict[str, str]]] = Field(default=None)
+
+
 class QueryResponse(BaseModel):
     """RAG query response"""
     query_id: str
@@ -77,6 +85,9 @@ class QueryResponse(BaseModel):
     sources: List[dict] = []
     confidence: Optional[float] = None
     processing_time_ms: float
+    extracted_problem: Optional[str] = None
+    video_url: Optional[str] = None
+    steps: List[dict] = []
 
 
 class HealthCheckResponse(BaseModel):

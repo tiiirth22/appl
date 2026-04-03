@@ -19,9 +19,10 @@ export default function ChatBot() {
   const [showFeedback, setShowFeedback] = useState(false);
   const [lastQueryId, setLastQueryId] = useState(null);
   const [isListening, setIsListening] = useState(false);
-  const [analyzingImage, setAnalyzingImage] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
   const messagesEndRef = useRef(null);
-  const fileInputRef = useRef(null);
 
   useEffect(() => {
     const initializeChat = async () => {
@@ -83,34 +84,62 @@ export default function ChatBot() {
   };
 
   const handleSend = async () => {
-    if (!input.trim() || !manualId) return;
+    if ((!input.trim() && !imageFile) || loading || !manualId) return;
 
-    const userMessage = { type: 'user', text: input };
+    const userMessage = { 
+      type: 'user', 
+      text: input, 
+      image: imagePreview 
+    };
     setMessages(prev => [...prev, userMessage]);
+    
+    const currentInput = input;
+    const currentImage = imageFile;
+    const token = localStorage.getItem('session_token');
+    
     setInput('');
+    setImageFile(null);
+    setImagePreview(null);
     setLoading(true);
+    if (currentImage) setIsScanning(true);
 
     try {
-      // Use fetch for streaming support instead of axios
-      const token = localStorage.getItem('session_token');
-      const response = await fetch(`${API}/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({ 
-          manual_id: manualId, 
-          question: input,
-          qr_id: qrId // Send qrId for security validation
-        })
-      });
+      let response;
+      if (currentImage) {
+        // Multipart upload for image vision
+        const formData = new FormData();
+        formData.append('file', currentImage);
+        formData.append('manual_id', manualId);
+        
+        response = await fetch(`${API}/chat/image`, {
+          method: 'POST',
+          headers: {
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
+          body: formData
+        });
+      } else {
+        // Standard JSON request for text RAG
+        response = await fetch(`${API}/chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({ 
+            manual_id: manualId, 
+            question: currentInput,
+            qr_id: qrId
+          })
+        });
+      }
 
-      if (!response.ok) throw new Error('Stream request failed');
+      if (!response.ok) throw new Error('Request failed');
 
+      setIsScanning(false);
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let botMessage = { type: 'bot', text: '', sources: [] };
+      let botMessage = { type: 'bot', text: '', sources: [], steps: [] };
       
       setMessages(prev => [...prev, botMessage]);
 
@@ -120,7 +149,6 @@ export default function ChatBot() {
 
         const chunk = decoder.decode(value, { stream: true });
         
-        // Handle metadata (Sources)
         if (chunk.startsWith('__METADATA__:')) {
           const parts = chunk.split('\n');
           const metaLine = parts[0].replace('__METADATA__:', '');
@@ -129,7 +157,9 @@ export default function ChatBot() {
             botMessage.sources = metadata.sources || [];
             botMessage.video_url = metadata.video_url;
             botMessage.steps = metadata.steps || [];
-            // Continue with the rest of the chunk if any
+            botMessage.extracted_problem = metadata.extracted_problem;
+            botMessage.is_vision = metadata.is_vision;
+            
             const rest = parts.slice(1).join('\n');
             if (rest) botMessage.text += rest;
           } catch (e) { console.error('Meta parse error', e); }
@@ -137,7 +167,6 @@ export default function ChatBot() {
           botMessage.text += chunk;
         }
 
-        // Update the last message in state
         setMessages(prev => {
           const updated = [...prev];
           updated[updated.length - 1] = { ...botMessage };
@@ -149,9 +178,10 @@ export default function ChatBot() {
       setShowFeedback(true);
     } catch (error) {
       console.error('Chat error:', error);
+      setIsScanning(false);
       setMessages(prev => [...prev, {
         type: 'bot',
-        text: "I apologize, but I'm having trouble connecting to my knowledge base right now. Please try again in a moment."
+        text: "I apologize, but I encountered an error processing your request. Please try again."
       }]);
       setLoading(false);
     }
@@ -188,43 +218,6 @@ export default function ChatBot() {
     }
   };
 
-  const handleImageUpload = () => fileInputRef.current?.click();
-
-  const handleFileChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setAnalyzingImage(true);
-    setMessages(prev => [...prev, { type: 'user', text: '📷 Analyzing uploaded image...', isSystem: true }]);
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const response = await axios.post(`${API}/analyze-image`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        withCredentials: true
-      });
-      const analysis = response.data.analysis;
-      setMessages(prev => {
-        const newMsgs = [...prev];
-        newMsgs.pop();
-        newMsgs.push({ type: 'bot', text: `I've analyzed the image. It looks like it related to: ${analysis}. Ask me anything about it!` });
-        return newMsgs;
-      });
-      setInput(analysis);
-    } catch (error) {
-      setMessages(prev => {
-        const newMsgs = [...prev];
-        newMsgs.pop();
-        newMsgs.push({ type: 'bot', text: "I couldn't analyze the image. Please try describing the issue manually." });
-        return newMsgs;
-      });
-    } finally {
-      setAnalyzingImage(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
   if (loadingQR) {
     return (
       <div className="chat-page dark-theme">
@@ -248,7 +241,6 @@ export default function ChatBot() {
 
   return (
     <div className="chat-page dark-theme">
-      {/* Premium Header */}
       <header className="chat-header-glass">
         <div className="header-inner">
           <div className="bot-identity">
@@ -277,7 +269,6 @@ export default function ChatBot() {
         </div>
       </header>
 
-      {/* Main Chat Area */}
       <main className="messages-viewport">
         <div className="messages-list">
           <AnimatePresence mode="popLayout">
@@ -307,7 +298,18 @@ export default function ChatBot() {
               <div className="avatar-holder">
                 {m.type === 'bot' ? <Bot size={18} /> : <User size={18} />}
               </div>
-              <div className="message-bubble">
+              <div className={`message-bubble ${m.type}`}>
+                {m.image && (
+                  <div className="message-image-preview">
+                    <img src={m.image} alt="Uploaded" />
+                  </div>
+                )}
+                {m.is_vision && m.extracted_problem && (
+                  <div className="vision-extraction-badge">
+                    <Maximize2 size={12} />
+                    <span>Scanned Problem: {m.extracted_problem}</span>
+                  </div>
+                )}
                 <p>{m.text}</p>
                 {m.sources && m.sources.length > 0 && (
                   <div className="sources-chips">
@@ -349,7 +351,6 @@ export default function ChatBot() {
         </div>
       </main>
 
-      {/* Sticky Feedback */}
       {showFeedback && (
         <div className="feedback-overlay">
           <div className="feedback-card-glass">
@@ -366,12 +367,18 @@ export default function ChatBot() {
         </div>
       )}
 
-      {/* Floating Input Area */}
       <footer className="input-footer">
         <div className="input-belt-glass">
-          <button className="utility-btn" onClick={handleImageUpload} disabled={analyzingImage}>
+          <button className="icon-btn" onClick={() => fileInputRef.current?.click()}>
             <Paperclip size={20} />
           </button>
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleImageUpload} 
+            accept="image/*" 
+            style={{ display: 'none' }}
+          />
 
           <div className="text-area-wrapper">
             <textarea
@@ -387,12 +394,41 @@ export default function ChatBot() {
             <button className={`voice-btn ${isListening ? 'active' : ''}`} onClick={startListening}>
               <Mic size={20} />
             </button>
-            <button className="send-prime" onClick={handleSend} disabled={!input.trim() || loading}>
-               <Send size={18} />
-            </button>
+            <MorphingButton 
+              onClick={handleSend} 
+              disabled={loading || (!input.trim() && !imageFile)}
+            >
+              {loading ? <Loader className="animate-spin" size={20} /> : <Send size={20} />}
+            </MorphingButton>
           </div>
         </div>
-        <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" style={{ display: 'none' }} />
+        
+        <AnimatePresence>
+          {imagePreview && (
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="image-upload-preview-bar"
+            >
+              <img src={imagePreview} alt="Preview" />
+              <button onClick={() => { setImageFile(null); setImagePreview(null); }}>
+                <X size={14} />
+              </button>
+              <span>Image attached</span>
+            </motion.div>
+          )}
+          {isScanning && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="vision-loading-overlay"
+            >
+              <div className="scanner-line" />
+              <p>Analyzing problem image...</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </footer>
 
       <style jsx>{`
@@ -686,6 +722,57 @@ export default function ChatBot() {
         }
         .steps-nav button:hover:not(:disabled) { background: rgba(59, 130, 246, 0.2); border-color: #3b82f6; }
         .steps-nav button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        /* Vision Support Styles */
+        .message-image-preview { margin-bottom: 0.75rem; border-radius: 8px; overflow: hidden; max-width: 200px; }
+        .message-image-preview img { width: 100%; display: block; }
+        
+        .vision-extraction-badge {
+          display: flex; align-items: center; gap: 0.5rem;
+          background: rgba(59, 130, 246, 0.1);
+          border: 1px solid rgba(59, 130, 246, 0.2);
+          padding: 0.4rem 0.75rem;
+          border-radius: 6px;
+          margin-bottom: 0.75rem;
+          font-size: 0.75rem; font-weight: 600; color: #60a5fa;
+        }
+
+        .image-upload-preview-bar {
+          position: absolute; bottom: 100%; right: 2rem;
+          background: #1e293b; border: 1px solid #334155;
+          padding: 0.5rem; border-radius: 12px;
+          display: flex; align-items: center; gap: 0.75rem;
+          margin-bottom: 1rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
+        }
+        .image-upload-preview-bar img { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; }
+        .image-upload-preview-bar button {
+          position: absolute; -top: 8px; -right: 8px;
+          background: #ef4444; color: white; border: none;
+          border-radius: 50%; width: 20px; height: 20px;
+          display: flex; align-items: center; justify-content: center;
+          cursor: pointer;
+        }
+        .image-upload-preview-bar span { font-size: 0.75rem; color: #94a3b8; padding-right: 0.5rem; }
+
+        .vision-loading-overlay {
+          position: absolute; inset: 0;
+          background: rgba(15, 23, 42, 0.8);
+          backdrop-filter: blur(4px);
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          z-index: 100; border-radius: 1.5rem;
+        }
+        .scanner-line {
+          width: 80%; height: 2px;
+          background: #3b82f6;
+          box-shadow: 0 0 15px #3b82f6;
+          animation: scan 2s infinite ease-in-out;
+        }
+        @keyframes scan {
+          0% { transform: translateY(-40px); }
+          50% { transform: translateY(40px); }
+          100% { transform: translateY(-40px); }
+        }
+        .vision-loading-overlay p { margin-top: 1rem; font-size: 0.875rem; color: #60a5fa; font-weight: 600; }
       `}</style>
     </div>
   );

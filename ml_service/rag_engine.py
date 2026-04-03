@@ -27,6 +27,7 @@ except ImportError:
 from config import (
     EMBEDDING_MODEL, LLM_MODEL, GROQ_API_KEY,
     GROQ_API_KEY_SECONDARY, LLM_MODEL_SECONDARY,
+    GROQ_VISION_MODEL,
     PINECONE_API_KEY, PINECONE_INDEX_NAME,
     QUERY_TIMEOUT, EMBEDDING_TIMEOUT, PINECONE_TIMEOUT,
 )
@@ -485,3 +486,64 @@ Query: {question}"""
         except Exception as e:
             self.logger.error(f"Error generating repair steps: {str(e)}")
             return []
+
+    async def analyze_image(
+        self,
+        image_b64: str,
+        manual_id: str,
+        history: List[Dict[str, str]] = None,
+        top_k: int = 5,
+    ) -> Dict[str, Any]:
+        """Analyze an image using Vision LLM and then query RAG"""
+        try:
+            start_time = time.time()
+            client = await self._get_groq_client()
+            if not client:
+                raise MLServiceException(ErrorType.SERVICE_UNAVAILABLE, "Groq client not available")
+
+            self.logger.info(f"Step 1/2: Analyzing image for manual {manual_id}")
+            
+            # Call Groq Vision model
+            response = await asyncio.wait_for(
+                asyncio.to_thread(
+                    lambda: client.chat.completions.create(
+                        model=GROQ_VISION_MODEL,
+                        messages=[{
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": "Describe the appliance repair technical problem shown in this image in one concise sentence. Focus on technical keywords (error code, broken part, visible symptom)."},
+                                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}}
+                            ]
+                        }],
+                        temperature=0.1,
+                        max_tokens=100,
+                    )
+                ),
+                timeout=QUERY_TIMEOUT,
+            )
+            
+            extracted_problem = response.choices[0].message.content.strip()
+            self.logger.info(f"Extracted problem: {extracted_problem}")
+            
+            # Step 2: Query RAG with extracted text
+            self.logger.info("Step 2/2: Querying RAG with extracted text")
+            rag_response = await self.answer_question(
+                manual_id=manual_id,
+                question=extracted_problem,
+                history=history,
+                top_k=top_k
+            )
+            
+            # Incorporate extracted problem into final response
+            rag_response["extracted_problem"] = extracted_problem
+            rag_response["processing_time_ms"] = (time.time() - start_time) * 1000
+            
+            return rag_response
+            
+        except Exception as e:
+            self.logger.error(f"Error in vision analysis: {str(e)}")
+            raise MLServiceException(
+                ErrorType.RAG_ERROR,
+                f"Failed to analyze image: {str(e)}",
+                retryable=True,
+            )

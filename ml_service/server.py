@@ -20,7 +20,7 @@ from rag_engine import RAGQueryEngine
 from model_manager import model_manager
 from errors import (
     MLServiceException, ErrorType, ServiceUnavailableError,
-    ProcessManualRequest, QueryRequest, HealthCheckResponse
+    ProcessManualRequest, QueryRequest, AnalyzeImageRequest, HealthCheckResponse
 )
 
 # Initialize logging with absolute safety
@@ -71,6 +71,33 @@ class SimpleRateLimiter:
 
 
 rate_limiter = SimpleRateLimiter(RATE_LIMIT_REQUESTS, RATE_LIMIT_WINDOW_SEC)
+
+@app.post("/analyze-image", response_model=QueryResponse)
+async def analyze_image(request: AnalyzeImageRequest):
+    """Analyze image and query RAG"""
+    try:
+        response = await query_engine.analyze_image(
+            image_b64=request.image_b64,
+            manual_id=request.manual_id,
+            history=request.history,
+            top_k=request.top_k
+        )
+        return response
+    except MLServiceException as e:
+        raise HTTPException(
+            status_code=500 if e.retryable else 400,
+            detail=e.to_response().dict()
+        )
+    except Exception as e:
+        logger.error(f"Unhandled error in analyze_image: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=MLServiceException(
+                ErrorType.INTERNAL_ERROR,
+                str(e)
+            ).to_response().dict()
+        )
+
 
 # Health check state
 _service_health = {

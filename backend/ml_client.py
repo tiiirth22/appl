@@ -184,32 +184,34 @@ class MLServiceClient:
         self,
         manual_id: str,
         question: str,
-        top_k: int = 5,
         history: Optional[List[Dict[str, str]]] = None,
+        top_k: int = 5
     ) -> Dict[str, Any]:
-        """
-        Query manual using RAG.
-        
-        Args:
-            manual_id: ID of processed manual
-            question: User question
-            top_k: Number of results
-            history: Optional conversation history
-            
-        Returns:
-            Query result with answer and sources
-            
-        Raises:
-            MLServiceError: If query fails
-        """
-        url = f"{self.ml_service_url}/query"
-        data = {
+        """Query manual using RAG."""
+        payload = {
             "manual_id": manual_id,
             "question": question,
-            "top_k": min(top_k, 20),
-            "history": history,
+            "top_k": top_k,
+            "history": history
         }
-        return await self._make_request("POST", url, data)
+        return await self._make_request("POST", f"{self.ml_service_url}/query", payload)
+
+    async def analyze_image(
+        self,
+        image_b64: str,
+        manual_id: str,
+        history: Optional[List[Dict[str, str]]] = None,
+        top_k: int = 5
+    ) -> Dict[str, Any]:
+        """Analyze image and query RAG via ML Service."""
+        payload = {
+            "manual_id": manual_id,
+            "image_b64": image_b64,
+            "top_k": top_k,
+            "history": history
+        }
+        return await self._make_request("POST", f"{self.ml_service_url}/analyze-image", payload)
+
     
     async def close(self):
         """Close HTTP client"""
