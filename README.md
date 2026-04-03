@@ -2,204 +2,111 @@
 
 <div align="center">
   <img src="assets/logo.png" alt="ApplianceIQ Logo" width="200"/>
-  <h3>Interactive Manual Assistant</h3>
+  <h3>Interactive Manual Assistant leveraging Retrieval-Augmented Generation (RAG)</h3>
   <p>
     <img src="https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi" alt="FastAPI"/>
     <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React"/>
     <img src="https://img.shields.io/badge/MongoDB-4EA94B?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB"/>
+    <img src="https://img.shields.io/badge/Pinecone-27272E?style=for-the-badge&logo=pinecone&logoColor=white" alt="Pinecone"/>
     <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS"/>
-    <img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge" alt="License"/>
   </p>
 </div>
 
 ---
 
-## Quick Links
-- [Getting Started](#getting-started)
-- [Key Features](#key-features)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [API Documentation](#api-documentation)
-- [Contributing](#contributing)
+## 🚀 Overview
+
+**ApplianceIQ** transforms static appliance manuals into interactive, searchable knowledge bases. By leveraging **Retrieval-Augmented Generation (RAG)**, it enables users to ask natural language questions and receive accurate answers directly from their appliance's documentation. No more scrolling through 100-page PDFs—just get the answers you need, instantly.
 
 ---
 
-## Overview
+## ✨ Key Features
 
-**ApplianceIQ** provides a searchable interface for appliance manuals using Retrieval-Augmented Generation (RAG). It processes uploaded PDF manuals to allow users to query specific appliance models using natural language.
-
-Users can retrieve maintenance and operation details directly through a chat interface without navigating the original PDF document.
-
-![ApplianceIQ Dashboard](assets/dashboard.png)
-
----
-
-## Key Features
-
-- **Role-Based Access Control**: Separate authentication and dashboards for **Administrators** and **Business Owners**.
-- **Dynamic Dashboards**:
-  - **Admin**: System-wide user and manual management.
-  - **Business Owner**: Specific manual management and usage tracking.
-- **AI-Powered Chatbot**: Technical queries answered using indexed manual content.
-- **Manual Processing**: Automatic text extraction and vector embedding for uploaded PDFs.
-- **QR Code Integration**: Unique QR codes link directly to interactive manuals.
-- **Service Resilience**: Core features remain operational if ML services are unavailable.
+- **RAG-Powered Chat**: Query manuals in natural language with high accuracy.
+- **Smart Document Processing**: Automatic text extraction from PDFs and images using OCR.
+- **Multi-Tenant Dashboards**:
+  - **Admin**: Comprehensive user and system management.
+  - **Business Owner**: Manual lifecycle management and usage analytics.
+- **QR Code Integration**: Scan a sticker on your appliance to jump directly into its interactive manual.
+- **High-Performance Architecture**: Lazy model loading and asynchronous processing for a smooth experience.
 
 ---
 
-## Tech Stack
+## 🛠️ Architecture
 
-### Backend
-- **Framework**: [FastAPI](https://fastapi.tiangolo.com/) (Python)
-- **Database**: [MongoDB](https://www.mongodb.com/) (Motor Async Driver)
-- **Vector Search**: [Pinecone](https://www.pinecone.io/) (for high-performance RAG)
-- **AI/ML**: Transformers, Embeddings, and NLP models.
-- **Image/PDF Storage**: [Cloudinary](https://cloudinary.com/) (Media Management)
-- **Generative AI**: [Groq](https://groq.com/) (for low-latency LLM inference)
-- **Security**: JWT Authentication & Bcrypt password hashing.
+ApplianceIQ follows a modern microservices-inspired architecture:
 
-### Frontend
-- **Library**: [React.js](https://reactjs.org/)
-- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
-- **UI Components**: [Radix UI](https://www.radix-ui.com/) & [Lucide Icons](https://lucide.dev/)
-- **State Management**: React Hooks & Context API.
+- **Frontend**: A responsive React interface styled with Tailwind CSS.
+- **API Gateway (Backend)**: FastAPI server handling authentication, state management, and orchestration.
+- **ML Microservice**: Dedicated service for heavy lifting—PDF processing, text embedding, and vector search management.
+- **Data Layers**:
+  - **MongoDB**: Persistent storage for users, manual metadata, and chat history.
+  - **Pinecone**: High-speed vector database for contextual retrieval.
+  - **Cloudinary**: Secure storage for manual files and generated QR codes.
 
 ---
 
-## Getting Started
+## 🚦 Getting Started
 
 ### Prerequisites
-- Python 3.9+
-- Node.js 16+
-- MongoDB instance (local or Atlas)
 
-### 1. Clone the Repository
-```bash
-git clone https://github.com/tiirth22/Appliance_IQ.git
-cd Appliance_IQ
-```
+- **Python 3.9+** & **Node.js 16+**
+- **Cloudinary Account** (for file/QR storage)
+- **Pinecone Account** (for vector storage)
+- **Groq API Key** (for Llama-3 inference)
 
-### 2. Backend Setup
-```bash
-cd backend
-python -m venv venv
-# Windows
-venv\Scripts\activate
-# Linux/macOS
-source venv/bin/activate
+### Installation & Setup
 
-pip install -r requirements.txt
-# Create a .env file with the following variables:
-# MONGO_URL, PINECONE_API_KEY, GROQ_API_KEY, CLOUDINARY_URL, 
-# CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET
-python server.py
-```
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/tiirth22/Appliance_IQ.git
+   cd Appliance_IQ
+   ```
 
-### 3. ML Service Setup (Optional for local RAG)
-```bash
-cd ml_service
-python -m venv venv
-# Windows
-venv\Scripts\activate
-# Linux/macOS
-source venv/bin/activate
+2. **Backend Configuration**:
+   Create a `.env` file in the `backend/` directory:
+   ```env
+   MONGO_URL=your_mongodb_url
+   PINECONE_API_KEY=your_pinecone_key
+   GROQ_API_KEY=your_groq_key
+   CLOUDINARY_CLOUD_NAME=your_cloud_name
+   CLOUDINARY_API_KEY=your_api_key
+   CLOUDINARY_API_SECRET=your_api_secret
+   ```
 
-pip install -r requirements.txt
-python server.py
-```
-
-### 4. Frontend Setup
-```bash
-cd frontend
-npm install
-npm start
-```
+3. **Start the Services**:
+   - **Backend**: `cd backend && python server.py` (Default: Port 8000)
+   - **ML Service**: `cd ml_service && python server.py` (Default: Port 8001)
+   - **Frontend**: `cd frontend && npm start` (Default: Port 3000)
 
 ---
 
-## Project Structure
+## 📂 Project Structure
 
 ```text
-.
-├── backend/               # FastAPI Server logic (Port 8000)
-│   ├── auth.py            # JWT & Authentication
-│   ├── models.py          # Pydantic & DB Models
-│   ├── ml_client.py       # Client for ML service communication
-│   ├── qr_handler.py      # QR code generation & Cloudinary sync
-│   └── server.py          # API Entry point
-├── ml_service/            # Heavy ML Processing (Port 8001)
-│   ├── processor.py       # PDF/Image text extraction & embedding
-│   ├── rag_engine.py      # Vector search & LLM prompt logic
-│   ├── model_manager.py   # Lazy model loading for better performance
-│   └── server.py          # ML service endpoints
-├── frontend/              # React Application (Port 3000)
-│   ├── src/pages/         # Dashboard & Auth views
-│   ├── src/components/    # Reusable UI components
-│   ├── src/hooks/         # Custom React hooks
-│   └── src/lib/           # Utility functions
-├── assets/                # README images & logos
-├── tests/                 # API & Unit tests
-└── docs/                  # Detailed documentation (deprecated)
+├── backend/               # FastAPI Orchestration Layer
+│   ├── auth.py            # Authentication & RBAC
+│   ├── ml_client.py       # ML Service Integration
+│   ├── models.py          # Database Schemas
+│   └── server.py          # Main API Entry Point
+├── ml_service/            # Heavy ML Processing Layer
+│   ├── processor.py       # Document Extraction & Embedding
+│   ├── rag_engine.py      # Vector Retrieval & LLM Logic
+│   └── server.py          # ML API Endpoints
+├── frontend/              # React/Tailwind Frontend
+│   └── src/               # UI Components & State Logic
+└── assets/                # Visual Branding & Documentation
 ```
 
 ---
 
-## Implementation Status
+## 🤝 Contributing
 
-### Backend (100%)
-- [x] FastAPI server structure
-- [x] MongoDB & Pinecone integration
-- [x] Environment configuration
-- [x] CORS & Middleware setup
-
-### Authentication & Authorization (100%)
-- [x] First-party signup/login
-- [x] JWT Session tokens
-- [x] Role-based access control (Admin/Business Owner)
-
-### Frontend (100%)
-- [x] Responsive Dashboards (Admin/Business Owner)
-- [x] Interactive Chat Interface (RAG-ready)
-- [x] Manual Upload & Management
-- [x] Secure Auth Flow integration
-
-### API Documentation
-
-The backend provides a comprehensive API with Swagger documentation. Once the server is running, visit:
-- **Swagger UI**: `http://localhost:8000/docs`
-- **ReDoc**: `http://localhost:8000/redoc`
+We welcome contributions! Please fork the repository and open a Pull Request for any enhancements or bug fixes.
 
 ---
 
-## Contributing
-
-We welcome contributions! Please follow these steps:
-1. Fork the Project.
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`).
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`).
-4. Push to the Branch (`git push origin feature/AmazingFeature`).
-5. Open a Pull Request.
-
----
-
-## Key Contacts
-
-- **Maintainer**: Tirth Dalal (tiirth22)
-- **Email**: tirth2216@gmail.com
-- **Project Link**: [https://github.com/tiirth22/Appliance_IQ](https://github.com/tiirth22/Appliance_IQ)
-
----
-
-## Maintenance
-
-To keep the platform running smoothly:
-- Regularly update dependencies in both `backend` and `frontend`.
-- Monitor MongoDB and Pinecone performance.
-- Clear temporary files in the `backend/tmp` directory periodically.
-
----
-
-## License
+## 📄 License
 
 Distributed under the MIT License. See `LICENSE` for more information.
 
