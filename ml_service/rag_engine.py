@@ -26,6 +26,7 @@ except ImportError:
 
 from config import (
     EMBEDDING_MODEL, LLM_MODEL, GROQ_API_KEY,
+    GROQ_API_KEY_SECONDARY, LLM_MODEL_SECONDARY,
     PINECONE_API_KEY, PINECONE_INDEX_NAME,
     QUERY_TIMEOUT, EMBEDDING_TIMEOUT, PINECONE_TIMEOUT,
 )
@@ -41,6 +42,7 @@ logger = get_processing_logger(__name__)
 _global_pinecone_client = None
 _global_pinecone_index = None
 _global_groq_client = None
+_global_groq_client_secondary = None
 
 
 class RAGQueryEngine:
@@ -56,6 +58,7 @@ class RAGQueryEngine:
         self._pinecone_client = None
         self._pinecone_index = None
         self._groq_client = None
+        self._groq_client_secondary = None
     
     async def answer_question(
         self,
@@ -104,9 +107,25 @@ class RAGQueryEngine:
                     "processing_time_ms": (time.time() - start_time) * 1000,
                 }
             
-            # Step 3: Generate answer
-            self.logger.info("Step 3/3: Generating answer")
-            answer = await self._generate_answer(question, sources, history=history)
+            # Step 3: Generate answer and steps in parallel
+            self.logger.info("Step 3/3: Generating answer, steps, and YouTube URL")
+            
+            # Construct YouTube URL
+            video_url = self._construct_youtube_url(question)
+            
+            # Run LLM calls in parallel
+            # We use a wrapper for steps to handle errors gracefully
+            async def get_steps_safely():
+                try:
+                    return await self._generate_repair_steps(question, sources)
+                except Exception as e:
+                    self.logger.error(f"Repair steps generation failed: {str(e)}")
+                    return []
+
+            answer_task = self._generate_answer(question, sources, history=history)
+            steps_task = get_steps_safely()
+            
+            answer, steps = await asyncio.gather(answer_task, steps_task)
             
             processing_time_ms = (time.time() - start_time) * 1000
             self.logger.info(f"Query completed in {processing_time_ms:.2f}ms")
@@ -117,6 +136,8 @@ class RAGQueryEngine:
                 "sources": sources,
                 "confidence": confidence,
                 "processing_time_ms": processing_time_ms,
+                "video_url": video_url,
+                "steps": steps,
             }
             
         except MLServiceException as e:
@@ -368,3 +389,99 @@ ANSWER (be concise and direct):"""
                 f"Failed to generate answer: {str(e)}",
                 retryable=True,
             )
+    async def _get_secondary_groq_client(self):
+        """Lazy load secondary Groq client globally"""
+        global _global_groq_client_secondary
+        
+        if _global_groq_client_secondary is not None:
+            self._groq_client_secondary = _global_groq_client_secondary
+            return _global_groq_client_secondary
+        
+        if not GROQ_AVAILABLE:
+            return None
+        
+        key = GROQ_API_KEY_SECONDARY or GROQ_API_KEY
+        if not key:
+            return None
+            
+        try:
+            self.logger.info("Initializing global secondary Groq client")
+            _global_groq_client_secondary = await asyncio.to_thread(
+                Groq, api_key=key
+            )
+            self._groq_client_secondary = _global_groq_client_secondary
+            return _global_groq_client_secondary
+        except Exception as e:
+            self.logger.error(f"Failed to initialize secondary Groq: {str(e)}")
+            return None
+
+    def _construct_youtube_url(self, question: str) -> str:
+        """Construct YouTube search URL from query"""
+        import urllib.parse
+        clean_query = question.strip()
+        # Add keywords for better repair results
+        search_terms = f"{clean_query} refrigerator fix"
+        encoded_query = urllib.parse.quote_plus(search_terms)
+        return f"https://www.youtube.com/results?search_query={encoded_query}"
+
+    async def _generate_repair_steps(
+        self, 
+        question: str, 
+        sources: List[Dict[str, Any]], 
+        timeout: int = QUERY_TIMEOUT
+    ) -> List[Dict[str, Any]]:
+        """Generate structured repair steps using secondary LLM"""
+        try:
+            client = await self._get_secondary_groq_client()
+            if not client:
+                return []
+                
+            # Build context from sources
+            context = "\n\n".join([
+                f"Context Segment {i+1}:\n{s['text']}"
+                for i, s in enumerate(sources[:3])
+            ])
+            
+            prompt = f"""You are a home appliance repair assistant.
+Given the following context from an appliance manual, generate a step-by-step repair guide for the user's query.
+Return ONLY a JSON array, no explanation, no markdown.
+
+Format: [{{ "step": 1, "title": "Step Title", "description": "Short description", "warning": "Any safety warning" }}]
+
+Context: {context}
+Query: {question}"""
+
+            # Call Groq secondary model
+            response = await asyncio.wait_for(
+                asyncio.to_thread(
+                    lambda: client.chat.completions.create(
+                        model=LLM_MODEL_SECONDARY,
+                        messages=[{"role": "user", "content": prompt}],
+                        temperature=0.1,
+                        max_tokens=800,
+                    )
+                ),
+                timeout=timeout,
+            )
+            
+            content = response.choices[0].message.content.strip()
+            
+            # Basic cleanup of markdown if LLM includes it
+            if content.startswith("```json"):
+                content = content.split("```json")[1].split("```")[0].strip()
+            elif content.startswith("```"):
+                content = content.split("```")[1].split("```")[0].strip()
+                
+            import json
+            try:
+                steps = json.loads(content)
+                if isinstance(steps, list):
+                    return steps
+                return []
+            except json.JSONDecodeError:
+                self.logger.error(f"Failed to parse repair steps JSON: {content[:100]}")
+                return []
+                
+        except Exception as e:
+            self.logger.error(f"Error generating repair steps: {str(e)}")
+            return []

@@ -724,8 +724,13 @@ async def chat(request: ChatRequest, current_user: Optional[dict] = Depends(get_
         confidence = ml_response.get("confidence", 0.0)
         
         async def stream_response():
-            # 1. Send metadata line first
-            metadata = _json.dumps({"sources": sources, "confidence": confidence})
+            # 1. Send metadata line first (including new video and steps fields)
+            metadata = _json.dumps({
+                "sources": sources, 
+                "confidence": confidence,
+                "video_url": ml_response.get("video_url"),
+                "steps": ml_response.get("steps", [])
+            })
             yield f"__METADATA__:{metadata}\n"
             # 2. Stream the answer text
             yield answer_text

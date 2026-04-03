@@ -1,6 +1,6 @@
 """ML Service Error Handling and Response Models"""
 from pydantic import BaseModel, Field
-from typing import Optional, Any, List
+from typing import Optional, Any, List, Dict
 from enum import Enum
 from datetime import datetime, timezone
 

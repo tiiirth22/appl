@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useParams } from 'react-router-dom';
 import axios from 'axios';
-import { Send, Loader, Bot, User, Star, Mic, Image as ImageIcon, X, Shield, Paperclip, Maximize2, Info, ChevronDown } from 'lucide-react';
+import { Send, Loader, Bot, User, Star, Mic, Image as ImageIcon, X, Shield, Paperclip, Maximize2, Info, ChevronDown, Youtube, ChevronRight, ChevronLeft, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MorphingButton } from '../components/ui/morphing-button';
 
@@ -127,6 +127,8 @@ export default function ChatBot() {
           try {
             const metadata = JSON.parse(metaLine);
             botMessage.sources = metadata.sources || [];
+            botMessage.video_url = metadata.video_url;
+            botMessage.steps = metadata.steps || [];
             // Continue with the rest of the chunk if any
             const rest = parts.slice(1).join('\n');
             if (rest) botMessage.text += rest;
@@ -314,6 +316,16 @@ export default function ChatBot() {
                       References: {[...new Set(m.sources.map(s => s.page).filter(p => p > 0))].sort((a,b)=>a-b).map(p => `Page ${p}`).join(', ') || 'Manual context'}
                     </span>
                   </div>
+                )}
+                
+                {/* YouTube Video Card */}
+                {m.type === 'bot' && m.video_url && (
+                  <YouTubeCard url={m.video_url} />
+                )}
+
+                {/* Repair Steps Swipeable Cards */}
+                {m.type === 'bot' && m.steps && m.steps.length > 0 && (
+                  <RepairSteps steps={m.steps} />
                 )}
               </div>
             </motion.div>
@@ -581,7 +593,174 @@ export default function ChatBot() {
             .manual-badge-box { display: none; }
             .input-footer { padding: 1rem; }
         }
+
+        /* YouTube and Repair Steps Styles */
+        .youtube-card-premium {
+          margin-top: 1rem;
+          background: rgba(0, 0, 0, 0.4);
+          border: 1px solid rgba(255, 0, 0, 0.1);
+          border-radius: 1rem;
+          padding: 1rem;
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          transition: 0.3s;
+        }
+        .youtube-card-premium:hover {
+          border-color: rgba(255, 0, 0, 0.3);
+          background: rgba(255, 0, 0, 0.05);
+        }
+        .yt-icon-box {
+          width: 48px; height: 48px;
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 12px;
+          display: flex; align-items: center; justify-content: center;
+        }
+        .yt-info { flex: 1; }
+        .yt-info h4 { font-size: 0.875rem; font-weight: 700; margin: 0; color: #fff; }
+        .yt-info p { font-size: 0.75rem; color: #94a3b8; margin: 0.25rem 0 0; }
+        .yt-btn {
+          background: #FF0000;
+          color: white;
+          padding: 0.5rem 0.75rem;
+          border-radius: 8px;
+          text-decoration: none;
+          display: flex; align-items: center; gap: 0.25rem;
+          font-size: 0.75rem; font-weight: 700;
+          transition: 0.2s;
+        }
+        .yt-btn:hover { background: #CC0000; transform: scale(1.05); }
+
+        .repair-steps-container {
+          margin-top: 1.5rem;
+          background: rgba(30, 41, 59, 0.5);
+          border: 1px solid rgba(59, 130, 246, 0.1);
+          border-radius: 1rem;
+          overflow: hidden;
+        }
+        .steps-header {
+          padding: 0.75rem 1rem;
+          background: rgba(59, 130, 246, 0.1);
+          border-bottom: 1px solid rgba(59, 130, 246, 0.1);
+          display: flex; align-items: center; gap: 0.5rem;
+          font-size: 0.75rem; font-weight: 700; color: #60a5fa;
+          text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .steps-viewport {
+          padding: 1.25rem;
+          min-height: 180px;
+          display: flex; align-items: center;
+        }
+        .step-card { width: 100%; }
+        .step-number {
+          font-size: 0.75rem; font-weight: 800; color: #3b82f6; margin-bottom: 0.5rem;
+        }
+        .step-title { font-size: 1rem; font-weight: 700; margin: 0; color: #f8fafc; }
+        .step-desc { font-size: 0.875rem; color: #94a3b8; margin: 0.75rem 0; line-height: 1.5; }
+        .step-warning {
+          display: flex; align-items: center; gap: 0.5rem;
+          background: rgba(245, 158, 11, 0.1);
+          border: 1px solid rgba(245, 158, 11, 0.2);
+          padding: 0.5rem 0.75rem;
+          border-radius: 8px;
+          color: #f59e0b;
+          font-size: 0.75rem;
+        }
+        .steps-controls {
+          padding: 0.75rem 1rem;
+          display: flex; align-items: center; justify-content: space-between;
+          background: rgba(0, 0, 0, 0.2);
+        }
+        .steps-pagination { display: flex; gap: 4px; }
+        .p-dot { width: 6px; height: 6px; border-radius: 50%; background: #334155; transition: 0.3s; }
+        .p-dot.active { background: #3b82f6; width: 16px; border-radius: 3px; }
+        .steps-nav { display: flex; gap: 0.5rem; }
+        .steps-nav button {
+          width: 32px; height: 32px;
+          background: rgba(255,255,255,0.05);
+          border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 8px;
+          color: white;
+          cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+        }
+        .steps-nav button:hover:not(:disabled) { background: rgba(59, 130, 246, 0.2); border-color: #3b82f6; }
+        .steps-nav button:disabled { opacity: 0.3; cursor: not-allowed; }
       `}</style>
+    </div>
+  );
+}
+
+// Sub-components for enhanced UI
+function YouTubeCard({ url }) {
+  return (
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="youtube-card-premium"
+    >
+      <div className="yt-icon-box">
+        <Youtube size={24} color="#FF0000" />
+      </div>
+      <div className="yt-info">
+        <h4>Visual Repair Guide</h4>
+        <p>Watch related modular fix videos on YouTube</p>
+      </div>
+      <a href={url} target="_blank" rel="noopener noreferrer" className="yt-btn">
+        <span>Watch</span>
+        <ChevronRight size={16} />
+      </a>
+    </motion.div>
+  );
+}
+
+function RepairSteps({ steps }) {
+  const [current, setCurrent] = useState(0);
+
+  return (
+    <div className="repair-steps-container">
+      <div className="steps-header">
+        <Shield size={14} className="shield-icon" />
+        <span>Step-by-Step Repair Guide</span>
+      </div>
+      
+      <div className="steps-viewport">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={current}
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -50 }}
+            className="step-card"
+          >
+            <div className="step-number">Step {steps[current].step || current + 1}</div>
+            <h5 className="step-title">{steps[current].title}</h5>
+            <p className="step-desc">{steps[current].description}</p>
+            {steps[current].warning && (
+              <div className="step-warning">
+                <AlertCircle size={14} />
+                <span>{steps[current].warning}</span>
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      <div className="steps-controls">
+        <div className="steps-pagination">
+          {steps.map((_, i) => (
+            <div key={i} className={`p-dot ${i === current ? 'active' : ''}`} />
+          ))}
+        </div>
+        <div className="steps-nav">
+          <button disabled={current === 0} onClick={() => setCurrent(c => c - 1)}>
+            <ChevronLeft size={18} />
+          </button>
+          <button disabled={current === steps.length - 1} onClick={() => setCurrent(c => c + 1)}>
+            <ChevronRight size={18} />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
