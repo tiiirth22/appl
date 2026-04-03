@@ -85,6 +85,7 @@ class ChatRequest(BaseModel):
     manual_id: str
     question: str
     qr_id: Optional[str] = None
+    top_k: Optional[int] = 5
 
 class ChatResponse(BaseModel):
     query_id: str

@@ -80,10 +80,10 @@ class QueryResponse(BaseModel):
 
 class HealthCheckResponse(BaseModel):
     """Health check response"""
-    status: str  # "healthy" or "degraded"
+    status: str  # "healthy" or "unhealthy"
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    services: dict = Field(default_factory=dict)
-    version: str = "1.0.0"
+    components: dict = Field(default_factory=dict)
+    version: str
 
 
 class MLServiceException(Exception):

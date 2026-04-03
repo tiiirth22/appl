@@ -604,7 +604,7 @@ async def chat(request: ChatRequest, current_user: Optional[dict] = Depends(get_
         ml_response = await ml_client.query_manual(
             manual_id=request.manual_id,
             question=request.question,
-            top_k=getattr(request, 'top_k', 5)
+            top_k=request.top_k
         )
         
         # Log query to DB

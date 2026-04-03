@@ -1,6 +1,6 @@
-"""ML Service - Main FastAPI Application"""
 import asyncio
 import uuid
+from datetime import datetime, timezone
 from typing import Optional
 from contextlib import asynccontextmanager
 
@@ -13,11 +13,14 @@ from config import (
     SERVICE_NAME, SERVICE_VERSION, DEBUG, LOG_LEVEL,
     REQUEST_SIZE_LIMIT, RATE_LIMIT_REQUESTS, RATE_LIMIT_WINDOW_SEC,
 )
-from errors import MLServiceException, ErrorType, ServiceUnavailableError
 from logger_config import setup_logging, get_processing_logger
 from processor import AsyncDocumentProcessor
 from rag_engine import RAGQueryEngine
 from model_manager import model_manager
+from errors import (
+    MLServiceException, ErrorType, ServiceUnavailableError,
+    ProcessManualRequest, QueryRequest, HealthCheckResponse
+)
 
 # Initialize logging
 setup_logging(log_level=LOG_LEVEL)
@@ -201,34 +204,56 @@ async def welcome():
 @app.get("/health")
 async def health_check(request_id: str = Depends(get_request_id)):
     """Comprehensive health check returning status of Pinecone, embedding model, and Groq API.
-    Returns a JSON with overall status and per-component details.
+    Returns 200 with status dict or 500 with what failed.
     """
+    from config import GROQ_API_KEY
     logger.info("Health check requested")
-    health_status = {"status": "healthy", "components": {}}
-    # Embedding model status
+    
+    health_status = {
+        "status": "healthy",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "components": {
+            "pinecone": "unknown",
+            "embedding_model": "unknown",
+            "groq": "ready" if GROQ_API_KEY else "not_configured"
+        },
+        "version": SERVICE_VERSION
+    }
+    
+    is_healthy = True
+    
+    # 1. Embedding model status
     try:
         health_status["components"]["embedding_model"] = model_manager.status
-        if model_manager.status == "not_initialized":
-            health_status["status"] = "degraded"
+        if model_manager.status != "ready":
+            is_healthy = False
     except Exception as e:
         health_status["components"]["embedding_model"] = f"error: {str(e)}"
-        health_status["status"] = "degraded"
-    # Pinecone connectivity
+        is_healthy = False
+    
+    # 2. Pinecone connectivity
     try:
         processor = AsyncDocumentProcessor(request_id=request_id)
         index = await processor._get_pinecone_index()
+        # Active check: try to get stats
+        await asyncio.to_thread(index.describe_index_stats)
         health_status["components"]["pinecone"] = "ready"
     except Exception as e:
         health_status["components"]["pinecone"] = f"error: {str(e)}"
-        health_status["status"] = "degraded"
-    # Groq API reachability
-    try:
-        rag_engine = RAGQueryEngine(request_id=request_id)
-        client = await rag_engine._get_groq_client()
-        health_status["components"]["groq"] = "ready"
-    except Exception as e:
-        health_status["components"]["groq"] = f"error: {str(e)}"
-        health_status["status"] = "degraded"
+        is_healthy = False
+    
+    # 3. Groq API check
+    if not GROQ_API_KEY:
+        health_status["components"]["groq"] = "error: GROQ_API_KEY missing"
+        is_healthy = False
+    
+    if not is_healthy:
+        health_status["status"] = "unhealthy"
+        return JSONResponse(
+            status_code=500,
+            content=health_status
+        )
+    
     return health_status
 
 
@@ -276,44 +301,28 @@ async def health_check_detailed(request_id: str = Depends(get_request_id)):
 
 @app.post("/process_manual")
 async def process_manual(
-    request_data: dict,
+    request: ProcessManualRequest,
     request_id: str = Depends(get_request_id),
     client_ip: str = Depends(check_rate_limit),
-    background_tasks: BackgroundTasks = BackgroundTasks(),
 ):
     """
     Process a manual document
-    
-    Request body:
-    {
-        "file_url": str,
-        "manual_id": str,
-        "manual_name": str,
-        "version": str,
-        "file_type": str  # "pdf" or "image"
-    }
     """
     try:
         logger.info(f"Processing request from {client_ip}")
         
-        # Validate request
-        required_fields = ["file_url", "manual_id", "manual_name", "version", "file_type"]
-        for field in required_fields:
-            if field not in request_data:
-                raise HTTPException(status_code=400, detail=f"Missing field: {field}")
-        
         # Create processor and start processing
         processor = AsyncDocumentProcessor(
-            manual_id=request_data["manual_id"],
+            manual_id=request.manual_id,
             request_id=request_id,
         )
         
         result = await processor.process_manual(
-            file_url=request_data["file_url"],
-            manual_id=request_data["manual_id"],
-            manual_name=request_data["manual_name"],
-            version=request_data["version"],
-            file_type=request_data["file_type"],
+            file_url=request.file_url,
+            manual_id=request.manual_id,
+            manual_name=request.manual_name,
+            version=request.version,
+            file_type=request.file_type,
         )
         
         logger.info(f"Processing completed: {result['chunks_count']} chunks")
@@ -329,46 +338,31 @@ async def process_manual(
 
 @app.post("/query")
 async def query_manual(
-    request_data: dict,
+    request: QueryRequest,
     request_id: str = Depends(get_request_id),
     client_ip: str = Depends(check_rate_limit),
 ):
     """
     Answer a question about a manual
-    
-    Request body:
-    {
-        "manual_id": str,
-        "question": str,
-        "top_k": int (optional, default=5)
-    }
     """
     try:
         logger.info(f"Query request from {client_ip}")
         
-        # Validate request
-        if "manual_id" not in request_data:
-            raise HTTPException(status_code=400, detail="Missing field: manual_id")
-        if "question" not in request_data:
-            raise HTTPException(status_code=400, detail="Missing field: question")
-        
-        # Validate question
-        question = request_data["question"].strip()
+        # Validate question length via Pydantic ge/le
+        question = request.question.strip()
         if not question or len(question) < 3:
             raise HTTPException(status_code=400, detail="Question too short")
-        if len(question) > 500:
-            raise HTTPException(status_code=400, detail="Question too long")
         
         # Create RAG engine and answer question
         rag_engine = RAGQueryEngine(
-            manual_id=request_data["manual_id"],
+            manual_id=request.manual_id,
             request_id=request_id,
         )
         
         result = await rag_engine.answer_question(
-            manual_id=request_data["manual_id"],
+            manual_id=request.manual_id,
             question=question,
-            top_k=min(request_data.get("top_k", 5), 20),
+            top_k=request.top_k,
         )
         
         logger.info(f"Query answered in {result['processing_time_ms']:.2f}ms")
@@ -386,7 +380,7 @@ async def query_manual(
 
 @app.get("/debug/pinecone")
 async def debug_pinecone(request_id: str = Depends(get_request_id)):
-    """Comprehensive Pinecone diagnostic endpoint"""
+    """Comprehensive Pinecone diagnostic endpoint returning only JSON-serializable info"""
     from config import PINECONE_API_KEY, PINECONE_INDEX_NAME
     import time
     
@@ -396,29 +390,36 @@ async def debug_pinecone(request_id: str = Depends(get_request_id)):
             "index_name": PINECONE_INDEX_NAME,
             "api_key_present": bool(PINECONE_API_KEY),
         },
-        "connection": "failed",
-        "details": {}
+        "pinecone_connected": False,
+        "details": {},
+        "error": None
     }
     
     try:
         # 1. Initialize Processor to get index
         processor = AsyncDocumentProcessor(request_id=request_id)
         index = await processor._get_pinecone_index()
-        debug_info["connection"] = "connected"
+        debug_info["pinecone_connected"] = True
         
-        # 2. Get Index Description
+        # 2. Get Index Description (Safe extract)
         index_desc = await asyncio.to_thread(processor._pinecone_client.describe_index, PINECONE_INDEX_NAME)
-        debug_info["details"]["dimension"] = index_desc.dimension
-        debug_info["details"]["metric"] = index_desc.metric
-        debug_info["details"]["status"] = index_desc.status['ready']
+        debug_info["details"]["dimension"] = getattr(index_desc, 'dimension', None)
+        debug_info["details"]["metric"] = getattr(index_desc, 'metric', None)
         
-        # 3. Get Stats
-        stats = await asyncio.to_thread(index.describe_index_stats)
-        debug_info["details"]["total_vector_count"] = stats.total_vector_count
-        debug_info["details"]["namespaces"] = stats.namespaces
+        # 3. Get Stats (Wrapped in try/except)
+        try:
+            stats = await asyncio.to_thread(index.describe_index_stats)
+            if hasattr(stats, 'to_dict'):
+                debug_info["details"]["stats"] = stats.to_dict()
+            else:
+                debug_info["details"]["stats"] = {
+                    "total_vector_count": getattr(stats, 'total_vector_count', 0),
+                    "namespaces": getattr(stats, 'namespaces', {})
+                }
+        except Exception as stats_err:
+            debug_info["details"]["stats_error"] = str(stats_err)
         
-        # 4. Success log
-        debug_info["details"]["status"] = "ok"
+        debug_info["status"] = "ok"
             
     except Exception as e:
         debug_info["error"] = str(e)
