@@ -226,6 +226,7 @@ logger = logging.getLogger(__name__)
 
 # ============= AUTH ENDPOINTS =============
 @api_router.post("/auth/signup")
+@api_router.post("/auth/signup/")
 async def auth_signup(signup_data: UserSignUp):
     """Sign up a new user."""
     if not mongo_available or db is None:
@@ -237,6 +238,7 @@ async def auth_signup(signup_data: UserSignUp):
     return result
 
 @api_router.post("/auth/login")
+@api_router.post("/auth/login/")
 async def auth_login(login_data: UserLogin):
     """Log in a user."""
     if not mongo_available or db is None:
@@ -253,6 +255,7 @@ async def get_me(current_user: dict = Depends(get_db_current_user)):
     return current_user
 
 @api_router.post("/auth/logout")
+@api_router.post("/auth/logout/")
 async def logout(
     response: Response,
     session_token: Optional[str] = Cookie(None),
@@ -272,6 +275,7 @@ async def logout(
 
 # ============= MANUAL ENDPOINTS =============
 @api_router.delete("/manuals/{manual_id}")
+@api_router.delete("/manuals/{manual_id}/")
 async def delete_manual(manual_id: str, current_user: dict = Depends(get_db_business_user)):
     """Delete a manual and its associated data."""
     if not mongo_available or db is None:
@@ -320,6 +324,7 @@ async def delete_manual(manual_id: str, current_user: dict = Depends(get_db_busi
     return {"message": "Manual and all associated data deleted successfully"}
 
 @api_router.post("/manuals/upload")
+@api_router.post("/manuals/upload/")
 async def upload_manual(
     file: UploadFile = File(...),
     model_name: str = Form(...),
@@ -570,6 +575,7 @@ async def get_users(current_user: dict = Depends(get_db_admin_user)):
     return {"users": users}
 
 @api_router.post("/admin/users/{user_id}/assign-qr")
+@api_router.post("/admin/users/{user_id}/assign-qr/")
 async def assign_qr_to_user(user_id: str, manual_id: str, current_user: dict = Depends(get_db_admin_user)):
     """Assign QR code to a user's manual (admin only)."""
     # Verify manual exists
@@ -603,6 +609,7 @@ async def assign_qr_to_user(user_id: str, manual_id: str, current_user: dict = D
     return {"message": "QR code assigned successfully"}
 
 @api_router.post("/chat")
+@api_router.post("/chat/")
 async def chat(request: ChatRequest, current_user: Optional[dict] = Depends(get_optional_user)):
     """Chat endpoint - Query manual using ML Service.
     
@@ -674,6 +681,7 @@ async def chat(request: ChatRequest, current_user: Optional[dict] = Depends(get_
         raise HTTPException(status_code=503, detail=f"Service error: {str(e)}")
 
 @api_router.post("/qr/assign")
+@api_router.post("/qr/assign/")
 async def assign_qr_to_manual(
     qr_id: str = Form(...),
     manual_id: str = Form(...),
@@ -768,6 +776,7 @@ async def get_queries_analytics(current_user: dict = Depends(get_db_business_use
 
 # ============= FEEDBACK ENDPOINTS =============
 @api_router.post("/feedback")
+@api_router.post("/feedback/")
 async def submit_feedback(feedback: FeedbackCreate):
     """Submit feedback for a query."""
     # Verify query exists

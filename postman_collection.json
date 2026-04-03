@@ -80,6 +80,44 @@
           "path": ["api", "chat"]
         }
       }
+    },
+    {
+      "name": "Backend Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
+        },
+        "url": {
+          "raw": "https://applianceiq-production.up.railway.app/api/auth/login",
+          "protocol": "https",
+          "host": ["applianceiq-production", "up", "railway", "app"],
+          "path": ["api", "auth", "login"]
+        }
+      }
+    },
+    {
+      "name": "Backend Signup",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"test@example.com\",\n  \"name\": \"Test User\",\n  \"password\": \"password123\",\n  \"role\": \"business_owner\"\n}"
+        },
+        "url": {
+          "raw": "https://applianceiq-production.up.railway.app/api/auth/signup",
+          "protocol": "https",
+          "host": ["applianceiq-production", "up", "railway", "app"],
+          "path": ["api", "auth", "signup"]
+        }
+      }
     }
   ]
 }
