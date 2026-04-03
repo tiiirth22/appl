@@ -23,7 +23,7 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 RUN pip install --no-cache-dir torch==2.2.0 --index-url https://download.pytorch.org/whl/cpu
 
 # Install numpy explicitly (CPU torch may not bundle it)
-RUN pip install --no-cache-dir numpy>=1.24.0
+RUN pip install --no-cache-dir "numpy>=1.24.0,<2.0.0"
 
 # Install other requirements
 COPY requirements.txt .
@@ -67,4 +67,4 @@ CMD exec gunicorn server:app \
     --workers 1 \
     --worker-class uvicorn.workers.UvicornWorker \
     --bind 0.0.0.0:${PORT:-8080} \
-    --timeout 120
+    --timeout 300
