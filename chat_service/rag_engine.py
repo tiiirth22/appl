@@ -251,6 +251,13 @@ class RAGQueryEngine:
                 self.logger.critical(err_msg)
                 raise PineconeError(err_msg, retryable=False)
 
+            # Diagnostics: Check index stats
+            try:
+                stats = await asyncio.to_thread(index.describe_index_stats)
+                self.logger.info(f"Pinecone Stats | Total Vectors: {stats.total_vector_count} | Namespaces: {stats.namespaces}")
+            except Exception as stats_err:
+                self.logger.warning(f"Failed to get index stats: {stats_err}")
+
             # Query Pinecone with manual_id filter
             start_query = time.time()
             results = await asyncio.wait_for(
@@ -264,6 +271,24 @@ class RAGQueryEngine:
                 ),
                 timeout=timeout,
             )
+            
+            # If 0 matches, try querying without filter to see if matching vectors exist at all
+            if not results.get("matches", []):
+                self.logger.warning(f"No matches with manual_id filter: {manual_id}. Testing global query...")
+                global_results = await asyncio.to_thread(
+                    lambda: index.query(
+                        vector=embedding,
+                        top_k=1,
+                        include_metadata=True
+                    )
+                )
+                if global_results.get("matches"):
+                    top_match = global_results["matches"][0]
+                    match_manual_id = top_match.get("metadata", {}).get("manual_id", "MISSING")
+                    self.logger.info(f"Global match found! Top vector manual_id: {match_manual_id}. Current query manual_id: {manual_id}")
+                else:
+                    self.logger.warning("Global query also returned 0 matches. Index might be empty or embedding mismatch.")
+
             query_duration = (time.time() - start_query) * 1000
             
             # Extract sources from results
