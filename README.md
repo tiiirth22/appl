@@ -59,8 +59,8 @@ ApplianceIQ follows a modern microservices-inspired architecture:
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/tiirth22/Appliance_IQ.git
-   cd Appliance_IQ
+   git clone https://github.com/tiirth22/ApplianceIQ.git
+   cd ApplianceIQ
    ```
 
 2. **Backend Configuration**:
