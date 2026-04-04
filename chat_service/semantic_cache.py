@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 
 from gptcache import cache
 from gptcache.adapter.api import init_similar_cache
-from gptcache.embedding import SentenceTransformer
+from gptcache.embedding import SBERT
 from gptcache.similarity_evaluation.distance import SearchDistanceEvaluation
 from gptcache.manager import get_data_manager
 from gptcache.manager.storage.mongodb import MongoDB
@@ -50,8 +50,8 @@ class SemanticCache:
         try:
             logger.info(f"Initializing Semantic Cache (threshold={self.threshold})")
             
-            # SentenceTransformer wrapper for GPTCache
-            encoder = SentenceTransformer(EMBEDDING_MODEL)
+            # SBERT wrapper for GPTCache
+            encoder = SBERT(model=EMBEDDING_MODEL)
             
             # Data Manager for MongoDB
             data_manager = get_data_manager(
