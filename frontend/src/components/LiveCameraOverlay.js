@@ -87,7 +87,11 @@ export default function LiveCameraOverlay({ onClose, onIssueDetected }) {
             body: JSON.stringify({ image_b64: base64Image })
           });
           
-          if (!res.ok) throw new Error('API error');
+          if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}));
+            throw new Error(`API ${res.status}: ${errorData.message || errorData.error || 'Unknown Error'}`);
+          }
+          
           const data = await res.json();
           
           setDebug(prev => ({ ...prev, rawResp: JSON.stringify(data) }));

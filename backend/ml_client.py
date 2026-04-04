@@ -222,6 +222,7 @@ class MLServiceClient:
         image_b64: str,
     ) -> Dict[str, Any]:
         """Analyze live camera frame via ML Service."""
+        logger.info(f"[MLClient] analyze_frame | b64_length={len(image_b64)}")
         payload = {
             "image_b64": image_b64,
         }

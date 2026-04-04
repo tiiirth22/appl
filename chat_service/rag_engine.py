@@ -823,12 +823,35 @@ Return ONLY JSON, no explanation, no markdown:
   "confidence": 0.0-1.0
 }'''
 
+            safety_settings = [
+                {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+                {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+                {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+                {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+            ]
+            
             response = await asyncio.to_thread(
                 model.generate_content,
-                [prompt, image]
+                [prompt, image],
+                safety_settings=safety_settings
             )
             
-            raw_text = response.text.strip()
+            # Robust extraction of text
+            try:
+                if response.candidates and response.candidates[0].content.parts:
+                    raw_text = response.candidates[0].content.parts[0].text.strip()
+                else:
+                    raw_text = response.text.strip()
+            except Exception as e:
+                self.logger.warning(f"Could not extract text from Gemini response directly: {e}")
+                # Fallback to checking prompt_feedback
+                feedback = getattr(response, 'prompt_feedback', 'No feedback available')
+                self.logger.info(f"Prompt feedback: {feedback}")
+                raise MLServiceException(
+                    ErrorType.SERVICE_UNAVAILABLE,
+                    f"Gemini response blocked or empty. Feedback: {feedback}"
+                )
+
             self.logger.info(f"Raw Gemini response: {raw_text}")
             
             result = self._extract_json(raw_text)
