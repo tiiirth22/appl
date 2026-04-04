@@ -654,12 +654,14 @@ async def chat(request: ChatRequest, current_user: Optional[dict] = Depends(get_
     import json as _json
     
     # Access Control
+    manual = await db.manuals.find_one({"id": request.manual_id})
+    if not manual:
+        raise HTTPException(status_code=404, detail="Manual not found")
+
     if current_user:
         # Authenticated user - verify ownership (admins can access all)
-        if current_user.get("role") != "admin":
-            manual = await db.manuals.find_one({"id": request.manual_id, "user_id": current_user["id"]})
-            if not manual:
-                raise HTTPException(status_code=403, detail="Access denied")
+        if current_user.get("role") != "admin" and manual.get("user_id") != current_user["id"]:
+            raise HTTPException(status_code=403, detail="Access denied")
     else:
         # Unauthenticated access — Allow if manual_id is provided and valid
         if not request.manual_id:
@@ -667,10 +669,8 @@ async def chat(request: ChatRequest, current_user: Optional[dict] = Depends(get_
                 status_code=403,
                 detail="Authentication required. Please log in or scan a QR code."
             )
-        # Verify manual exists publicly
-        manual_exists = await db.manuals.find_one({"id": request.manual_id})
-        if not manual_exists:
-            raise HTTPException(status_code=404, detail="Manual not found")
+    
+    model_name = manual.get("model_name")
     
     # Call ML Service
     try:
@@ -702,9 +702,10 @@ async def chat(request: ChatRequest, current_user: Optional[dict] = Depends(get_
                 logger.warning(f"[Chat] History retrieval failed: {history_err}")
                 history = None
 
-        # 2. Call ML Service with history
+        # 2. Call ML Service with history and model_name
         ml_response = await ml_client.query_manual(
             manual_id=request.manual_id,
+            manual_name=model_name,
             question=request.question,
             top_k=request.top_k,
             history=history
@@ -776,10 +777,15 @@ async def chat_image(
         image_data = await file.read()
         image_b64 = base64.b64encode(image_data).decode('utf-8')
         
+        # Fetch manual model name
+        manual = await db.manuals.find_one({"id": manual_id})
+        model_name = manual.get("model_name") if manual else None
+
         # Call ML Service for analysis and RAG
         ml_response = await ml_client.analyze_image(
             image_b64=image_b64,
             manual_id=manual_id,
+            manual_name=model_name,
             history=[] 
         )
         

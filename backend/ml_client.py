@@ -184,12 +184,14 @@ class MLServiceClient:
         self,
         manual_id: str,
         question: str,
+        manual_name: Optional[str] = None,
         history: Optional[List[Dict[str, str]]] = None,
         top_k: int = 5
     ) -> Dict[str, Any]:
         """Query manual using RAG."""
         payload = {
             "manual_id": manual_id,
+            "manual_name": manual_name,
             "question": question,
             "top_k": top_k,
             "history": history
@@ -200,12 +202,14 @@ class MLServiceClient:
         self,
         image_b64: str,
         manual_id: str,
+        manual_name: Optional[str] = None,
         history: Optional[List[Dict[str, str]]] = None,
         top_k: int = 5
     ) -> Dict[str, Any]:
         """Analyze image and query RAG via ML Service."""
         payload = {
             "manual_id": manual_id,
+            "manual_name": manual_name,
             "image_b64": image_b64,
             "top_k": top_k,
             "history": history
