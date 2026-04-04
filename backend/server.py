@@ -734,7 +734,9 @@ async def chat(request: ChatRequest, current_user: Optional[dict] = Depends(get_
                 "sources": sources, 
                 "confidence": confidence,
                 "video_url": ml_response.get("video_url"),
-                "steps": ml_response.get("steps", [])
+                "steps": ml_response.get("steps", []),
+                "from_manual": ml_response.get("from_manual", True),
+                "fallback": ml_response.get("fallback", False)
             })
             yield f"__METADATA__:{metadata}\n"
             # 2. Stream the answer text
@@ -795,7 +797,9 @@ async def chat_image(
                 "video_url": ml_response.get("video_url"),
                 "steps": ml_response.get("steps", []),
                 "extracted_problem": extracted_problem,
-                "is_vision": True
+                "is_vision": True,
+                "from_manual": ml_response.get("from_manual", True),
+                "fallback": ml_response.get("fallback", False)
             })
             yield f"__METADATA__:{metadata}\n"
             yield answer_text
