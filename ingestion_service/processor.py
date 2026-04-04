@@ -148,21 +148,6 @@ class AsyncDocumentProcessor:
             
             self.logger.info("Processing completed successfully")
             
-            # Flush semantic cache for this manual (if enabled)
-            try:
-                from config import MONGO_URL
-                if MONGO_URL:
-                    from pymongo import MongoClient
-                    with MongoClient(MONGO_URL) as client:
-                        db_name = os.getenv("DB_NAME", "applianceiq_db")
-                        db = client[db_name]
-                        # GPTCache stores data in two collections
-                        db.semantic_cache.delete_many({"manual_id": manual_id})
-                        # Also clear vectors if we can't filter precisely, we clear metadata 
-                        # so that gptcache lookup will fail for these entries.
-                        self.logger.info(f"Flushed semantic cache for manual {manual_id}")
-            except Exception as e:
-                self.logger.warning(f"Failed to flush semantic cache: {e}")
 
             return {
                 "manual_id": manual_id,
