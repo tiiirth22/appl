@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Depends, Request, BackgroundTasks
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.encoders import jsonable_encoder
 import uvicorn
 
 from config import (
@@ -167,10 +168,12 @@ async def ml_service_exception_handler(request: Request, exc: MLServiceException
         status_code = 503
     elif exc.error_type == ErrorType.PINECONE_ERROR:
         status_code = 503 if exc.retryable else 400
+    elif exc.error_type == ErrorType.INTERNAL_ERROR:
+        status_code = 500
     
     return JSONResponse(
         status_code=status_code,
-        content=error_response.model_dump(mode='json'),
+        content=jsonable_encoder(error_response),
     )
 
 
@@ -179,7 +182,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     """Handle HTTP exceptions"""
     return JSONResponse(
         status_code=exc.status_code,
-        content={"error": "http_error", "message": exc.detail},
+        content=jsonable_encoder({"error": "http_error", "message": exc.detail}),
     )
 
 
@@ -191,13 +194,14 @@ async def general_exception_handler(request: Request, exc: Exception):
     
     return JSONResponse(
         status_code=500,
-        content={
+        content=jsonable_encoder({
             "error": "internal_error",
             "message": f"Internal server error: {str(exc)}",
             "exception_type": type(exc).__name__,
             "request_id": request_id,
             "retryable": True,
-        },
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }),
     )
 
 
@@ -258,7 +262,6 @@ async def health_check_detailed(request_id: str = Depends(get_request_id)):
         health_status["status"] = "degraded"
     else:
         health_status["components"]["gemini"] = "configured"
-        health_status["status"] = "degraded"
     
     # Check Pinecone availability
     try:

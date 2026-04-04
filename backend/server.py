@@ -760,7 +760,9 @@ async def analyze_frame(request: dict):
         return response
     except MLServiceError as e:
         logger.error(f"[AnalyzeFrame] Proxy error: {str(e)}")
-        raise HTTPException(status_code=503, detail=f"ML Service error: {str(e)}")
+        # Return a 502 Bad Gateway with the actual service error message
+        # This is better than a generic 503 because it clarifies the source.
+        raise HTTPException(status_code=502, detail=f"ML Service: {str(e)}")
     except Exception as e:
         logger.error(f"[AnalyzeFrame] Unhandled proxy error: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

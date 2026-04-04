@@ -27,7 +27,7 @@ class ErrorResponse(BaseModel):
     message: str
     details: Optional[dict] = None
     retryable: bool = False
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     request_id: Optional[str] = None
 
 

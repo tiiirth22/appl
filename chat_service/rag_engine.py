@@ -43,7 +43,7 @@ HARDCODED_COST_MAP = {
 }
 from errors import (
     EmbeddingError, PineconeError, RAGError, TimeoutError as TimeoutErrorException,
-    ServiceUnavailableError, MLServiceException,
+    ServiceUnavailableError, MLServiceException, ErrorType,
 )
 from logger_config import get_processing_logger
 
@@ -808,7 +808,7 @@ Query: {question}"""
                 raise ServiceUnavailableError("gemini", "GEMINI_API_KEY not configured")
                 
             genai.configure(api_key=GEMINI_API_KEY)
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            model = genai.GenerativeModel('gemini-2.0-flash')
             
             self.logger.info(f"Analyze frame | image_b64 length: {len(image_b64)} | Start: {image_b64[:100]}")
             
@@ -845,27 +845,34 @@ Return ONLY JSON, no explanation, no markdown:
                 if response.candidates and response.candidates[0].content.parts:
                     raw_text = response.candidates[0].content.parts[0].text.strip()
                 else:
+                    # check for safety blocking
+                    if hasattr(response, 'prompt_feedback') and response.prompt_feedback:
+                        self.logger.warning(f"Gemini block detected: {response.prompt_feedback}")
+                        raise MLServiceException(
+                            ErrorType.INVALID_INPUT,
+                            "Camera frame blocked by safety filters. Try a different angle.",
+                            retryable=False
+                        )
                     raw_text = response.text.strip()
-            except Exception as e:
-                self.logger.warning(f"Could not extract text from Gemini response directly: {e}")
-                # Fallback to checking prompt_feedback
-                feedback = getattr(response, 'prompt_feedback', 'No feedback available')
-                self.logger.info(f"Prompt feedback: {feedback}")
+            except (ValueError, AttributeError, IndexError) as e:
+                self.logger.warning(f"Could not extract text from Gemini response: {e}")
+                # If we get here, it's likely a safety block or an empty response
                 raise MLServiceException(
                     ErrorType.SERVICE_UNAVAILABLE,
-                    f"Gemini response blocked or empty. Feedback: {feedback}"
+                    "Vision analysis unavailable or blocked. Please ensure the camera is clear.",
+                    retryable=True
                 )
 
             self.logger.info(f"Raw Gemini response: {raw_text}")
             
             result = self._extract_json(raw_text)
             if not result:
-                # Emergency fallback if JSON is truly broken
+                self.logger.warning("Gemini returned invalid JSON, using fallback")
                 return {
-                    "issue": "Vision analysis failed to parse",
+                    "issue": None,
                     "part": "unknown",
-                    "severity": "moderate",
-                    "suggested_query": "troubleshoot appliance",
+                    "severity": "none",
+                    "suggested_query": None,
                     "detected_issues": [],
                     "confidence": 0
                 }
@@ -877,10 +884,30 @@ Return ONLY JSON, no explanation, no markdown:
                result["severity"] = "none"
                
             return result
+        except MLServiceException:
+            raise
         except Exception as e:
-            self.logger.error(f"Gemini frame analysis failed: {str(e)}")
+            error_msg = str(e)
+            self.logger.error(f"Gemini frame analysis failed: {error_msg}", exc_info=True)
+            
+            # Specific handling for Rate Limits and Quotas
+            if "429" in error_msg or "quota" in error_msg.lower():
+                raise MLServiceException(
+                    ErrorType.SERVICE_UNAVAILABLE,
+                    "AI Analysis limit reached. Please wait a moment and try again.",
+                    retryable=True
+                )
+            
+            # Specific handling for Model Not Found
+            if "404" in error_msg and "model" in error_msg.lower():
+                 raise MLServiceException(
+                    ErrorType.SERVICE_UNAVAILABLE,
+                    "Analysis model transition. Reconnecting...",
+                    retryable=True
+                )
+
             raise MLServiceException(
-                ErrorType.SERVICE_UNAVAILABLE, 
-                f"Frame analysis failed: {str(e)}", 
+                ErrorType.INTERNAL_ERROR, 
+                f"Frame analysis error: {error_msg}", 
                 retryable=True
             )
