@@ -213,6 +213,16 @@ class MLServiceClient:
         return await self._make_request("POST", f"{self.ml_service_url}/analyze-image", payload)
 
     
+    async def analyze_frame(
+        self,
+        image_b64: str,
+    ) -> Dict[str, Any]:
+        """Analyze live camera frame via ML Service."""
+        payload = {
+            "image_b64": image_b64,
+        }
+        return await self._make_request("POST", f"{self.ml_service_url}/analyze-frame", payload)
+
     async def close(self):
         """Close HTTP client"""
         if self._client:

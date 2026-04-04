@@ -745,6 +745,22 @@ async def chat(request: ChatRequest, current_user: Optional[dict] = Depends(get_
         logger.error(f"[Chat] ML Service error: {str(e)}")
         raise HTTPException(status_code=503, detail=f"Service error: {str(e)}")
 
+@api_router.post("/analyze-frame")
+async def analyze_frame(request: dict):
+    """Proxy live camera frame analysis to ML Service."""
+    if "image_b64" not in request:
+        raise HTTPException(status_code=400, detail="Missing image_b64")
+        
+    try:
+        response = await ml_client.analyze_frame(request["image_b64"])
+        return response
+    except MLServiceError as e:
+        logger.error(f"[AnalyzeFrame] Proxy error: {str(e)}")
+        raise HTTPException(status_code=503, detail=f"ML Service error: {str(e)}")
+    except Exception as e:
+        logger.error(f"[AnalyzeFrame] Unhandled proxy error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
 @api_router.post("/chat/image")
 async def chat_image(
     manual_id: str = Form(...),
