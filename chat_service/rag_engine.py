@@ -147,9 +147,11 @@ class RAGQueryEngine:
                 "processing_time_ms": processing_time_ms,
                 "video_url": video_url,
                 "steps": secondary_info.get("steps", []),
-                "severity": secondary_info.get("severity", None),
-                "cost": secondary_info.get("cost", None),
-                "history": history if history else []
+                "severity": secondary_info.get("severity", "none"), # Default to none
+                "cost": secondary_info.get("cost", {"diy": "Unavailable", "professional": "Unavailable"}), # Default cost
+                "history": history if history else [],
+                "from_manual": not (any(s.get('is_fallback', False) for s in sources) if sources else True),
+                "fallback": any(s.get('is_fallback', False) for s in sources) if sources else True
             }
             
         except MLServiceException as e:
@@ -296,9 +298,19 @@ class RAGQueryEngine:
             confidence_scores = []
             
             matches = results.get("matches", [])
-            if not matches:
-                self.logger.warning(f"Retrieval Miss: 0 matches found for manual_id={manual_id} (took {query_duration:.2f}ms)")
-                return [], 0.0
+            
+            # Check if retrieved chunks are actually relevant (Threshold: 0.5)
+            top_score = matches[0].get('score', 0.0) if matches else 0.0
+            
+            if not matches or top_score < 0.5:
+                self.logger.warning(f"Retrieval Weak/Miss: Top score {top_score:.4f} below threshold 0.5. Triggering fallback.")
+                return [{
+                    "text": "No strongly relevant manual section found.",
+                    "chunk_index": -1,
+                    "page": 0,
+                    "score": top_score,
+                    "is_fallback": True
+                }], top_score
             
             for match in matches:
                 metadata = match.get("metadata", {})
@@ -368,20 +380,37 @@ class RAGQueryEngine:
             client = await self._get_groq_client()
             
             # Build context from sources
+            is_fallback = any(s.get('is_fallback', False) for s in sources)
             context = "\n\n".join([
                 f"Source {i+1}:\n{s['text']}"
                 for i, s in enumerate(sources[:3])  # Use top 3 sources
             ])
             
-            # Build prompt
-            prompt = f"""Based on the following manual content, answer the question:
+            # Build prompt using the new expert repair assistant instructions
+            prompt = f"""You are ApplianceIQ, an expert home appliance repair assistant.
+Your job is to always give the user a helpful, actionable answer — never refuse.
 
-MANUAL CONTENT:
-{context}
+Use the following retrieved manual context as your PRIMARY source of truth.
+If the context fully answers the question, use it directly.
+If the context is partially relevant, use it and supplement with your general appliance repair knowledge.
+If the context is completely irrelevant, answer from your general knowledge as an expert technician.
 
-QUESTION: {question}
+NEVER say:
+- "I cannot find this in the manual"
+- "This is not covered in the context"
+- "I don't have enough information"
+- "I am not able to respond"
 
-ANSWER (be concise and direct):"""
+ALWAYS:
+- Give a direct, actionable answer
+- If answering from general knowledge, add: "Note: This answer is based on general appliance knowledge, not your specific manual."
+- Keep the answer concise and practical
+- End with a follow-up suggestion if relevant
+
+Context: {context}
+User query: {question}
+
+ANSWER:"""
             
             # Base system message
             messages = [
@@ -636,6 +665,8 @@ Query: {question}"""
             genai.configure(api_key=GEMINI_API_KEY)
             model = genai.GenerativeModel('gemini-1.5-flash')
             
+            self.logger.info(f"Analyze frame | image_b64 length: {len(image_b64)} | Start: {image_b64[:100]}")
+            
             image_bytes = base64.b64decode(image_b64.split(",")[-1] if "," in image_b64 else image_b64)
             image = PIL.Image.open(io.BytesIO(image_bytes))
             
@@ -654,13 +685,28 @@ Return ONLY JSON, no explanation, no markdown:
                 [prompt, image]
             )
             
-            content = response.text.strip()
+            raw_text = response.text.strip()
+            self.logger.info(f"Raw Gemini response: {raw_text}")
+            
+            content = raw_text
             if content.startswith("```json"):
                 content = content.split("```json")[1].split("```")[0].strip()
             elif content.startswith("```"):
                 content = content.split("```")[1].split("```")[0].strip()
                 
-            result = json.loads(content)
+            try:
+                result = json.loads(content)
+            except json.JSONDecodeError as je:
+                self.logger.error(f"Failed to parse Gemini JSON. Raw text: {raw_text}")
+                # Fallback extraction attempt
+                if "{" in content and "}" in content:
+                    try:
+                        content = content[content.find("{"):content.rfind("}")+1]
+                        result = json.loads(content)
+                    except:
+                        raise je
+                else:
+                    raise je
             return result
         except Exception as e:
             self.logger.error(f"Gemini frame analysis failed: {str(e)}")

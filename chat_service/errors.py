@@ -104,6 +104,8 @@ class QueryResponse(BaseModel):
     severity: Optional[str] = None
     cost: Optional[Dict[str, str]] = None
     history: Optional[List[Dict[str, str]]] = []
+    from_manual: bool = True
+    fallback: bool = False
 
 
 class HealthCheckResponse(BaseModel):
