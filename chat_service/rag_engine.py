@@ -103,34 +103,36 @@ class RAGQueryEngine:
             self.logger.info("Step 1/3: Embedding question")
             question_embedding = await self._embed_text(question)
             
-            sources, confidence = await self._retrieve_chunks(
+            sources, mode, top_score = await self._retrieve_chunks(
                 manual_id, question_embedding, top_k
             )
-            
-            if not sources:
-                return {
-                    "query_id": query_id,
-                    "answer": "No relevant information found in the manual.",
-                    "sources": [],
-                    "confidence": 0.0,
-                    "processing_time_ms": (time.time() - start_time) * 1000,
-                }
             
             # Step 3: Generate answer and steps in parallel
             self.logger.info("Step 3/3: Generating answer, steps, and YouTube URL")
             
-            # Construct YouTube URL
-            video_url = self._construct_youtube_url(question)
+            # Construct YouTube URL (only for repair-related queries)
+            video_url = self._construct_youtube_url(question, manual_name=manual_name)
             
             # Run LLM calls in parallel
             async def get_secondary_info_safely():
                 try:
-                    return await self._generate_secondary_info(question, sources, manual_name=manual_name)
+                    return await self._generate_secondary_info(
+                        question, 
+                        sources, 
+                        manual_name=manual_name,
+                        is_fallback=(mode == "fallback")
+                    )
                 except Exception as e:
                     self.logger.error(f"Secondary info generation failed: {str(e)}")
                     return {"steps": [], "severity": None, "cost": None}
 
-            answer_task = self._generate_answer(question, sources, manual_name=manual_name, history=history)
+            answer_task = self._generate_answer(
+                question, 
+                sources, 
+                mode=mode, 
+                manual_name=manual_name, 
+                history=history
+            )
             info_task = get_secondary_info_safely()
             
             answer, secondary_info = await asyncio.gather(answer_task, info_task)
@@ -142,15 +144,15 @@ class RAGQueryEngine:
                 "query_id": query_id,
                 "answer": answer,
                 "sources": sources,
-                "confidence": confidence,
+                "confidence": float(top_score),
                 "processing_time_ms": processing_time_ms,
                 "video_url": video_url,
                 "steps": secondary_info.get("steps", []),
-                "severity": secondary_info.get("severity", "none"), # Default to none
-                "cost": secondary_info.get("cost", {"diy": "Unavailable", "professional": "Unavailable"}), # Default cost
+                "severity": secondary_info.get("severity", "none"),
+                "cost": secondary_info.get("cost", {"diy": "Unavailable", "professional": "Unavailable"}),
                 "history": history if history else [],
-                "from_manual": not (any(s.get('is_fallback', False) for s in sources) if sources else True),
-                "fallback": any(s.get('is_fallback', False) for s in sources) if sources else True
+                "from_manual": mode != "fallback",
+                "fallback": mode == "fallback"
             }
             
         except MLServiceException as e:
@@ -234,7 +236,7 @@ class RAGQueryEngine:
         embedding: List[float],
         top_k: int = 5,
         timeout: int = PINECONE_TIMEOUT,
-    ) -> Tuple[List[Dict[str, Any]], float]:
+    ) -> Tuple[List[Dict[str, Any]], str, float]:
         """Retrieve top-k relevant chunks from Pinecone"""
         try:
             index = await self._get_pinecone_index()
@@ -273,61 +275,36 @@ class RAGQueryEngine:
                 timeout=timeout,
             )
             
-            # If 0 matches, try querying without filter to see if matching vectors exist at all
-            if not results.get("matches", []):
-                self.logger.warning(f"No matches with manual_id filter: {manual_id}. Testing global query...")
-                global_results = await asyncio.to_thread(
-                    lambda: index.query(
-                        vector=embedding,
-                        top_k=1,
-                        include_metadata=True
-                    )
-                )
-                if global_results.get("matches"):
-                    top_match = global_results["matches"][0]
-                    match_manual_id = top_match.get("metadata", {}).get("manual_id", "MISSING")
-                    self.logger.info(f"Global match found! Top vector manual_id: {match_manual_id}. Current query manual_id: {manual_id}")
-                else:
-                    self.logger.warning("Global query also returned 0 matches. Index might be empty or embedding mismatch.")
-
+            # Log duration for analytics
             query_duration = (time.time() - start_query) * 1000
-            
-            # Extract sources from results
-            sources = []
-            confidence_scores = []
+            self.logger.info(f"Pinecone query completed in {query_duration:.2f}ms")
             
             matches = results.get("matches", [])
+            top_score = matches[0]["score"] if matches else 0.0
             
-            # Check if retrieved chunks are actually relevant (Threshold: 0.4)
-            top_score = matches[0].get('score', 0.0) if matches else 0.0
-            
-            if not matches or top_score < 0.4:
-                self.logger.warning(f"Retrieval Weak/Miss: Top score {top_score:.4f} below threshold 0.4. Triggering fallback.")
-                return [{
-                    "text": "No strongly relevant manual section found.",
-                    "chunk_index": -1,
-                    "page": 0,
-                    "score": top_score,
-                    "is_fallback": True
-                }], top_score
-            
+            # Determine Tier/Mode based on top score
+            if top_score >= 0.6:
+                mode = "strong"
+                self.logger.info(f"Retrieval Strong: Top score {top_score:.4f} >= 0.6")
+            elif top_score >= 0.35:
+                mode = "partial"
+                self.logger.info(f"Retrieval Partial: Top score {top_score:.4f} >= 0.35")
+            else:
+                mode = "fallback"
+                self.logger.info(f"Retrieval Weak/Miss: Top score {top_score:.4f} below 0.35 threshold. Triggering fallback.")
+
+            # Format chunks with metadata
+            chunks = []
             for match in matches:
                 metadata = match.get("metadata", {})
-                source = {
+                chunks.append({
                     "text": metadata.get("text", ""),
-                    "chunk_index": metadata.get("chunk_index", 0),
-                    "page": metadata.get("page_number", 0),  # Frontend expects 'page'
-                    "score": match.get("score", 0.0),
-                }
-                sources.append(source)
-                confidence_scores.append(match.get("score", 0.0))
+                    "page": metadata.get("page_number", 0),
+                    "score": match["score"],
+                    "manual_name": metadata.get("manual_name", "Unknown"),
+                })
             
-            # Calculate average confidence
-            avg_confidence = sum(confidence_scores) / len(confidence_scores) if confidence_scores else 0.0
-            
-            self.logger.info(f"Retrieval Success: Found {len(sources)} chunks | Avg score: {avg_confidence:.4f} | Took: {query_duration:.2f}ms")
-            
-            return sources, avg_confidence
+            return chunks, mode, top_score
             
         except asyncio.TimeoutError:
             raise TimeoutErrorException("pinecone_query", timeout)
@@ -371,48 +348,53 @@ class RAGQueryEngine:
         self, 
         question: str, 
         sources: List[Dict[str, Any]], 
+        mode: str = "fallback",
         manual_name: Optional[str] = None,
         history: Optional[List[Dict[str, str]]] = None,
         timeout: int = QUERY_TIMEOUT
     ) -> str:
-        """Generate answer using Groq LLM"""
+        """Generate final answer based on retrieval mode and sources"""
         try:
             client = await self._get_groq_client()
             
             # Build context from sources
-            is_fallback = any(s.get('is_fallback', False) for s in sources)
             context = "\n\n".join([
                 f"Source {i+1}:\n{s['text']}"
                 for i, s in enumerate(sources[:3])  # Use top 3 sources
             ])
             
-            # Build prompt using the new expert repair assistant instructions
             device_info = f"Current device: {manual_name}" if manual_name else "Current device: (Unknown appliance)"
             
+            if mode == "strong":
+                instruction = """You are answering ONLY from the provided manual context. 
+                The answer is definitely in the context — find it and use it. 
+                Do NOT use general knowledge. Be precise and technical."""
+            elif mode == "partial":
+                instruction = """Use the provided manual context as your primary source of truth.
+                Supplement with your general appliance repair knowledge only where the context is incomplete or lacks specific details.
+                Clearly distinguish information from the manual from general advice if you mix them."""
+            else:
+                instruction = f"""No specific manual sections were found matching your query for this {manual_name or 'device'}. 
+                Answer the user's question from your general home appliance repair knowledge.
+                Crucially: Always acknowledge that the answer is not from the specific manual by adding: 'Note: This answer is based on general appliance knowledge, not your specific manual.'"""
+
             prompt = f"""You are ApplianceIQ, an expert home appliance repair assistant.
-Your job is to always give the user a helpful, actionable answer — never refuse.
+YOUR JOB IS TO ALWAYS GIVE THE USER A HELPFUL, ACTIONABLE ANSWER.
 
 {device_info}
 
-Use the following retrieved manual context as your PRIMARY source of truth.
-If the context fully answers the question, use it directly.
-If the context is partially relevant, use it and supplement with your general appliance repair knowledge.
-If the context is completely irrelevant OR if the user is asking about a DIFFERENT device than the one described in the manual, answer from your general knowledge but clearly state that the answer is not from this specific manual.
+{instruction}
 
 NEVER say:
 - "I cannot find this in the manual"
 - "This is not covered in the context"
 - "I don't have enough information"
-- "I am not able to respond"
 
 ALWAYS:
 - Give a direct, actionable answer
-- If the query is about a DIFFERENT device type than the manual, acknowledge it: "This manual is for a {manual_name or 'different device'}, but based on general knowledge for your {question}..."
-- If answering from general knowledge, add: "Note: This answer is based on general appliance knowledge, not your specific manual."
 - Keep the answer concise and practical
-- End with a follow-up suggestion if relevant
 
-Context: {context}
+Context: {context if mode != 'fallback' else 'No relevant manual context found.'}
 User query: {question}
 
 ANSWER:"""
@@ -512,12 +494,24 @@ ANSWER:"""
             self.logger.error(f"Failed to initialize secondary Groq: {str(e)}")
             return None
 
-    def _construct_youtube_url(self, question: str) -> str:
-        """Construct YouTube search URL from query"""
+    def _construct_youtube_url(self, question: str, manual_name: Optional[str] = None) -> Optional[str]:
+        """Construct YouTube search URL from query if it's a repair/how-to question"""
         import urllib.parse
-        clean_query = question.strip()
-        # Add keywords for better repair results
-        search_terms = f"{clean_query} refrigerator fix"
+        q = question.lower().strip()
+        
+        # Keywords that suggest a video would be helpful
+        repair_keywords = [
+            'how to', 'fix', 'repair', 'replace', 'broken', 'not working', 
+            'error', 'problem', 'install', 'remove', 'clean', 'noise', 'vibrate',
+            'leak', 'won\'t', 'troubleshoot', 'change'
+        ]
+        
+        if not any(k in q for k in repair_keywords):
+            return None
+            
+        # Add keywords for better results
+        appliance = manual_name if manual_name else "appliance"
+        search_terms = f"{q} {appliance} fix repair"
         encoded_query = urllib.parse.quote_plus(search_terms)
         return f"https://www.youtube.com/results?search_query={encoded_query}"
 
@@ -526,6 +520,7 @@ ANSWER:"""
         question: str, 
         sources: List[Dict[str, Any]], 
         manual_name: Optional[str] = None,
+        is_fallback: bool = False,
         timeout: int = QUERY_TIMEOUT
     ) -> Dict[str, Any]:
         """Generate structured repair steps, severity, and cost using secondary LLM"""
@@ -541,8 +536,6 @@ ANSWER:"""
             ])
             
             cost_map_str = str(HARDCODED_COST_MAP)
-            
-            is_fallback = any(s.get('is_fallback', False) for s in sources)
             device_info = f"Manual Device: {manual_name}" if manual_name else ""
             
             prompt = f"""You are a home appliance repair assistant. 
