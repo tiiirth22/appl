@@ -191,6 +191,8 @@ export default function ChatBot() {
             botMessage.cost = metadata.cost;
             botMessage.extracted_problem = metadata.extracted_problem;
             botMessage.is_vision = metadata.is_vision;
+            botMessage.fallback = metadata.fallback;
+            botMessage.from_manual = metadata.from_manual;
             
             const rest = parts.slice(1).join('\n');
             if (rest) botMessage.text += rest;
@@ -345,6 +347,12 @@ export default function ChatBot() {
                   <div className="vision-extraction-badge">
                     <Maximize2 size={12} />
                     <span>Scanned Problem: {m.extracted_problem}</span>
+                  </div>
+                )}
+                {m.fallback && (
+                  <div className="fallback-banner">
+                    <AlertCircle size={14} />
+                    <span>Answer based on general knowledge — not found in your manual</span>
                   </div>
                 )}
                 <p>{m.text}</p>
@@ -799,6 +807,17 @@ export default function ChatBot() {
           border-radius: 6px;
           margin-bottom: 0.75rem;
           font-size: 0.75rem; font-weight: 600; color: #60a5fa;
+        }
+        .fallback-banner {
+          display: flex; align-items: center; gap: 0.5rem;
+          background: rgba(245, 158, 11, 0.1);
+          border: 1px solid rgba(245, 158, 11, 0.2);
+          padding: 0.5rem 0.75rem;
+          border-radius: 8px;
+          margin-bottom: 0.75rem;
+          color: #f59e0b;
+          font-size: 0.8rem;
+          font-weight: 500;
         }
 
         .image-upload-preview-bar {
