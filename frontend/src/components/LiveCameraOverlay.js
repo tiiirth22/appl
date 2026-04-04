@@ -8,18 +8,24 @@ export default function LiveCameraOverlay({ onClose, onIssueDetected }) {
   const canvasRef = useRef(null);
   const [status, setStatus] = useState('Initializing camera...');
   const [consecutiveNone, setConsecutiveNone] = useState(0);
+  const [debug, setDebug] = useState({ 
+    lastFrame: 'None', 
+    b64Len: 0, 
+    rawResp: 'None',
+    count: 0
+  });
   const lastIssueRef = useRef(null);
   const intervalRef = useRef(null);
 
   useEffect(() => {
     const startCamera = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } 
+        });
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
         }
-        setStatus('Scanning for issues...');
-        startAnalysis();
       } catch (e) {
         console.error('Camera error', e);
         setStatus('Camera permission denied or not available.');
@@ -40,51 +46,76 @@ export default function LiveCameraOverlay({ onClose, onIssueDetected }) {
     }
   };
 
+  const handleVideoLoad = () => {
+    console.log("Video metadata loaded, starting analysis...");
+    setStatus('Scanning for issues...');
+    startAnalysis();
+  };
+
   const startAnalysis = () => {
-    intervalRef.current = setInterval(async () => {
-      if (!videoRef.current || !canvasRef.current) return;
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      if (video.videoWidth === 0) return;
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
-      const base64Image = canvas.toDataURL('image/jpeg', 0.5);
-      
-      try {
-        const res = await fetch(`${API}/analyze-frame`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image_b64: base64Image })
-        });
+    // Small delay to ensure stream is stable
+    setTimeout(() => {
+      intervalRef.current = setInterval(async () => {
+        if (!videoRef.current || !canvasRef.current) return;
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
         
-        if (!res.ok) throw new Error('API error');
-        const data = await res.json();
-        
-        if (data.severity === 'none' || !data.issue) {
-            setConsecutiveNone(prev => {
-                const next = prev + 1;
-                if (next >= 3) setStatus('Hold steady... scanning...');
-                return next;
-            });
-        } else {
-            if (lastIssueRef.current === data.issue) return; 
-            lastIssueRef.current = data.issue;
-            
-            setStatus(`Detected: ${data.issue}!`);
-            stopCamera();
-            setTimeout(() => {
-                onIssueDetected(data.suggested_query || data.issue);
-            }, 1000);
+        if (video.videoWidth === 0 || video.videoHeight === 0) {
+          console.warn("Video dimensions still 0");
+          return;
         }
 
-      } catch (err) {
-        console.error('Frame analysis error', err);
-      }
-      
-    }, 2500);
+        // Fix: Explicitly set canvas dimensions
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        const base64Image = canvas.toDataURL('image/jpeg', 0.5);
+        
+        setDebug(prev => ({ 
+          ...prev, 
+          lastFrame: `${canvas.width}x${canvas.height}`,
+          b64Len: base64Image.length,
+          count: prev.count + 1
+        }));
+
+        try {
+          const res = await fetch(`${API}/analyze-frame`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image_b64: base64Image })
+          });
+          
+          if (!res.ok) throw new Error('API error');
+          const data = await res.json();
+          
+          setDebug(prev => ({ ...prev, rawResp: JSON.stringify(data) }));
+
+          if (data.severity === 'none' || !data.issue) {
+              setConsecutiveNone(prev => {
+                  const next = prev + 1;
+                  if (next >= 3) setStatus('Hold steady... scanning...');
+                  return next;
+              });
+          } else {
+              if (lastIssueRef.current === data.issue) return; 
+              lastIssueRef.current = data.issue;
+              
+              setStatus(`Detected: ${data.issue}!`);
+              stopCamera();
+              setTimeout(() => {
+                  onIssueDetected(data.suggested_query || data.issue);
+              }, 1000);
+          }
+
+        } catch (err) {
+          console.error('Frame analysis error', err);
+          setDebug(prev => ({ ...prev, rawResp: `ERROR: ${err.message}` }));
+        }
+        
+      }, 2500);
+    }, 1000);
   };
 
   return (
@@ -94,11 +125,11 @@ export default function LiveCameraOverlay({ onClose, onIssueDetected }) {
       exit={{ opacity: 0, y: '100%' }}
       transition={{ type: 'spring', damping: 25, stiffness: 200 }}
       style={{
-        position: 'absolute', inset: 0, zIndex: 1000,
+        position: 'absolute', inset: 0, zIndex: 9999,
         backgroundColor: '#000', display: 'flex', flexDirection: 'column'
       }}
     >
-      <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 1010 }}>
+      <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 10000 }}>
         <button 
           onClick={onClose}
           style={{
@@ -118,9 +149,25 @@ export default function LiveCameraOverlay({ onClose, onIssueDetected }) {
           autoPlay 
           playsInline 
           muted 
+          onLoadedMetadata={handleVideoLoad}
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
         />
         
+        {/* Debug Panel */}
+        <div style={{
+            position: 'absolute', top: 20, left: 20, zIndex: 10000,
+            background: 'rgba(0,0,0,0.7)', color: '#0f0', padding: '10px',
+            borderRadius: '8px', fontSize: '10px', fontFamily: 'monospace',
+            maxWidth: '200px', pointerEvents: 'none'
+        }}>
+            <div>FRAME: {debug.lastFrame}</div>
+            <div>B64: {debug.b64Len}</div>
+            <div>COUNT: {debug.count}</div>
+            <div style={{ wordBreak: 'break-all', marginTop: '5px' }}>
+                RESP: {debug.rawResp}
+            </div>
+        </div>
+
         <div style={{
             position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
             width: '80%', height: '60%', border: '2px solid rgba(59, 130, 246, 0.5)',
@@ -151,7 +198,7 @@ export default function LiveCameraOverlay({ onClose, onIssueDetected }) {
       <style>{`
         @keyframes scan {
           0% { transform: translateY(0); }
-          50% { transform: translateY(300px); }
+          50% { transform: translateY(400px); }
           100% { transform: translateY(0); }
         }
       `}</style>
