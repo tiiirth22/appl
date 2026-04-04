@@ -384,11 +384,6 @@ export default function ChatBot() {
                 {m.type === 'bot' && m.cost && (
                   <CostEstimator cost={m.cost} />
                 )}
-
-                {/* Repair Steps Swipeable Cards */}
-                {m.type === 'bot' && m.steps && m.steps.length > 0 && (
-                  <RepairSteps steps={m.steps} />
-                )}
               </div>
             </motion.div>
           ))}
