@@ -69,13 +69,28 @@ export default function ChatBot() {
         const id = searchParams.get('manual_id');
         const token = localStorage.getItem('session_token');
 
-        if (id && token) {
-          // If the user is AUTHENTICATED, they can access any manual they own or have access to
-          setManualId(id);
-          setMessages([{
-            type: 'bot',
-            text: "Welcome back! I'm ready to answer any questions about your appliance. What would you like to know?"
-          }]);
+        if (id) {
+          setLoadingQR(true);
+          try {
+            // Fetch public details for this manual ID
+            const response = await axios.get(`${API}/manual-public/${id}`);
+            const { model_name, version } = response.data;
+            setManualId(id);
+            setManualInfo({ model_name, version });
+            
+            setMessages([{
+              type: 'bot',
+              text: `Hello! I'm your AI assistant for the **${model_name}**. I've indexed the technical manual for version ${version}. How can I assist you with your device today?`
+            }]);
+          } catch (error) {
+            console.error('Error fetching manual details:', error);
+            setMessages([{
+              type: 'bot',
+              text: "I couldn't retrieve the specific manual details for this QR code. Please ensure the link is correct."
+            }]);
+          } finally {
+            setLoadingQR(false);
+          }
         } else if (!id && !qrId) {
           // If NO ID and NO QR, it's an invalid access
           setMessages([{

@@ -850,6 +850,14 @@ async def get_qr_details(qr_id: str):
         "qr_id": qr_id
     }
 
+@api_router.get("/manual-public/{manual_id}")
+async def get_manual_public(manual_id: str):
+    """Get non-sensitive manual details publicly (for QR scans)."""
+    manual = await db.manuals.find_one({"id": manual_id}, {"_id": 0, "id": 1, "model_name": 1, "version": 1})
+    if not manual:
+        raise HTTPException(status_code=404, detail="Manual not found")
+    return manual
+
 @api_router.get("/device/{qr_id}")
 async def redirect_to_chat(qr_id: str):
     """Redirect from QR code to chat interface (deprecated, frontend handles /device/:qrId)."""
