@@ -799,6 +799,12 @@ async def chat_image(
         confidence = ml_response.get("confidence", 0.0)
         
         async def stream_response():
+            # Handle non-serializable objects in metadata (like datetime)
+            def json_serial(obj):
+                if isinstance(obj, (datetime, timezone)):
+                    return obj.isoformat()
+                raise TypeError ("Type %s not serializable" % type(obj))
+
             metadata = _json.dumps({
                 "sources": sources, 
                 "confidence": confidence,
@@ -808,7 +814,7 @@ async def chat_image(
                 "is_vision": True,
                 "from_manual": ml_response.get("from_manual", True),
                 "fallback": ml_response.get("fallback", False)
-            })
+            }, default=json_serial)
             yield f"__METADATA__:{metadata}\n"
             yield answer_text
         

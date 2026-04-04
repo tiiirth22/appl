@@ -356,12 +356,14 @@ async def analyze_image(
         raise
     except Exception as e:
         logger.error(f"Unhandled error in analyze_image: {str(e)}", exc_info=True)
+        # Avoid using ErrorType enum here directly if there's a NameError risk
         raise HTTPException(
             status_code=500,
-            detail=MLServiceException(
-                ErrorType.INTERNAL_ERROR,
-                str(e)
-            ).to_response().model_dump()
+            detail={
+                "error": "internal_error",
+                "message": f"Internal server error: {str(e)}",
+                "retryable": True
+            }
         )
 
 
@@ -388,10 +390,11 @@ async def analyze_frame(
         logger.error(f"Unhandled error in analyze_frame: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=MLServiceException(
-                ErrorType.INTERNAL_ERROR,
-                str(e)
-            ).to_response().model_dump()
+            detail={
+                "error": "internal_error",
+                "message": f"Internal server error: {str(e)}",
+                "retryable": True
+            }
         )
 
 

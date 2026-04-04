@@ -714,32 +714,29 @@ Query: {question}"""
         """Analyze an image using Vision LLM and then query RAG"""
         try:
             start_time = time.time()
-            client = await self._get_groq_client()
-            if not client:
-                raise MLServiceException(ErrorType.SERVICE_UNAVAILABLE, "Groq client not available")
-
-            self.logger.info(f"Step 1/2: Analyzing image for manual {manual_id}")
+            # Call Vision model (Use Gemini since Groq Vision is decommissioned)
+            import google.generativeai as genai
+            import PIL.Image
+            import io
+            import base64
             
-            # Call Groq Vision model
-            response = await asyncio.wait_for(
-                asyncio.to_thread(
-                    lambda: client.chat.completions.create(
-                        model=GROQ_VISION_MODEL,
-                        messages=[{
-                            "role": "user",
-                            "content": [
-                                {"type": "text", "text": "Describe the appliance repair technical problem shown in this image in one concise sentence. Focus on technical keywords (error code, broken part, visible symptom)."},
-                                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}}
-                            ]
-                        }],
-                        temperature=0.1,
-                        max_tokens=100,
-                    )
-                ),
-                timeout=QUERY_TIMEOUT,
+            if not GEMINI_API_KEY:
+                raise ServiceUnavailableError("gemini", "GEMINI_API_KEY not configured")
+                
+            genai.configure(api_key=GEMINI_API_KEY)
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            
+            image_bytes = base64.b64decode(image_b64.split(",")[-1] if "," in image_b64 else image_b64)
+            image = PIL.Image.open(io.BytesIO(image_bytes))
+            
+            prompt = "Describe the appliance repair technical problem shown in this image in one concise sentence. Focus on technical keywords (error code, broken part, visible symptom)."
+            
+            response = await asyncio.to_thread(
+                model.generate_content,
+                [prompt, image]
             )
             
-            extracted_problem = response.choices[0].message.content.strip()
+            extracted_problem = response.text.strip()
             self.logger.info(f"Extracted problem: {extracted_problem}")
             
             # Step 2: Query RAG with extracted text
@@ -761,7 +758,7 @@ Query: {question}"""
         except Exception as e:
             self.logger.error(f"Error in vision analysis: {str(e)}")
             raise MLServiceException(
-                ErrorType.RAG_ERROR,
+                "rag_error",
                 f"Failed to analyze image: {str(e)}",
                 retryable=True,
             )
@@ -808,7 +805,8 @@ Query: {question}"""
                 raise ServiceUnavailableError("gemini", "GEMINI_API_KEY not configured")
                 
             genai.configure(api_key=GEMINI_API_KEY)
-            model = genai.GenerativeModel('gemini-2.0-flash')
+            # Use gemini-1.5-flash for better stability and lower latency on frames
+            model = genai.GenerativeModel('gemini-1.5-flash')
             
             self.logger.info(f"Analyze frame | image_b64 length: {len(image_b64)} | Start: {image_b64[:100]}")
             
@@ -893,7 +891,7 @@ Return ONLY JSON, no explanation, no markdown:
             # Specific handling for Rate Limits and Quotas
             if "429" in error_msg or "quota" in error_msg.lower():
                 raise MLServiceException(
-                    ErrorType.SERVICE_UNAVAILABLE,
+                    "service_unavailable",
                     "AI Analysis limit reached. Please wait a moment and try again.",
                     retryable=True
                 )
@@ -901,13 +899,13 @@ Return ONLY JSON, no explanation, no markdown:
             # Specific handling for Model Not Found
             if "404" in error_msg and "model" in error_msg.lower():
                  raise MLServiceException(
-                    ErrorType.SERVICE_UNAVAILABLE,
+                    "service_unavailable",
                     "Analysis model transition. Reconnecting...",
                     retryable=True
                 )
 
             raise MLServiceException(
-                ErrorType.INTERNAL_ERROR, 
+                "internal_error", 
                 f"Frame analysis error: {error_msg}", 
                 retryable=True
             )

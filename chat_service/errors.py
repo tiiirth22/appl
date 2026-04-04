@@ -113,7 +113,7 @@ class QueryResponse(BaseModel):
 class HealthCheckResponse(BaseModel):
     """Health check response"""
     status: str  # "healthy" or "unhealthy"
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     components: dict = Field(default_factory=dict)
     version: str
 
