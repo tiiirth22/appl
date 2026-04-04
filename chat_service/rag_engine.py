@@ -74,6 +74,7 @@ class RAGQueryEngine:
         self,
         manual_id: str,
         question: str,
+        manual_name: Optional[str] = None,
         top_k: int = 5,
         history: Optional[List[Dict[str, str]]] = None,
     ) -> Dict[str, Any]:
@@ -102,8 +103,6 @@ class RAGQueryEngine:
             self.logger.info("Step 1/3: Embedding question")
             question_embedding = await self._embed_text(question)
             
-            # Step 2: Retrieve relevant chunks
-            self.logger.info("Step 2/3: Retrieving relevant chunks")
             sources, confidence = await self._retrieve_chunks(
                 manual_id, question_embedding, top_k
             )
@@ -126,12 +125,12 @@ class RAGQueryEngine:
             # Run LLM calls in parallel
             async def get_secondary_info_safely():
                 try:
-                    return await self._generate_secondary_info(question, sources)
+                    return await self._generate_secondary_info(question, sources, manual_name=manual_name)
                 except Exception as e:
                     self.logger.error(f"Secondary info generation failed: {str(e)}")
                     return {"steps": [], "severity": None, "cost": None}
 
-            answer_task = self._generate_answer(question, sources, history=history)
+            answer_task = self._generate_answer(question, sources, manual_name=manual_name, history=history)
             info_task = get_secondary_info_safely()
             
             answer, secondary_info = await asyncio.gather(answer_task, info_task)
@@ -299,11 +298,11 @@ class RAGQueryEngine:
             
             matches = results.get("matches", [])
             
-            # Check if retrieved chunks are actually relevant (Threshold: 0.5)
+            # Check if retrieved chunks are actually relevant (Threshold: 0.4)
             top_score = matches[0].get('score', 0.0) if matches else 0.0
             
-            if not matches or top_score < 0.5:
-                self.logger.warning(f"Retrieval Weak/Miss: Top score {top_score:.4f} below threshold 0.5. Triggering fallback.")
+            if not matches or top_score < 0.4:
+                self.logger.warning(f"Retrieval Weak/Miss: Top score {top_score:.4f} below threshold 0.4. Triggering fallback.")
                 return [{
                     "text": "No strongly relevant manual section found.",
                     "chunk_index": -1,
@@ -372,6 +371,7 @@ class RAGQueryEngine:
         self, 
         question: str, 
         sources: List[Dict[str, Any]], 
+        manual_name: Optional[str] = None,
         history: Optional[List[Dict[str, str]]] = None,
         timeout: int = QUERY_TIMEOUT
     ) -> str:
@@ -387,13 +387,17 @@ class RAGQueryEngine:
             ])
             
             # Build prompt using the new expert repair assistant instructions
+            device_info = f"Current device: {manual_name}" if manual_name else "Current device: (Unknown appliance)"
+            
             prompt = f"""You are ApplianceIQ, an expert home appliance repair assistant.
 Your job is to always give the user a helpful, actionable answer — never refuse.
+
+{device_info}
 
 Use the following retrieved manual context as your PRIMARY source of truth.
 If the context fully answers the question, use it directly.
 If the context is partially relevant, use it and supplement with your general appliance repair knowledge.
-If the context is completely irrelevant, answer from your general knowledge as an expert technician.
+If the context is completely irrelevant OR if the user is asking about a DIFFERENT device than the one described in the manual, answer from your general knowledge but clearly state that the answer is not from this specific manual.
 
 NEVER say:
 - "I cannot find this in the manual"
@@ -403,6 +407,7 @@ NEVER say:
 
 ALWAYS:
 - Give a direct, actionable answer
+- If the query is about a DIFFERENT device type than the manual, acknowledge it: "This manual is for a {manual_name or 'different device'}, but based on general knowledge for your {question}..."
 - If answering from general knowledge, add: "Note: This answer is based on general appliance knowledge, not your specific manual."
 - Keep the answer concise and practical
 - End with a follow-up suggestion if relevant
@@ -520,6 +525,7 @@ ANSWER:"""
         self, 
         question: str, 
         sources: List[Dict[str, Any]], 
+        manual_name: Optional[str] = None,
         timeout: int = QUERY_TIMEOUT
     ) -> Dict[str, Any]:
         """Generate structured repair steps, severity, and cost using secondary LLM"""
@@ -536,9 +542,18 @@ ANSWER:"""
             
             cost_map_str = str(HARDCODED_COST_MAP)
             
-            prompt = f"""You are a home appliance repair assistant.
+            is_fallback = any(s.get('is_fallback', False) for s in sources)
+            device_info = f"Manual Device: {manual_name}" if manual_name else ""
+            
+            prompt = f"""You are a home appliance repair assistant. 
+{device_info}
+
 Given the context from an appliance manual and the user query, return ONLY a valid JSON object.
 No explanation, no markdown, no extra text.
+
+IMPORTANT:
+- If the query is about a DIFFERENT device than the manual (e.g. manual is fridge, query is washing machine), or if context is missing, generate GENERAL safe steps for the queried device.
+- If 'is_fallback' is True or context is irrelevant, the steps should be titled "General Safety/Maintenance Steps".
 
 Format:
 {{
@@ -546,10 +561,6 @@ Format:
   "severity": "minor" | "moderate" | "critical",
   "cost": {{ "diy": "$10–$20", "professional": "$80–$150" }}
 }}
-
-Classify the issue's cost using this map based on the issue type:
-{cost_map_str}
-If no exact match, return "cost": {{"diy": "Cost estimate unavailable", "professional": "Cost estimate unavailable"}}.
 
 Context: {context}
 Query: {question}"""
@@ -593,7 +604,8 @@ Query: {question}"""
         self,
         image_b64: str,
         manual_id: str,
-        history: List[Dict[str, str]] = None,
+        manual_name: Optional[str] = None,
+        history: Optional[List[Dict[str, str]]] = None,
         top_k: int = 5,
     ) -> Dict[str, Any]:
         """Analyze an image using Vision LLM and then query RAG"""
@@ -631,6 +643,7 @@ Query: {question}"""
             self.logger.info("Step 2/2: Querying RAG with extracted text")
             rag_response = await self.answer_question(
                 manual_id=manual_id,
+                manual_name=manual_name,
                 question=extracted_problem,
                 history=history,
                 top_k=top_k

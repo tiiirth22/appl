@@ -298,6 +298,7 @@ async def query_manual(
         
         result = await rag_engine.answer_question(
             manual_id=request.manual_id,
+            manual_name=request.manual_name,
             question=question,
             top_k=request.top_k,
             history=request.history,
@@ -333,6 +334,7 @@ async def analyze_image(
         response = await rag_engine.analyze_image(
             image_b64=request.image_b64,
             manual_id=request.manual_id,
+            manual_name=request.manual_name,
             history=request.history,
             top_k=request.top_k
         )

@@ -65,6 +65,7 @@ class ProcessManualResponse(BaseModel):
 class QueryRequest(BaseModel):
     """RAG query request"""
     manual_id: str
+    manual_name: Optional[str] = Field(default=None, description="Appliance name/model")
     question: str
     top_k: int = Field(default=5, ge=1, le=20)
     history: Optional[List[Dict[str, str]]] = Field(default=None, description="Conversation history as list of role/content dicts")
@@ -73,6 +74,7 @@ class QueryRequest(BaseModel):
 class AnalyzeImageRequest(BaseModel):
     """Image analysis request"""
     manual_id: str
+    manual_name: Optional[str] = Field(default=None)
     image_b64: str
     top_k: int = Field(default=5, ge=1, le=20)
     history: Optional[List[Dict[str, str]]] = Field(default=None)
