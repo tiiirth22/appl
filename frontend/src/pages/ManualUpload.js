@@ -3,8 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Upload, LogOut, FileText, Loader, Check, ArrowRight, Shield, Globe, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MorphingButton } from '../components/ui/morphing-button';
 import { FloatingInput } from '../components/ui/floating-input';
+import { BiSolidZap } from 'react-icons/bi';
 import Navbar from '../components/ui/Navbar';
 
 import { API_BASE_URL as API } from '../config';
@@ -234,23 +234,22 @@ export default function ManualUpload({ user, onLogout }) {
                   </div>
 
                   <div className="form-actions">
-                    <MorphingButton
-                      buttonText={uploading ? "Analyzing..." : "Index Manual"}
-                      className="w-full"
-                      onSubmit={() => {
-                        // The MorphingButton in Watermelon UI has its own email state usually,
-                        // but we are using it as a styled interactive button here.
-                        // We trigger the native form submission if possible or directly call handleSubmit.
-                        if (!uploading) {
-                          const form = document.querySelector('.modern-form');
-                          if (form.checkValidity()) {
-                            handleSubmit({ preventDefault: () => { } });
-                          } else {
-                            form.reportValidity();
-                          }
-                        }
-                      }}
-                    />
+                    <button
+                      type="submit"
+                      disabled={uploading}
+                      className="w-full h-12 flex items-center justify-center gap-2 rounded-xl bg-transparent bg-gradient-to-r from-sky-600 via-sky-500 to-sky-600 [background-size:200%_auto] [background-position:0%_center] text-white font-bold transition-[background-position] duration-500 ease-out hover:bg-transparent hover:[background-position:100%_center] focus-visible:ring-sky-600/20 dark:from-sky-400 dark:via-sky-300 dark:to-sky-400 dark:focus-visible:ring-sky-400/40 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {uploading ? (
+                        <>
+                          <Loader className="animate-spin" size={20} />
+                          Analyzing...
+                        </>
+                      ) : (
+                        <>
+                          Index Manual <BiSolidZap size={20} />
+                        </>
+                      )}
+                    </button>
                   </div>
                 </form>
               </div>
