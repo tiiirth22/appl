@@ -661,15 +661,16 @@ async def chat(request: ChatRequest, current_user: Optional[dict] = Depends(get_
             if not manual:
                 raise HTTPException(status_code=403, detail="Access denied")
     else:
-        # Unauthenticated access — must have a valid QR code
-        if not request.qr_id:
+        # Unauthenticated access — Allow if manual_id is provided and valid
+        if not request.manual_id:
             raise HTTPException(
                 status_code=403,
                 detail="Authentication required. Please log in or scan a QR code."
             )
-        qr_record = await db.qr_codes.find_one({"id": request.qr_id, "manual_id": request.manual_id})
-        if not qr_record:
-            raise HTTPException(status_code=403, detail="Invalid QR code or manual ID")
+        # Verify manual exists publicly
+        manual_exists = await db.manuals.find_one({"id": request.manual_id})
+        if not manual_exists:
+            raise HTTPException(status_code=404, detail="Manual not found")
     
     # Call ML Service
     try:
