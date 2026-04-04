@@ -22,7 +22,7 @@ from errors import (
     QueryRequest, AnalyzeImageRequest, HealthCheckResponse,
     QueryResponse, AnalyzeFrameRequest, AnalyzeFrameResponse
 )
-from semantic_cache import semantic_cache
+
 
 # Initialize logging with absolute safety
 try:
@@ -91,10 +91,7 @@ async def lifespan(app: FastAPI):
     logger.info("Triggering background model initialization...")
     model_manager.initialize()
     
-    # Initialize Semantic Cache
-    if os.getenv("ENABLE_SEMANTIC_CACHE", "true").lower() == "true":
-        logger.info("Initializing Semantic Cache...")
-        semantic_cache.init_cache()
+
     
     yield
     
