@@ -117,18 +117,21 @@ class AsyncDocumentProcessor:
             
             # Stage 2: Extract text
             self.logger.info("Stage 2/5: Extracting text")
-            text = await self._extract_text(file_content, file_type)
-            if not text or len(text.strip()) < 50:
+            pages_text = await self._extract_text(file_content, file_type)
+            
+            # Sum up characters across all pages for validation
+            total_chars = sum(len(text) for text, _ in pages_text)
+            if not pages_text or total_chars < 50:
                 raise MLServiceException(
                     "invalid_input",
-                    "Extracted text is too short or empty",
+                    f"Extracted text is too short or empty ({total_chars} chars)",
                     retryable=False,
                 )
-            self.logger.info(f"Extracted {len(text)} characters")
+            self.logger.info(f"Extracted {total_chars} characters from {len(pages_text)} pages")
             
             # Stage 3: Chunk text
             self.logger.info("Stage 3/5: Chunking text")
-            chunks = self._chunk_text(text)
+            chunks = self._chunk_text(pages_text)
             self.logger.info(f"Created {len(chunks)} chunks")
             
             # Stage 4: Generate embeddings

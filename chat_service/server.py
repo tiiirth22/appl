@@ -408,7 +408,7 @@ async def debug_pinecone(request_id: str = Depends(get_request_id)):
         debug_info["pinecone_connected"] = True
         
         # 2. Get Index Description (Safe extract)
-        index_desc = await asyncio.to_thread(processor._pinecone_client.describe_index, PINECONE_INDEX_NAME)
+        index_desc = await asyncio.to_thread(rag._pinecone_client.describe_index, PINECONE_INDEX_NAME)
         debug_info["details"]["dimension"] = getattr(index_desc, 'dimension', None)
         debug_info["details"]["metric"] = getattr(index_desc, 'metric', None)
         
@@ -432,6 +432,81 @@ async def debug_pinecone(request_id: str = Depends(get_request_id)):
         logger.error(f"Pinecone debug failed: {str(e)}", exc_info=True)
         
     return debug_info
+
+
+@app.get("/debug/pinecone/manual/{manual_id}")
+async def debug_pinecone_manual(
+    manual_id: str,
+    request_id: str = Depends(get_request_id),
+):
+    """
+    Diagnostic endpoint: Check if a specific manual_id has indexed vectors in Pinecone.
+    Use this to confirm whether a manual was successfully ingested before querying it.
+    """
+    from config import PINECONE_API_KEY, PINECONE_INDEX_NAME, EMBEDDING_MODEL
+    import time
+
+    result = {
+        "manual_id": manual_id,
+        "timestamp": time.time(),
+        "pinecone_connected": False,
+        "total_vectors": 0,
+        "sample_match_score": None,
+        "metadata_sample": None,
+        "verdict": "unknown",
+        "error": None,
+    }
+
+    try:
+        rag = RAGQueryEngine(manual_id=manual_id, request_id=request_id)
+        index = await rag._get_pinecone_index()
+        result["pinecone_connected"] = True
+
+        # Get overall stats
+        stats = await asyncio.to_thread(index.describe_index_stats)
+        result["total_vectors_in_index"] = getattr(stats, 'total_vector_count', 0)
+
+        # Get index dimension
+        index_desc = await asyncio.to_thread(rag._pinecone_client.describe_index, PINECONE_INDEX_NAME)
+        dimension = getattr(index_desc, 'dimension', 384)
+
+        # Query with a zero vector filtered to this manual_id to count matches
+        zero_vector = [0.0] * dimension
+        matches_result = await asyncio.to_thread(
+            lambda: index.query(
+                vector=zero_vector,
+                top_k=5,
+                include_metadata=True,
+                filter={"manual_id": {"$eq": manual_id}},
+            )
+        )
+
+        matches = matches_result.get("matches", [])
+        result["total_vectors"] = len(matches)  # approximate (up to top_k)
+
+        if matches:
+            result["verdict"] = "indexed"
+            result["sample_match_score"] = matches[0].get("score", None)
+            # Return a sample of metadata (excluding raw text for brevity)
+            meta = matches[0].get("metadata", {})
+            result["metadata_sample"] = {
+                k: v for k, v in meta.items() if k != "text"
+            }
+        else:
+            result["verdict"] = "not_indexed"
+            result["diagnosis"] = (
+                f"No vectors found for manual_id='{manual_id}' in Pinecone. "
+                "This means the manual was either not uploaded, the ingestion failed, "
+                "or the manual_id used during ingestion is different from this one. "
+                "Check the ingestion service logs and verify the manual_id matches."
+            )
+
+    except Exception as e:
+        result["error"] = str(e)
+        result["verdict"] = "error"
+        logger.error(f"Manual diagnostic failed for {manual_id}: {str(e)}", exc_info=True)
+
+    return result
 
 
 @app.get("/status")

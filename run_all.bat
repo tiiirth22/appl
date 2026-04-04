@@ -15,24 +15,28 @@ if "%NGROK_AUTHTOKEN%"=="" (
     ngrok config add-authtoken !NGROK_AUTHTOKEN!
 )
 
-:: 1. Start ML Service (Port 8001)
-echo [1/5] Starting ML Service (Processing)...
-start "ApplianceIQ-ML-Service" /D "ml_service" cmd /k "..\venv\Scripts\python server.py"
+:: 1. Start Chat Service (Port 8001)
+echo [1/6] Starting Chat Service (RAG)...
+start "ApplianceIQ-Chat-Service" /D "chat_service" cmd /k "..\venv\Scripts\python server.py"
 
-:: 2. Start Backend Server (Port 8000)
-echo [2/5] Starting Backend (Router/Auth)...
+:: 2. Start Ingestion Service (Port 8002)
+echo [2/6] Starting Ingestion Service (Indexing)...
+start "ApplianceIQ-Ingestion-Service" /D "ingestion_service" cmd /k "..\venv\Scripts\python server.py"
+
+:: 3. Start Backend Server (Port 8000)
+echo [3/6] Starting Backend (Router/Auth)...
 start "ApplianceIQ-Backend" /D "backend" cmd /k "..\venv\Scripts\python server.py"
 
-:: 3. Start Frontend Server (Port 3000)
-echo [3/5] Starting Frontend (React App)...
+:: 4. Start Frontend Server (Port 3000)
+echo [4/6] Starting Frontend (React App)...
 start "ApplianceIQ-Frontend" /D "frontend" cmd /k "npm start"
 
-:: 4. Start Backend Tunnel
-echo [4/5] Starting Public Backend Tunnel (ngrok)...
+:: 5. Start Backend Tunnel
+echo [5/6] Starting Public Backend Tunnel (ngrok)...
 start "ApplianceIQ-Backend-Tunnel" cmd /k "ngrok http 8000"
 
-:: 5. Start Frontend Tunnel
-echo [5/5] Starting Public Frontend Tunnel (ngrok)...
+:: 6. Start Frontend Tunnel
+echo [6/6] Starting Public Frontend Tunnel (ngrok)...
 start "ApplianceIQ-Frontend-Tunnel" cmd /k "ngrok http 3000"
 
 echo.

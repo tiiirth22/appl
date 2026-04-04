@@ -7,7 +7,6 @@ Entry point for the ML service with lazy-loaded components and async processing.
 from .config import *
 from .errors import *
 from .logger_config import setup_logging, get_logger, get_processing_logger
-from .processor import AsyncDocumentProcessor
 from .rag_engine import RAGQueryEngine
 
 __version__ = "1.0.0"
@@ -40,6 +39,5 @@ __all__ = [
     "get_processing_logger",
     
     # Core components
-    "AsyncDocumentProcessor",
     "RAGQueryEngine",
 ]
