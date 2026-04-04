@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useParams } from 'react-router-dom';
 import axios from 'axios';
-import { Send, Loader, Bot, User, Star, Mic, Image as ImageIcon, X, Shield, Paperclip, Maximize2, Info, ChevronDown, Youtube, ChevronRight, ChevronLeft, AlertCircle, Camera } from 'lucide-react';
+import { Send, Loader, Bot, User, Star, Mic, Image as ImageIcon, X, Shield, Paperclip, Maximize2, Info, ChevronDown, Youtube, ChevronRight, ChevronLeft, AlertCircle, Camera, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { API_BASE_URL as API } from '../config';
@@ -193,6 +193,7 @@ export default function ChatBot() {
             botMessage.is_vision = metadata.is_vision;
             botMessage.fallback = metadata.fallback;
             botMessage.from_manual = metadata.from_manual;
+            botMessage.cache = metadata.cache;
             
             const rest = parts.slice(1).join('\n');
             if (rest) botMessage.text += rest;
@@ -353,6 +354,12 @@ export default function ChatBot() {
                   <div className="fallback-banner">
                     <AlertCircle size={14} />
                     <span>Answer based on general knowledge — not found in your manual</span>
+                  </div>
+                )}
+                {m.cache?.hit && (
+                  <div className="cache-hit-badge">
+                    <Zap size={14} className="zap-icon" />
+                    <span>⚡ Instant answer — retrieved from semantic cache</span>
                   </div>
                 )}
                 <p>{m.text}</p>
@@ -802,6 +809,35 @@ export default function ChatBot() {
           border-radius: 6px;
           margin-bottom: 0.75rem;
           font-size: 0.75rem; font-weight: 600; color: #60a5fa;
+        }
+
+        .cache-hit-badge {
+          display: flex; align-items: center; gap: 0.5rem;
+          background: rgba(16, 185, 129, 0.1);
+          border: 1px solid rgba(16, 185, 129, 0.2);
+          padding: 0.4rem 0.75rem;
+          border-radius: 8px;
+          margin-bottom: 0.75rem;
+          font-size: 0.8rem;
+          color: #34d399;
+          font-weight: 600;
+          animation: slideIn 0.3s ease-out;
+        }
+
+        .zap-icon {
+          color: #10b981;
+          filter: drop-shadow(0 0 5px rgba(16, 185, 129, 0.5));
+          animation: zap-bounce 2s infinite ease-in-out;
+        }
+
+        @keyframes zap-bounce {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.2); }
+        }
+
+        @keyframes slideIn {
+          from { opacity: 0; transform: translateX(-10px); }
+          to { opacity: 1; transform: translateX(0); }
         }
         .fallback-banner {
           display: flex; align-items: center; gap: 0.5rem;

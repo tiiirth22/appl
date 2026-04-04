@@ -30,8 +30,10 @@ from config import (
     GROQ_VISION_MODEL, GEMINI_API_KEY,
     PINECONE_API_KEY, PINECONE_INDEX_NAME,
     QUERY_TIMEOUT, EMBEDDING_TIMEOUT, PINECONE_TIMEOUT,
+    ENABLE_SEMANTIC_CACHE, SEMANTIC_CACHE_THRESHOLD
 )
 from model_manager import model_manager
+from semantic_cache import semantic_cache
 
 HARDCODED_COST_MAP = {
     "water_leak": {"diy": "$10–$30", "professional": "$100–$200"},
@@ -181,6 +183,25 @@ class RAGQueryEngine:
                 "out_of_scope": True,
             }
         
+        # Step 0: Semantic Cache Lookup
+        if ENABLE_SEMANTIC_CACHE:
+            try:
+                # Initialize cache if not already done (singleton wrapper)
+                semantic_cache.init_cache()
+                cached_res = semantic_cache.get(manual_id, question)
+                if cached_res:
+                    processing_time_ms = (time.time() - start_time) * 1000
+                    cached_res["processing_time_ms"] = processing_time_ms
+                    cached_res["query_id"] = query_id # Keep query_id unique
+                    cached_res["cache"] = {
+                        "hit": True,
+                        "original_query": question,
+                        "response_time_ms": processing_time_ms
+                    }
+                    return cached_res
+            except Exception as e:
+                self.logger.error(f"Semantic Cache lookup failed: {str(e)}")
+        
         try:
             self.logger.info(f"Processing query: {question[:100]}...")
             
@@ -225,7 +246,7 @@ class RAGQueryEngine:
             processing_time_ms = (time.time() - start_time) * 1000
             self.logger.info(f"Query completed in {processing_time_ms:.2f}ms")
             
-            return {
+            result = {
                 "query_id": query_id,
                 "answer": answer,
                 "sources": sources,
@@ -237,8 +258,21 @@ class RAGQueryEngine:
                 "cost": secondary_info.get("cost", {"diy": "Unavailable", "professional": "Unavailable"}),
                 "history": history if history else [],
                 "from_manual": mode != "fallback",
-                "fallback": mode == "fallback"
+                "fallback": mode == "fallback",
+                "cache": {
+                    "hit": False,
+                    "response_time_ms": processing_time_ms
+                }
             }
+
+            # Step 4: Store in Semantic Cache (if enabled)
+            if ENABLE_SEMANTIC_CACHE:
+                try:
+                    semantic_cache.set(manual_id, question, result)
+                except Exception as e:
+                    self.logger.error(f"Failed to store in Semantic Cache: {str(e)}")
+
+            return result
             
         except MLServiceException as e:
             self.logger.error(f"Query failed: {e.message}")

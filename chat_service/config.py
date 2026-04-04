@@ -60,5 +60,13 @@ SERVICE_VERSION = "1.0.0"
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
+# MongoDB Configuration (for Semantic Cache)
+MONGO_URL = os.getenv("MONGO_URL", "")
+DB_NAME = os.getenv("DB_NAME", "applianceiq_db")
+
+# Semantic Cache Configuration
+ENABLE_SEMANTIC_CACHE = os.getenv("ENABLE_SEMANTIC_CACHE", "true").lower() == "true"
+SEMANTIC_CACHE_THRESHOLD = float(os.getenv("SEMANTIC_CACHE_THRESHOLD", "0.92"))
+
 # Health Check
 HEALTH_CHECK_INTERVAL = 60  # seconds

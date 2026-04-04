@@ -22,6 +22,7 @@ from errors import (
     QueryRequest, AnalyzeImageRequest, HealthCheckResponse,
     QueryResponse, AnalyzeFrameRequest, AnalyzeFrameResponse
 )
+from semantic_cache import semantic_cache
 
 # Initialize logging with absolute safety
 try:
@@ -89,6 +90,11 @@ async def lifespan(app: FastAPI):
     # Instead, trigger it in the background
     logger.info("Triggering background model initialization...")
     model_manager.initialize()
+    
+    # Initialize Semantic Cache
+    if os.getenv("ENABLE_SEMANTIC_CACHE", "true").lower() == "true":
+        logger.info("Initializing Semantic Cache...")
+        semantic_cache.init_cache()
     
     yield
     
@@ -241,13 +247,20 @@ async def health_check_detailed(request_id: str = Depends(get_request_id)):
         "components": {},
     }
     
-    # Check embedding model availability (doesn't wait for load)
+    # Check embedding model availability
     try:
         health_status["components"]["embedding_model"] = model_manager.status
-        if model_manager.status == "not_initialized":
-             health_status["status"] = "degraded"
     except Exception as e:
         health_status["components"]["embedding_model"] = f"error: {str(e)}"
+        health_status["status"] = "degraded"
+
+    # Check Gemini Configuration
+    from config import GEMINI_API_KEY
+    if not GEMINI_API_KEY:
+        health_status["components"]["gemini"] = "missing_api_key"
+        health_status["status"] = "degraded"
+    else:
+        health_status["components"]["gemini"] = "configured"
         health_status["status"] = "degraded"
     
     # Check Pinecone availability
