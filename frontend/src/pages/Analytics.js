@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { LogOut, MessageSquare, TrendingUp, Star, Loader, Shield, Activity, Users, ArrowUpRight, MessageCircle, BarChart3, Filter } from 'lucide-react';
-import { StatCard } from '../components/ui/stat-card';
+import { MessageSquare, Star, Loader, Activity, Filter } from 'lucide-react';
+import { motion } from 'motion/react';
 import Navbar from '../components/ui/Navbar';
 
 import { API_BASE_URL as API } from '../config';
@@ -34,242 +33,303 @@ export default function Analytics({ user, onLogout }) {
 
   const avgRating = feedback.length > 0
     ? (feedback.reduce((sum, f) => sum + f.rating, 0) / feedback.length).toFixed(1)
-    : 0;
+    : '0';
 
   return (
-    <div className="analytics-page">
+    <div className="iq-analytics" id="analytics-page">
       <Navbar user={user} onLogout={onLogout} activePage="analytics" />
 
-      <div className="main-container">
-        <header className="page-header">
-          <div className="header-left">
+      <div className="iq-analytics-main">
+        <header className="iq-analytics-header" id="analytics-header">
+          <div>
             <h1>Intelligence Reports</h1>
-            <p>Analyzing customer sentiment and retrieval performance metrics.</p>
+            <p>Query performance and user sentiment analytics.</p>
           </div>
-          <div className="header-actions">
-            <button className="btn-glass"><Filter size={16} /> Last 30 Days</button>
-          </div>
+          <button className="iq-btn-glass">
+            <Filter size={14} /> Last 30 Days
+          </button>
         </header>
 
-        <div className="stats-row">
-          <StatCard
-            title="Total Conversations"
-            amount={queries.length.toString()}
-            percentage="+24%"
-            isPositive={true}
-          />
-          <StatCard
-            title="Global Sentiment"
-            amount={`${avgRating}/5`}
-            percentage="+0.2"
-            isPositive={true}
-          />
-          <StatCard
-            title="Feedback Density"
-            amount={feedback.length.toString()}
-            percentage="+8%"
-            isPositive={true}
-          />
+        {/* KPI */}
+        <div className="iq-analytics-kpi" id="analytics-kpis">
+          {[
+            { label: 'Total Conversations', value: queries.length, color: 'blue', icon: <MessageSquare size={18} /> },
+            { label: 'Avg. Rating', value: `${avgRating}/5`, color: 'amber', icon: <Star size={18} /> },
+            { label: 'Feedback Points', value: feedback.length, color: 'emerald', icon: <Activity size={18} /> },
+          ].map((kpi, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.1 }}
+              className="iq-an-kpi-card"
+            >
+              <div className={`iq-an-icon ${kpi.color}`}>{kpi.icon}</div>
+              <div className="iq-an-body">
+                <span className="iq-an-value">{kpi.value}</span>
+                <span className="iq-an-label">{kpi.label}</span>
+              </div>
+            </motion.div>
+          ))}
         </div>
 
         {loading ? (
-          <div className="loading-state">
-            <Loader className="spinner" size={40} />
+          <div className="iq-loading">
+            <Loader className="spinner" size={32} />
             <span>Processing data streams...</span>
           </div>
         ) : (
-          <div className="analytics-layout">
-            {/* Main Log Section */}
-            <div className="data-section">
-              <div className="section-head">
-                <div className="head-title">
-                  <Activity size={20} className="text-primary" />
+          <div className="iq-analytics-layout">
+            {/* Query Log */}
+            <section className="iq-an-section" id="query-log">
+              <div className="iq-section-head">
+                <div className="iq-sh-title">
+                  <Activity size={18} />
                   <h2>Knowledge Retrieval Log</h2>
                 </div>
               </div>
 
-              <div className="scrollable-table-card">
+              <div className="iq-an-table-card">
                 {queries.length === 0 ? (
-                  <div className="empty-log">
-                    <MessageSquare size={48} />
-                    <p>Monitoring active system queries...</p>
+                  <div className="iq-an-empty">
+                    <MessageSquare size={36} />
+                    <p>No queries recorded yet.</p>
                   </div>
                 ) : (
-                  <table className="log-table">
+                  <table className="iq-an-table">
                     <thead>
                       <tr>
                         <th>Inquiry</th>
                         <th>Status</th>
-                        <th>Latency</th>
-                        <th>Timestamp</th>
+                        <th>Date</th>
                       </tr>
                     </thead>
                     <tbody>
                       {queries.map((q, i) => (
                         <tr key={q.id || i}>
-                          <td className="query-cell">
-                            <span className="quest-text">{q.question}</span>
-                            <span className="ans-text">{q.answer.substring(0, 100)}...</span>
+                          <td className="iq-an-query-cell">
+                            <span className="iq-an-question">{q.question}</span>
+                            <span className="iq-an-answer">{q.answer.substring(0, 100)}...</span>
                           </td>
-                          <td><span className="token-status">Active</span></td>
-                          <td><span className="latency text-muted">240ms</span></td>
-                          <td className="timestamp">{new Date(q.created_at).toLocaleDateString()}</td>
+                          <td><span className="iq-an-status-badge">Active</span></td>
+                          <td className="iq-an-date">{new Date(q.created_at).toLocaleDateString()}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 )}
               </div>
-            </div>
+            </section>
 
-            {/* Side Sentiment Section */}
-            <div className="side-section">
-              <div className="section-head">
-                <div className="head-title">
-                  <Star size={20} className="text-warning" />
+            {/* Feedback */}
+            <aside className="iq-an-aside" id="feedback-section">
+              <div className="iq-section-head">
+                <div className="iq-sh-title">
+                  <Star size={18} />
                   <h2>User Feedback</h2>
                 </div>
               </div>
 
-              <div className="feedback-stack">
+              <div className="iq-fb-stack">
                 {feedback.length === 0 ? (
-                  <div className="empty-feedback">
-                    <span>No feedback points yet.</span>
-                  </div>
+                  <p className="iq-an-no-data">No feedback recorded yet.</p>
                 ) : (
                   feedback.map((f, i) => (
-                    <div className="feedback-item-glass" key={f.id || i}>
-                      <div className="f-header">
-                        <div className="stars">
+                    <div className="iq-fb-item" key={f.id || i}>
+                      <div className="iq-fb-top">
+                        <div className="iq-fb-stars">
                           {[...Array(5)].map((_, idx) => (
                             <Star
                               key={idx}
                               size={12}
-                              fill={idx < f.rating ? '#fbbf24' : 'none'}
-                              color={idx < f.rating ? '#fbbf24' : '#475569'}
+                              fill={idx < f.rating ? '#F59E0B' : 'none'}
+                              color={idx < f.rating ? '#F59E0B' : '#374151'}
                             />
                           ))}
                         </div>
-                        <span className="f-date">{new Date(f.created_at).toLocaleDateString()}</span>
+                        <span className="iq-fb-date">{new Date(f.created_at).toLocaleDateString()}</span>
                       </div>
-                      {f.comment && <p className="f-comment">{f.comment}</p>}
+                      {f.comment && <p className="iq-fb-comment">{f.comment}</p>}
                     </div>
                   ))
                 )}
               </div>
-            </div>
+            </aside>
           </div>
         )}
       </div>
 
       <style jsx>{`
-        .analytics-page {
+        .iq-analytics {
           min-height: 100vh;
-          background: #09090b;
-          background-image: radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.08) 0%, transparent 50%);
-          color: white;
-          font-family: 'Inter', sans-serif;
+          background: #0B0F1A;
+          color: #F9FAFB;
+          font-family: 'Inter', system-ui, sans-serif;
         }
-
-        .main-container {
-          max-width: 1400px;
+        .iq-analytics-main {
+          max-width: 1280px;
           margin: 0 auto;
-          padding: 3rem 2rem;
+          padding: 32px;
         }
 
-        .page-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 3.5rem; }
-        .page-header h1 { font-size: 2.25rem; font-weight: 900; letter-spacing: -0.05em; margin: 0; }
-        .page-header p { color: #64748b; margin-top: 0.5rem; }
+        .iq-analytics-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 32px;
+        }
+        .iq-analytics-header h1 { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.03em; }
+        .iq-analytics-header p { color: #6B7280; margin-top: 4px; font-size: 0.9375rem; }
 
-        .btn-glass {
-            background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(255,255,255,0.08);
-            color: white;
-            padding: 0.625rem 1.25rem;
-            border-radius: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            font-size: 0.875rem;
-            font-weight: 600;
-            cursor: pointer;
+        .iq-btn-glass {
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.06);
+          color: #D1D5DB;
+          padding: 8px 16px;
+          border-radius: 10px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 0.8125rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 200ms;
+        }
+        .iq-btn-glass:hover { background: rgba(255,255,255,0.08); }
+
+        /* KPI */
+        .iq-analytics-kpi {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 16px;
+          margin-bottom: 32px;
+        }
+        .iq-an-kpi-card {
+          background: #111827;
+          border: 1px solid rgba(255,255,255,0.06);
+          border-radius: 16px;
+          padding: 24px;
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          transition: all 200ms;
+        }
+        .iq-an-kpi-card:hover { border-color: rgba(255,255,255,0.12); }
+        .iq-an-icon {
+          width: 44px;
+          height: 44px;
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .iq-an-icon.blue { background: rgba(59,130,246,0.1); color: #3B82F6; }
+        .iq-an-icon.amber { background: rgba(245,158,11,0.1); color: #F59E0B; }
+        .iq-an-icon.emerald { background: rgba(16,185,129,0.1); color: #10B981; }
+        .iq-an-value { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.04em; display: block; line-height: 1; }
+        .iq-an-label { font-size: 0.75rem; color: #6B7280; font-weight: 500; display: block; margin-top: 4px; }
+
+        /* Layout */
+        .iq-analytics-layout {
+          display: grid;
+          grid-template-columns: 2fr 1fr;
+          gap: 24px;
         }
 
-        .stats-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 4rem;
+        .iq-section-head { margin-bottom: 16px; }
+        .iq-sh-title { display: flex; align-items: center; gap: 8px; color: #3B82F6; }
+        .iq-sh-title h2 { font-size: 1rem; font-weight: 700; color: #F9FAFB; }
+
+        .iq-an-table-card {
+          background: #111827;
+          border: 1px solid rgba(255,255,255,0.06);
+          border-radius: 16px;
+          overflow: hidden;
+        }
+        .iq-an-table {
+          width: 100%;
+          border-collapse: collapse;
+          text-align: left;
+        }
+        .iq-an-table th {
+          padding: 14px 20px;
+          font-size: 0.6875rem;
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
+          color: #6B7280;
+          font-weight: 700;
+          border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+        .iq-an-table td {
+          padding: 16px 20px;
+          border-bottom: 1px solid rgba(255,255,255,0.02);
+        }
+        .iq-an-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+        .iq-an-query-cell { max-width: 380px; }
+        .iq-an-question { display: block; font-weight: 600; font-size: 0.8125rem; margin-bottom: 4px; }
+        .iq-an-answer {
+          display: block;
+          font-size: 0.75rem;
+          color: #6B7280;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .iq-an-status-badge {
+          background: rgba(16,185,129,0.1);
+          color: #10B981;
+          font-size: 0.5625rem;
+          font-weight: 700;
+          padding: 3px 8px;
+          border-radius: 9999px;
+          text-transform: uppercase;
+        }
+        .iq-an-date { font-size: 0.75rem; color: #4B5563; }
+
+        .iq-an-empty {
+          padding: 64px;
+          text-align: center;
+          color: #4B5563;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 12px;
         }
 
-        .analytics-layout {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 2.5rem;
+        /* Feedback */
+        .iq-fb-stack { display: flex; flex-direction: column; gap: 12px; }
+        .iq-fb-item {
+          background: #111827;
+          border: 1px solid rgba(255,255,255,0.06);
+          padding: 20px;
+          border-radius: 14px;
+          transition: all 200ms;
         }
+        .iq-fb-item:hover { border-color: rgba(255,255,255,0.12); }
+        .iq-fb-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .iq-fb-stars { display: flex; gap: 2px; }
+        .iq-fb-date { font-size: 0.6875rem; color: #4B5563; }
+        .iq-fb-comment { font-size: 0.8125rem; color: #9CA3AF; line-height: 1.6; margin: 0; }
+        .iq-an-no-data { color: #4B5563; font-size: 0.8125rem; text-align: center; padding: 32px; }
 
-        .section-head { margin-bottom: 2rem; }
-        .head-title { display: flex; align-items: center; gap: 0.75rem; }
-        .head-title h2 { font-size: 1.25rem; font-weight: 800; margin: 0; border: none; letter-spacing: -0.02em; }
-
-        .scrollable-table-card {
-            background: rgba(15, 23, 42, 0.4);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 2rem;
-            overflow: hidden;
+        .iq-loading {
+          padding: 80px 0;
+          text-align: center;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 16px;
+          color: #6B7280;
         }
-
-        .log-table { width: 100%; border-collapse: collapse; text-align: left; }
-        .log-table th { padding: 1.25rem 1.5rem; font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 800; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .log-table td { padding: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.02); }
-
-        .query-cell { position: relative; max-width: 400px; }
-        .quest-text { display: block; font-weight: 700; font-size: 0.9375rem; margin-bottom: 0.375rem; }
-        .ans-text { display: block; font-size: 0.8125rem; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-        .token-status { 
-            background: rgba(16, 185, 129, 0.1); 
-            color: #10b981; 
-            font-size: 0.65rem; 
-            font-weight: 800; 
-            padding: 0.25rem 0.625rem; 
-            border-radius: 2rem; 
-        }
-        
-        .timestamp { font-size: 0.8125rem; color: #475569; font-weight: 500; }
-
-        .side-section { display: flex; flex-direction: column; }
-        .feedback-stack { display: flex; flex-direction: column; gap: 1.25rem; }
-        .feedback-item-glass {
-            background: rgba(255,255,255,0.02);
-            border: 1px solid rgba(255,255,255,0.05);
-            padding: 1.5rem;
-            border-radius: 1.5rem;
-            transition: 0.2s;
-        }
-        .feedback-item-glass:hover { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.1); }
-
-        .f-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-        .f-date { font-size: 0.75rem; color: #475569; }
-        .f-comment { font-size: 0.875rem; line-height: 1.6; color: #94a3b8; margin: 0; }
-
-        .empty-log, .empty-feedback {
-            padding: 5rem;
-            text-align: center;
-            color: #475569;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .loading-state { padding: 10rem 0; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1.5rem; color: #64748b; }
-        .spinner { animation: spin 1s linear infinite; }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
         @media (max-width: 1100px) {
-            .analytics-layout { grid-template-columns: 1fr; }
+          .iq-analytics-layout { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 768px) {
+          .iq-analytics-main { padding: 16px; }
+          .iq-analytics-header { flex-direction: column; align-items: flex-start; gap: 16px; }
+          .iq-analytics-kpi { grid-template-columns: 1fr; }
         }
       `}</style>
     </div>
