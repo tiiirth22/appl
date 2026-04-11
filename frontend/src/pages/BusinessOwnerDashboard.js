@@ -1,37 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { Upload, BarChart, LogOut, FileText, QrCode, Loader, Eye, MessageSquare, Trash2, Calendar, Shield, ExternalLink, Download, Search, LayoutGrid, List } from 'lucide-react';
-import { StatCard } from '../components/ui/stat-card';
+import { Upload, FileText, QrCode, Loader, MessageSquare, Trash2, ExternalLink, Download, Search, LayoutGrid, TrendingUp, ArrowUpRight, BarChart3 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import Navbar from '../components/ui/Navbar';
-
-const ManualCard = ({ title, description, icon, onSecondaryClick, onPrimaryClick, secondaryText, primaryText, status, className, children }) => (
-  <div className={`integration-card border border-white/10 rounded-2xl p-5 bg-white/5 dark:bg-[#101010] shadow-md flex flex-col gap-4 ${className || ''}`}>
-    <div className="flex items-center gap-4">
-      <div className="icon-wrapper p-3 bg-white/10 rounded-xl">{icon}</div>
-      <div className="flex-1 min-w-0">
-        <h3 className="font-bold text-lg m-0 truncate">{title}</h3>
-        <p className="text-sm text-slate-400 m-0 truncate">{description}</p>
-      </div>
-      <span className={`px-2 py-1 text-xs font-semibold rounded-full shrink-0 ${status === 'Connected' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'}`}>
-        {status}
-      </span>
-    </div>
-    {children}
-    <div className="flex gap-2 mt-auto pt-2">
-      {onSecondaryClick && (
-        <button onClick={onSecondaryClick} className="flex-1 py-2 px-4 rounded-xl font-semibold bg-white/5 hover:bg-white/10 border border-white/10 text-white transition text-sm">
-          {secondaryText}
-        </button>
-      )}
-      {onPrimaryClick && (
-        <button onClick={onPrimaryClick} className="flex-1 py-2 px-4 rounded-xl font-semibold bg-blue-600 hover:bg-blue-700 text-white transition shadow-lg shadow-blue-500/20 text-sm">
-          {primaryText}
-        </button>
-      )}
-    </div>
-  </div>
-);
 
 import { API_BASE_URL as API } from '../config';
 
@@ -95,390 +67,630 @@ export default function BusinessOwnerDashboard({ user, onLogout }) {
     m.filename.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const completedCount = manuals.filter(m => m.status === 'completed').length;
+  const qrCount = manuals.filter(m => m.qr_code_id).length;
+
   return (
-    <div className="dashboard-page">
+    <div className="iq-dash" id="business-dashboard">
       <Navbar user={user} onLogout={onLogout} activePage="dashboard" />
 
-      <div className="main-container">
-        {/* Header Section */}
-        <header className="page-header">
-          <div className="header-left">
-            <h1>Workspace Overview</h1>
-            <p>Managing {manuals.length} active appliance manuals across your network.</p>
+      <div className="iq-dash-main">
+        {/* Header */}
+        <header className="iq-dash-header" id="dashboard-header">
+          <div>
+            <h1 id="dashboard-title">Workspace Overview</h1>
+            <p>Managing {manuals.length} appliance {manuals.length === 1 ? 'manual' : 'manuals'} across your network.</p>
           </div>
-          <Link to="/upload" className="cta-btn-primary">
-            <Upload size={18} />
-            Add New Resource
+          <Link to="/upload" className="iq-btn-action" id="upload-new-btn">
+            <Upload size={16} />
+            Upload Manual
           </Link>
         </header>
 
-        {/* Stats Grid using Watermelon-inspired styles */}
-        <div className="stats-grid">
-          <StatCard
-            title="Total Manuals"
-            amount={manuals.length.toString()}
-            percentage="+12%"
-            isPositive={true}
-          />
-          <StatCard
-            title="Active Agents"
-            amount={manuals.filter(m => m.status === 'completed').length.toString()}
-            percentage="+5%"
-            isPositive={true}
-          />
+        {/* KPI Cards */}
+        <div className="iq-kpi-grid" id="kpi-section">
+          {[
+            { label: 'Total Manuals', value: manuals.length, icon: <FileText size={18} />, color: 'blue' },
+            { label: 'Active Agents', value: completedCount, icon: <BarChart3 size={18} />, color: 'emerald' },
+            { label: 'QR Deployments', value: qrCount, icon: <QrCode size={18} />, color: 'violet' },
+          ].map((kpi, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.1 }}
+              className="iq-kpi-card"
+              id={`kpi-card-${i}`}
+            >
+              <div className={`iq-kpi-icon ${kpi.color}`}>
+                {kpi.icon}
+              </div>
+              <div className="iq-kpi-body">
+                <span className="iq-kpi-value">{kpi.value}</span>
+                <span className="iq-kpi-label">{kpi.label}</span>
+              </div>
+              <div className="iq-kpi-trend">
+                <ArrowUpRight size={14} />
+              </div>
+            </motion.div>
+          ))}
         </div>
 
-        {/* Search and Filter Bar */}
-        <div className="filter-bar">
-          <div className="search-box">
-            <Search size={18} className="search-icon" />
+        {/* Search Bar */}
+        <div className="iq-search-bar" id="search-section">
+          <div className="iq-search-input">
+            <Search size={16} className="iq-search-icon" />
             <input
               type="text"
               placeholder="Search by model or filename..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              id="search-input"
             />
-          </div>
-          <div className="view-toggle">
-            <button className="toggle-btn active"><LayoutGrid size={18} /></button>
-            <button className="toggle-btn"><List size={18} /></button>
           </div>
         </div>
 
         {/* Resources Grid */}
-        <div className="resource-section">
+        <section id="manuals-section">
           {loading ? (
-            <div className="loading-state">
-              <Loader className="spinner" size={40} />
-              <span>Synchronizing vector library...</span>
+            <div className="iq-loading">
+              <Loader className="spinner" size={32} />
+              <span>Loading manuals...</span>
             </div>
           ) : filteredManuals.length === 0 ? (
-            <div className="empty-state-glass">
-              <FileText size={64} className="text-muted" />
-              <h3>No Resources Found</h3>
-              <p>Try a different search term or upload a new manual.</p>
-              <Link to="/upload" className="btn-outline">Upload Now</Link>
+            <div className="iq-empty" id="empty-state">
+              <div className="iq-empty-icon">
+                <FileText size={40} />
+              </div>
+              <h3>No manuals found</h3>
+              <p>{searchTerm ? 'Try a different search term.' : 'Upload your first appliance manual to get started.'}</p>
+              {!searchTerm && (
+                <Link to="/upload" className="iq-btn-outline" id="empty-upload-btn">
+                  <Upload size={16} /> Upload Manual
+                </Link>
+              )}
             </div>
           ) : (
-            <div className="manual-grid">
-              {filteredManuals.map((manual) => (
-                <ManualCard
-                  key={manual.id}
-                  title={manual.model_name}
-                  description={`${manual.version} • ${manual.region}`}
-                  icon={<FileText size={24} className="text-primary" />}
-                  onSecondaryClick={() => handleViewQR(manual.id)}
-                  onPrimaryClick={() => window.location.href = `/chat?manual_id=${manual.id}`}
-                  secondaryText="View QR"
-                  primaryText="Test Chat"
-                  status={manual.status === 'completed' ? 'Connected' : 'Syncing'}
-                  className="manual-integration-card"
-                >
-                  {/* Custom middle content for the integration card */}
-                  <div className="card-extra-info">
-                    <div className="extra-row">
-                      <span>Source: {manual.filename}</span>
+            <div className="iq-manual-grid" id="manuals-grid">
+              <AnimatePresence>
+                {filteredManuals.map((manual, i) => (
+                  <motion.div
+                    key={manual.id}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ delay: i * 0.05 }}
+                    className="iq-manual-card"
+                    id={`manual-${manual.id}`}
+                  >
+                    <div className="iq-mc-top">
+                      <div className="iq-mc-info">
+                        <div className="iq-mc-icon">
+                          <FileText size={18} />
+                        </div>
+                        <div>
+                          <h3>{manual.model_name}</h3>
+                          <span className="iq-mc-meta">{manual.version} · {manual.region}</span>
+                        </div>
+                      </div>
+                      <span className={`iq-mc-status ${manual.status === 'completed' ? 'success' : 'pending'}`}>
+                        {manual.status === 'completed' ? 'Active' : 'Processing'}
+                      </span>
                     </div>
-                    <div className="extra-row actions">
-                      <button className="delete-mini" onClick={() => handleDeleteManual(manual.id)}>
-                        <Trash2 size={14} /> Delete
+
+                    <div className="iq-mc-details">
+                      <span className="iq-mc-filename">{manual.filename}</span>
+                      {manual.chunks_count > 0 && (
+                        <span className="iq-mc-chunks">{manual.chunks_count} chunks indexed</span>
+                      )}
+                    </div>
+
+                    <div className="iq-mc-actions">
+                      <button className="iq-mc-btn secondary" onClick={() => handleViewQR(manual.id)}>
+                        <QrCode size={14} /> View QR
+                      </button>
+                      <button className="iq-mc-btn primary" onClick={() => window.location.href = `/chat?manual_id=${manual.id}`}>
+                        <MessageSquare size={14} /> Test Chat
+                      </button>
+                      <button className="iq-mc-btn danger" onClick={() => handleDeleteManual(manual.id)}>
+                        <Trash2 size={14} />
                       </button>
                     </div>
-                  </div>
-                </ManualCard>
-              ))}
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             </div>
           )}
-        </div>
+        </section>
       </div>
 
-      {/* Modern QR Modal */}
-      {selectedQR && (
-        <div className="modal-overlay" onClick={() => setSelectedQR(null)}>
-          <div className="modal-glass-content" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-title">
-                <QrCode size={20} className="text-primary" />
-                <h3>Resource Access Code</h3>
+      {/* QR Modal */}
+      <AnimatePresence>
+        {selectedQR && (
+          <motion.div
+            className="iq-modal-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSelectedQR(null)}
+          >
+            <motion.div
+              className="iq-modal-card"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              onClick={e => e.stopPropagation()}
+              id="qr-modal"
+            >
+              <div className="iq-modal-head">
+                <div className="iq-modal-title">
+                  <QrCode size={18} />
+                  <h3>QR Access Code</h3>
+                </div>
+                <button className="iq-modal-close" onClick={() => setSelectedQR(null)}>×</button>
               </div>
-              <button className="close-circle" onClick={() => setSelectedQR(null)}>&times;</button>
-            </div>
 
-            <div className="modal-body">
-              <div className="qr-container-premium">
-                <img src={selectedQR.image} alt="QR Code" />
-                <div className="qr-glow"></div>
-              </div>
+              <div className="iq-modal-body">
+                <div className="iq-qr-frame">
+                  <img src={selectedQR.image} alt="QR Code" />
+                </div>
 
-              <div className="qr-details">
-                <div className="url-badge">
+                <div className="iq-qr-url">
                   <ExternalLink size={14} />
                   <span>{selectedQR.url}</span>
                 </div>
-                <p>Deploy this QR code on physical hardware to enable instant AI support for your users.</p>
-              </div>
 
-              <div className="modal-actions">
-                <button
-                  className="btn-premium primary"
-                  onClick={() => {
-                    const link = document.createElement('a');
-                    link.href = selectedQR.image;
-                    link.download = `qr-${selectedQR.qr_id}.png`;
-                    link.click();
-                  }}
-                >
-                  <Download size={18} />
-                  Export Assets
-                </button>
-                <button className="btn-premium secondary" onClick={() => setSelectedQR(null)}>Dismiss</button>
+                <p className="iq-qr-desc">Deploy this QR code on physical hardware to enable instant AI support.</p>
+
+                <div className="iq-modal-actions">
+                  <button
+                    className="iq-btn-action"
+                    onClick={() => {
+                      const link = document.createElement('a');
+                      link.href = selectedQR.image;
+                      link.download = `qr-${selectedQR.qr_id}.png`;
+                      link.click();
+                    }}
+                    id="download-qr-btn"
+                  >
+                    <Download size={16} /> Download QR
+                  </button>
+                  <button className="iq-btn-ghost" onClick={() => setSelectedQR(null)}>Close</button>
+                </div>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <style jsx>{`
-        .dashboard-page {
+        .iq-dash {
           min-height: 100vh;
-          background: #09090b;
-          color: white;
-          font-family: 'Inter', sans-serif;
+          background: #0B0F1A;
+          color: #F9FAFB;
+          font-family: 'Inter', system-ui, sans-serif;
         }
 
-        .main-container {
-          max-width: 1400px;
+        .iq-dash-main {
+          max-width: 1280px;
           margin: 0 auto;
-          padding: 3rem 2rem;
+          padding: 32px;
         }
 
-        .page-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-            margin-bottom: 3rem;
+        /* Header */
+        .iq-dash-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 32px;
+        }
+        .iq-dash-header h1 {
+          font-size: 1.75rem;
+          font-weight: 800;
+          letter-spacing: -0.03em;
+        }
+        .iq-dash-header p {
+          color: #6B7280;
+          margin-top: 4px;
+          font-size: 0.9375rem;
         }
 
-        .page-header h1 { font-size: 2.25rem; font-weight: 900; letter-spacing: -0.05em; margin: 0; }
-        .page-header p { color: #64748b; margin-top: 0.5rem; font-size: 1rem; }
-
-        .cta-btn-primary {
-            background: #3b82f6;
-            color: white;
-            padding: 0.75rem 1.5rem;
-            border-radius: 1rem;
-            font-weight: 700;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            transition: 0.2s;
-            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3);
+        /* Action Button */
+        .iq-btn-action {
+          background: linear-gradient(135deg, #3B82F6, #2563EB);
+          color: white;
+          padding: 10px 20px;
+          border-radius: 12px;
+          font-weight: 600;
+          font-size: 0.8125rem;
+          text-decoration: none;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          border: none;
+          cursor: pointer;
+          transition: all 200ms;
+          box-shadow: 0 4px 14px rgba(59, 130, 246, 0.25);
         }
-        .cta-btn-primary:hover {
-            background: #2563eb;
-            transform: translateY(-2px);
-        }
-
-        /* Stats override */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 3rem;
+        .iq-btn-action:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 8px 20px rgba(59, 130, 246, 0.35);
         }
 
-        .filter-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-            background: rgba(15, 23, 42, 0.4);
-            padding: 0.75rem;
-            border-radius: 1.25rem;
-            border: 1px solid rgba(255,255,255,0.05);
+        .iq-btn-ghost {
+          background: #1F2937;
+          color: #F9FAFB;
+          padding: 10px 20px;
+          border-radius: 12px;
+          font-weight: 600;
+          font-size: 0.8125rem;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          cursor: pointer;
+          transition: all 200ms;
+        }
+        .iq-btn-ghost:hover {
+          background: #263244;
         }
 
-        .search-box {
-            position: relative;
-            flex: 1;
-            max-width: 400px;
+        .iq-btn-outline {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 24px;
+          border: 1px solid rgba(59, 130, 246, 0.3);
+          color: #3B82F6;
+          border-radius: 12px;
+          font-weight: 600;
+          font-size: 0.8125rem;
+          text-decoration: none;
+          transition: all 200ms;
+          margin-top: 16px;
         }
-        .search-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #475569; }
-        .search-box input {
-            width: 100%;
-            background: rgba(0,0,0,0.2);
-            border: 1px solid rgba(255,255,255,0.05);
-            padding: 0.625rem 1rem 0.625rem 3rem;
-            border-radius: 0.875rem;
-            color: white;
-            font-size: 0.875rem;
-        }
-        .search-box input:focus { outline: none; border-color: #3b82f6; }
+        .iq-btn-outline:hover { background: rgba(59, 130, 246, 0.08); }
 
-        .view-toggle { display: flex; gap: 0.5rem; }
-        .toggle-btn {
-            background: none;
-            border: none;
-            color: #475569;
-            padding: 0.5rem;
-            cursor: pointer;
-            border-radius: 0.5rem;
+        /* KPI Grid */
+        .iq-kpi-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 16px;
+          margin-bottom: 32px;
         }
-        .toggle-btn.active { background: rgba(255,255,255,0.05); color: white; }
-
-        .manual-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 2rem;
+        .iq-kpi-card {
+          background: #111827;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          border-radius: 16px;
+          padding: 24px;
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          transition: all 200ms;
         }
-
-        /* Integration Card Custom Content */
-        .card-extra-info {
-            margin: 1.25rem 0;
-            padding: 1rem;
-            background: rgba(0,0,0,0.2);
-            border-radius: 0.875rem;
-            font-size: 0.75rem;
-            color: #64748b;
+        .iq-kpi-card:hover {
+          border-color: rgba(255, 255, 255, 0.12);
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
         }
-        .extra-row { margin-bottom: 0.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .extra-row.actions { margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 0.75rem; display: flex; justify-content: flex-end; }
-        .delete-mini {
-            background: none;
-            border: none;
-            color: #ef4444;
-            display: flex;
-            align-items: center;
-            gap: 0.375rem;
-            font-size: 0.7rem;
-            font-weight: 700;
-            cursor: pointer;
-            padding: 0.25rem 0.5rem;
-            border-radius: 0.4rem;
+        .iq-kpi-icon {
+          width: 44px;
+          height: 44px;
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
         }
-        .delete-mini:hover { background: rgba(239, 68, 68, 0.1); }
-
-        .loading-state {
-            padding: 5rem;
-            text-align: center;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 1.5rem;
-            color: #64748b;
+        .iq-kpi-icon.blue { background: rgba(59, 130, 246, 0.1); color: #3B82F6; }
+        .iq-kpi-icon.emerald { background: rgba(16, 185, 129, 0.1); color: #10B981; }
+        .iq-kpi-icon.violet { background: rgba(139, 92, 246, 0.1); color: #8B5CF6; }
+        .iq-kpi-body {
+          display: flex;
+          flex-direction: column;
+          flex: 1;
         }
-        .spinner { animation: spin 1s linear infinite; }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-
-        .empty-state-glass {
-            padding: 6rem;
-            text-align: center;
-            background: rgba(15, 23, 42, 0.3);
-            border: 1px dashed rgba(255,255,255,0.1);
-            border-radius: 3rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 1rem;
+        .iq-kpi-value {
+          font-size: 1.75rem;
+          font-weight: 800;
+          letter-spacing: -0.04em;
+          line-height: 1;
         }
-        .btn-outline {
-            margin-top: 1rem;
-            padding: 0.75rem 2rem;
-            border: 1px solid #3b82f6;
-            color: #3b82f6;
-            text-decoration: none;
-            border-radius: 1rem;
-            font-weight: 700;
-            transition: 0.2s;
+        .iq-kpi-label {
+          font-size: 0.75rem;
+          color: #6B7280;
+          font-weight: 500;
+          margin-top: 4px;
         }
-        .btn-outline:hover { background: rgba(59, 130, 246, 0.1); }
-
-        /* Modal Glass */
-        .modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(2, 6, 23, 0.85);
-            backdrop-filter: blur(10px);
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        .iq-kpi-trend {
+          color: #10B981;
+          opacity: 0.6;
         }
 
-        .modal-glass-content {
-            background: rgba(15, 23, 42, 0.8);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 2.5rem;
-            padding: 3rem;
-            width: 95%;
-            max-width: 480px;
-            box-shadow: 0 50px 100px -20px rgba(0,0,0,0.5);
-            animation: modalScale 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        /* Search */
+        .iq-search-bar {
+          margin-bottom: 24px;
         }
-        @keyframes modalScale { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2.5rem; }
-        .modal-title { display: flex; align-items: center; gap: 0.75rem; }
-        .modal-title h3 { font-size: 1.25rem; font-weight: 800; margin: 0; letter-spacing: -0.05em; }
-        .close-circle { background: rgba(255,255,255,0.05); border: none; color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 1.25rem; }
-
-        .qr-container-premium {
-            position: relative;
-            background: white;
-            padding: 2.5rem;
-            border-radius: 2rem;
-            margin-bottom: 2rem;
-            display: flex;
-            justify-content: center;
+        .iq-search-input {
+          position: relative;
+          max-width: 400px;
         }
-        .qr-container-premium img { width: 100%; max-width: 240px; mix-blend-mode: multiply; }
-        .qr-glow {
-            position: absolute;
-            inset: 0;
-            border-radius: 2rem;
-            box-shadow: inset 0 0 30px rgba(59, 130, 246, 0.2);
-            pointer-events: none;
+        .iq-search-icon {
+          position: absolute;
+          left: 14px;
+          top: 50%;
+          transform: translateY(-50%);
+          color: #4B5563;
+        }
+        .iq-search-input input {
+          width: 100%;
+          background: #111827;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          padding: 10px 16px 10px 40px;
+          border-radius: 12px;
+          color: #F9FAFB;
+          font-size: 0.8125rem;
+          transition: all 200ms;
+        }
+        .iq-search-input input:focus {
+          outline: none;
+          border-color: rgba(59, 130, 246, 0.3);
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
         }
 
-        .qr-details { text-align: center; margin-bottom: 2.5rem; }
-        .url-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            background: rgba(37, 99, 235, 0.1);
-            border: 1px solid rgba(37, 99, 235, 0.2);
-            padding: 0.5rem 1rem;
-            border-radius: 2rem;
-            color: #60a5fa;
-            font-family: monospace;
-            font-size: 0.8125rem;
-            margin-bottom: 1rem;
+        /* Loading / Empty */
+        .iq-loading {
+          padding: 80px 0;
+          text-align: center;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 16px;
+          color: #6B7280;
         }
-        .qr-details p { color: #64748b; font-size: 0.875rem; line-height: 1.5; margin: 0 auto; max-width: 300px; }
-
-        .modal-actions { display: flex; gap: 1rem; }
-        .btn-premium {
-            flex: 1;
-            padding: 1rem;
-            border-radius: 1.25rem;
-            border: none;
-            font-weight: 800;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.75rem;
-            transition: 0.2s;
+        .iq-empty {
+          padding: 80px 0;
+          text-align: center;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 8px;
         }
-        .btn-premium.primary { background: #3b82f6; color: white; }
-        .btn-premium.primary:hover { background: #2563eb; transform: translateY(-2px); }
-        .btn-premium.secondary { background: rgba(255,255,255,0.05); color: white; border: 1px solid rgba(255,255,255,0.1); }
-        .btn-premium.secondary:hover { background: rgba(255,255,255,0.1); }
+        .iq-empty-icon {
+          width: 72px;
+          height: 72px;
+          background: rgba(59, 130, 246, 0.06);
+          border-radius: 20px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #3B82F6;
+          margin-bottom: 8px;
+        }
+        .iq-empty h3 { font-size: 1.25rem; font-weight: 700; }
+        .iq-empty p { color: #6B7280; font-size: 0.875rem; }
 
-        @media (max-width: 600px) {
-            .page-header { flex-direction: column; align-items: flex-start; gap: 1.5rem; }
-            .modal-glass-content { padding: 2rem; }
+        /* Manual Grid */
+        .iq-manual-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+          gap: 16px;
+        }
+        .iq-manual-card {
+          background: #111827;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          border-radius: 16px;
+          padding: 24px;
+          transition: all 200ms;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+        .iq-manual-card:hover {
+          border-color: rgba(255, 255, 255, 0.12);
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+          transform: translateY(-2px);
+        }
+
+        .iq-mc-top {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+        }
+        .iq-mc-info {
+          display: flex;
+          gap: 12px;
+          align-items: flex-start;
+        }
+        .iq-mc-icon {
+          width: 40px;
+          height: 40px;
+          background: rgba(59, 130, 246, 0.08);
+          border-radius: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #3B82F6;
+          flex-shrink: 0;
+        }
+        .iq-mc-info h3 {
+          font-size: 0.9375rem;
+          font-weight: 700;
+          margin: 0;
+        }
+        .iq-mc-meta {
+          font-size: 0.75rem;
+          color: #6B7280;
+        }
+        .iq-mc-status {
+          font-size: 0.625rem;
+          font-weight: 700;
+          padding: 4px 10px;
+          border-radius: 9999px;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+        }
+        .iq-mc-status.success { background: rgba(16, 185, 129, 0.1); color: #10B981; }
+        .iq-mc-status.pending { background: rgba(245, 158, 11, 0.1); color: #F59E0B; }
+
+        .iq-mc-details {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          padding: 12px;
+          background: rgba(0, 0, 0, 0.2);
+          border-radius: 12px;
+        }
+        .iq-mc-filename {
+          font-size: 0.75rem;
+          color: #6B7280;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .iq-mc-chunks {
+          font-size: 0.6875rem;
+          color: #4B5563;
+        }
+
+        .iq-mc-actions {
+          display: flex;
+          gap: 8px;
+        }
+        .iq-mc-btn {
+          flex: 1;
+          padding: 8px 12px;
+          border-radius: 10px;
+          font-weight: 600;
+          font-size: 0.75rem;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          transition: all 200ms;
+          border: none;
+        }
+        .iq-mc-btn.secondary {
+          background: #1F2937;
+          color: #D1D5DB;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .iq-mc-btn.secondary:hover { background: #263244; }
+        .iq-mc-btn.primary {
+          background: linear-gradient(135deg, #3B82F6, #2563EB);
+          color: white;
+        }
+        .iq-mc-btn.primary:hover { box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
+        .iq-mc-btn.danger {
+          background: rgba(239, 68, 68, 0.08);
+          color: #EF4444;
+          flex: 0;
+          padding: 8px 10px;
+        }
+        .iq-mc-btn.danger:hover { background: rgba(239, 68, 68, 0.15); }
+
+        /* Modal */
+        .iq-modal-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.7);
+          backdrop-filter: blur(8px);
+          z-index: 1000;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 24px;
+        }
+        .iq-modal-card {
+          background: #111827;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 20px;
+          padding: 32px;
+          width: 100%;
+          max-width: 440px;
+          box-shadow: 0 32px 64px rgba(0, 0, 0, 0.5);
+        }
+        .iq-modal-head {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 24px;
+        }
+        .iq-modal-title {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          color: #3B82F6;
+        }
+        .iq-modal-title h3 {
+          font-size: 1.0625rem;
+          font-weight: 700;
+          color: #F9FAFB;
+        }
+        .iq-modal-close {
+          background: rgba(255, 255, 255, 0.04);
+          border: none;
+          color: #6B7280;
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 1.25rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 200ms;
+        }
+        .iq-modal-close:hover { background: rgba(255,255,255,0.08); color: white; }
+
+        .iq-modal-body {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 16px;
+        }
+        .iq-qr-frame {
+          background: white;
+          padding: 24px;
+          border-radius: 16px;
+          margin-bottom: 8px;
+        }
+        .iq-qr-frame img {
+          width: 200px;
+          height: 200px;
+          display: block;
+        }
+        .iq-qr-url {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          background: rgba(59, 130, 246, 0.08);
+          border: 1px solid rgba(59, 130, 246, 0.15);
+          padding: 6px 14px;
+          border-radius: 9999px;
+          color: #60A5FA;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 0.75rem;
+        }
+        .iq-qr-desc {
+          text-align: center;
+          font-size: 0.8125rem;
+          color: #6B7280;
+          line-height: 1.5;
+          max-width: 300px;
+        }
+        .iq-modal-actions {
+          display: flex;
+          gap: 12px;
+          width: 100%;
+          margin-top: 8px;
+        }
+        .iq-modal-actions .iq-btn-action,
+        .iq-modal-actions .iq-btn-ghost { flex: 1; justify-content: center; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+          .iq-dash-main { padding: 16px; }
+          .iq-dash-header { flex-direction: column; align-items: flex-start; gap: 16px; }
+          .iq-kpi-grid { grid-template-columns: 1fr; }
+          .iq-manual-grid { grid-template-columns: 1fr; }
         }
       `}</style>
     </div>
