@@ -327,4 +327,7 @@ Distributed under the MIT License. See LICENSE for more information.
 
 ---
 
-<p align="center">Made for a smarter home experience.</p>
+<p align="center">Made by <strong>Tirth J Dalal</strong></p>
+<p align="center">
+  Contact: <a href="mailto:tirth2216@gmail.com">tirth2216@gmail.com</a> | +91 8733038793
+</p>
