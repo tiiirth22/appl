@@ -1,4 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+/* ============================================================
+   App.css — ApplianceIQ Global Component Styles v2.0
+   All page-level styles use inline <style> tags.
+   This file handles cross-cutting layout, typography, and components.
+   ============================================================ */
 
 * {
   margin: 0;
@@ -7,41 +11,40 @@
 }
 
 body {
-  font-family: 'Inter', sans-serif;
-  background: #09090b;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: #0B0F1A;
   min-height: 100vh;
-  color: #fafafa;
+  color: #F9FAFB;
 }
 
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  font-family: 'Space Grotesk', sans-serif;
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .App {
   min-height: 100vh;
 }
 
-/* Loading Screen */
+/* ============================================================
+   Loading Screen
+   ============================================================ */
 .loading-screen {
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background: #09090b;
+  background: #0B0F1A;
 }
 
 .loader {
-  width: 60px;
-  height: 60px;
-  border: 5px solid rgba(255, 255, 255, 0.1);
-  border-top-color: #3b82f6;
+  width: 48px;
+  height: 48px;
+  border: 3px solid rgba(255, 255, 255, 0.06);
+  border-top-color: #3B82F6;
   border-radius: 50%;
-  animation: spin 1s linear infinite;
+  animation: spin 0.8s linear infinite;
 }
 
 @keyframes spin {
@@ -50,102 +53,124 @@ h6 {
   }
 }
 
-/* Container */
+/* ============================================================
+   Layout Container
+   ============================================================ */
 .container {
-  max-width: 1400px;
+  max-width: 1280px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 32px;
 }
 
-/* Cards - Dark Theme */
+/* ============================================================
+   Card — Consistent surface across app
+   ============================================================ */
 .card {
-  background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(12px);
+  background: #111827;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 1.5rem;
-  padding: 2rem;
-  transition: all 0.3s;
+  border-radius: 16px;
+  padding: 24px;
+  transition: border-color 200ms ease-in-out,
+              box-shadow 200ms ease-in-out,
+              transform 200ms ease-in-out;
 }
 
 .card:hover {
-  transform: translateY(-4px);
   border-color: rgba(255, 255, 255, 0.15);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  transform: translateY(-2px);
 }
 
-/* Buttons - Dark Theme */
+/* ============================================================
+   Buttons — Primary / Secondary / Ghost
+   ============================================================ */
 .btn {
-  padding: 0.75rem 2rem;
-  border-radius: 1rem;
-  font-weight: 700;
-  font-size: 1rem;
+  padding: 10px 24px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.875rem;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 200ms ease-in-out;
   border: none;
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 8px;
+  line-height: 1.5;
 }
 
 .btn-primary {
-  background: #3b82f6;
+  background: linear-gradient(135deg, #3B82F6, #2563EB);
   color: white;
-  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.25);
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.25);
 }
 
 .btn-primary:hover {
-  background: #2563eb;
-  transform: translateY(-2px);
-  box-shadow: 0 12px 25px rgba(59, 130, 246, 0.35);
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.35);
+  transform: translateY(-1px);
 }
 
 .btn-secondary {
-  background: rgba(255, 255, 255, 0.05);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #1F2937;
+  color: #F9FAFB;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: #263244;
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
-/* Form Elements - Dark Theme */
+.btn-ghost {
+  background: transparent;
+  color: #9CA3AF;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: #F9FAFB;
+}
+
+/* ============================================================
+   Form Elements
+   ============================================================ */
 .form-group {
-  margin-bottom: 1.5rem;
+  margin-bottom: 24px;
 }
 
 .form-label {
   display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 700;
+  margin-bottom: 8px;
+  font-weight: 600;
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #64748b;
+  color: #6B7280;
 }
 
 .form-input {
   width: 100%;
-  padding: 0.875rem 1rem;
-  background: rgba(2, 6, 23, 0.4);
+  padding: 12px 16px;
+  background: #0B0F1A;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 0.875rem;
-  color: white;
-  font-size: 1rem;
-  transition: all 0.3s;
+  border-radius: 12px;
+  color: #F9FAFB;
+  font-size: 0.9375rem;
+  transition: all 200ms ease-in-out;
 }
 
 .form-input:focus {
   outline: none;
-  border-color: #3b82f6;
-  background: rgba(2, 6, 23, 0.6);
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+  border-color: #3B82F6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-/* Grid Layouts */
+/* ============================================================
+   Grid Layouts
+   ============================================================ */
 .grid {
   display: grid;
-  gap: 2rem;
+  gap: 24px;
 }
 
 .grid-2 {
@@ -153,42 +178,52 @@ h6 {
 }
 
 .grid-3 {
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }
 
-/* Status Badges - Dark Theme */
+/* ============================================================
+   Status Badges
+   ============================================================ */
 .badge {
-  display: inline-block;
-  padding: 0.25rem 0.75rem;
-  border-radius: 2rem;
-  font-size: 0.75rem;
-  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
 }
 
 .badge-success {
-  background: rgba(16, 185, 129, 0.15);
-  color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
+  color: #10B981;
 }
 
 .badge-warning {
-  background: rgba(251, 191, 36, 0.15);
-  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.12);
+  color: #F59E0B;
 }
 
 .badge-error {
-  background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+  color: #EF4444;
 }
 
-/* Responsive */
+.badge-info {
+  background: rgba(59, 130, 246, 0.12);
+  color: #3B82F6;
+}
+
+/* ============================================================
+   Responsive
+   ============================================================ */
 @media (max-width: 768px) {
   .container {
-    padding: 1rem;
+    padding: 16px;
   }
 
   .card {
-    padding: 1.5rem;
+    padding: 16px;
   }
 }
