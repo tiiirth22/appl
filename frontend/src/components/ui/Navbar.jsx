@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Shield, LogOut } from 'lucide-react';
+import { Cpu, LogOut } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 /**
@@ -10,7 +10,7 @@ import { motion } from 'framer-motion';
  *  - user: { name, picture }
  *  - onLogout: () => void
  *  - activePage: 'dashboard' | 'upload' | 'analytics'
- *  - accentColor: string (default '#3b82f6')
+ *  - accentColor: string (default '#3B82F6')
  *  - roleLabel: string (default 'Business Owner')
  *  - brandSuffix: string (optional, e.g. 'Console' for admin)
  */
@@ -18,7 +18,7 @@ export default function Navbar({
     user,
     onLogout,
     activePage = 'dashboard',
-    accentColor = '#3b82f6',
+    accentColor = '#3B82F6',
     roleLabel = 'Business Owner',
     brandSuffix = '',
 }) {
@@ -28,191 +28,221 @@ export default function Navbar({
         { key: 'analytics', to: '/analytics', label: 'Insights' },
     ];
 
+    const initials = user?.name
+        ? user.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+        : '?';
+
     return (
         <>
-            <nav className="shared-navbar">
-                <div className="shared-navbar-content">
-                    <div className="shared-brand-group">
-                        <Shield className="shared-brand-icon" size={24} style={{ color: accentColor }} />
-                        <h2 className="shared-navbar-brand">
+            <nav className="iq-navbar" id="main-navbar">
+                <div className="iq-navbar-inner">
+                    <Link to="/dashboard" className="iq-brand" style={{ textDecoration: 'none' }}>
+                        <div className="iq-brand-icon" style={{ '--accent': accentColor }}>
+                            <Cpu size={18} />
+                        </div>
+                        <span className="iq-brand-text">
                             ApplianceIQ
-                            {brandSuffix && <span className="shared-brand-suffix" style={{ color: accentColor }}>{brandSuffix}</span>}
-                        </h2>
-                    </div>
+                            {brandSuffix && <span className="iq-brand-suffix" style={{ color: accentColor }}>{brandSuffix}</span>}
+                        </span>
+                    </Link>
 
-                    <div className="shared-navbar-links">
+                    <div className="iq-nav-links">
                         {links.map((link) => (
                             <Link
                                 key={link.key}
                                 to={link.to}
-                                className={`shared-navbar-link ${activePage === link.key ? 'active' : ''}`}
-                                style={activePage === link.key ? { '--active-color': accentColor } : {}}
+                                className={`iq-nav-link ${activePage === link.key ? 'active' : ''}`}
                             >
                                 {link.label}
                                 {activePage === link.key && (
-                                    <motion.div 
-                                        layoutId="nav-underline"
-                                        className="navbar-underline"
-                                        style={{ background: accentColor, boxShadow: `0 0 10px ${accentColor}` }}
+                                    <motion.div
+                                        layoutId="nav-indicator"
+                                        className="iq-nav-indicator"
+                                        style={{ background: accentColor }}
+                                        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                                     />
                                 )}
                             </Link>
                         ))}
                     </div>
 
-                    <div className="shared-navbar-user">
-                        <div className="shared-user-profile">
-                            <img
-                                src={user?.picture || 'https://via.placeholder.com/40'}
-                                alt={user?.name || 'User'}
-                            />
-                            <div className="shared-user-text">
-                                <span className="shared-user-name">{user?.name}</span>
-                                <span className="shared-user-role" style={{ color: accentColor }}>{roleLabel}</span>
-                            </div>
+                    <div className="iq-nav-user">
+                        <div className="iq-avatar" style={{ '--accent': accentColor }}>
+                            {initials}
                         </div>
-                        <button onClick={onLogout} className="shared-btn-logout" title="Sign Out">
-                            <LogOut size={16} />
+                        <div className="iq-user-meta">
+                            <span className="iq-user-name">{user?.name}</span>
+                            <span className="iq-user-role" style={{ color: accentColor }}>{roleLabel}</span>
+                        </div>
+                        <button onClick={onLogout} className="iq-btn-logout" title="Sign Out" id="logout-btn">
+                            <LogOut size={15} />
                         </button>
                     </div>
                 </div>
             </nav>
 
             <style>{`
-        .shared-navbar {
-          background: rgba(15, 23, 42, 0.6);
-          backdrop-filter: blur(12px);
-          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-          padding: 0.75rem 0;
-          position: sticky;
-          top: 0;
-          z-index: 100;
-        }
+                .iq-navbar {
+                    background: rgba(11, 15, 26, 0.8);
+                    backdrop-filter: blur(16px) saturate(180%);
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+                    position: sticky;
+                    top: 0;
+                    z-index: 100;
+                }
 
-        .shared-navbar-content {
-          max-width: 1400px;
-          margin: 0 auto;
-          padding: 0 2rem;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
+                .iq-navbar-inner {
+                    max-width: 1280px;
+                    margin: 0 auto;
+                    padding: 0 32px;
+                    height: 64px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                }
 
-        .shared-brand-group {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-        }
+                .iq-brand {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    color: #F9FAFB;
+                }
 
-        .shared-navbar-brand {
-          font-size: 1.125rem;
-          font-weight: 800;
-          letter-spacing: -0.05em;
-          margin: 0;
-          color: white;
-        }
+                .iq-brand-icon {
+                    width: 34px;
+                    height: 34px;
+                    background: linear-gradient(135deg, var(--accent, #3B82F6), #2563EB);
+                    border-radius: 10px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+                }
 
-        .shared-brand-suffix {
-          font-weight: 500;
-          font-size: 0.875rem;
-          opacity: 0.8;
-          margin-left: 0.5rem;
-        }
+                .iq-brand-text {
+                    font-size: 1.0625rem;
+                    font-weight: 800;
+                    letter-spacing: -0.03em;
+                }
 
-        .shared-navbar-links {
-          display: flex;
-          gap: 2.5rem;
-        }
+                .iq-brand-suffix {
+                    font-weight: 500;
+                    font-size: 0.8125rem;
+                    opacity: 0.8;
+                    margin-left: 6px;
+                }
 
-        .shared-navbar-link {
-          color: #64748b;
-          text-decoration: none;
-          font-weight: 600;
-          font-size: 0.875rem;
-          transition: color 0.2s;
-          position: relative;
-        }
+                .iq-nav-links {
+                    display: flex;
+                    gap: 4px;
+                }
 
-        .shared-navbar-link:hover,
-        .shared-navbar-link.active {
-          color: white;
-        }
+                .iq-nav-link {
+                    color: #6B7280;
+                    text-decoration: none;
+                    font-weight: 500;
+                    font-size: 0.8125rem;
+                    padding: 8px 16px;
+                    border-radius: 8px;
+                    position: relative;
+                    transition: color 200ms ease-in-out, background 200ms ease-in-out;
+                }
 
-        .navbar-underline {
-          position: absolute;
-          bottom: -22px;
-          left: 0;
-          width: 100%;
-          height: 2px;
-          z-index: 10;
-        }
+                .iq-nav-link:hover {
+                    color: #D1D5DB;
+                    background: rgba(255, 255, 255, 0.04);
+                }
 
-        .shared-navbar-user {
-          display: flex;
-          align-items: center;
-          gap: 1.25rem;
-        }
+                .iq-nav-link.active {
+                    color: #F9FAFB;
+                }
 
-        .shared-user-profile {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-        }
+                .iq-nav-indicator {
+                    position: absolute;
+                    bottom: -1px;
+                    left: 16px;
+                    right: 16px;
+                    height: 2px;
+                    border-radius: 2px;
+                }
 
-        .shared-user-profile img {
-          width: 34px;
-          height: 34px;
-          border-radius: 50%;
-          border: 1.5px solid rgba(255, 255, 255, 0.1);
-        }
+                .iq-nav-user {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                }
 
-        .shared-user-text {
-          display: flex;
-          flex-direction: column;
-        }
+                .iq-avatar {
+                    width: 32px;
+                    height: 32px;
+                    background: linear-gradient(135deg, var(--accent, #3B82F6), #2563EB);
+                    border-radius: 8px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 0.6875rem;
+                    font-weight: 700;
+                    color: white;
+                    letter-spacing: 0.02em;
+                }
 
-        .shared-user-name {
-          font-size: 0.8125rem;
-          font-weight: 700;
-          color: white;
-        }
+                .iq-user-meta {
+                    display: flex;
+                    flex-direction: column;
+                }
 
-        .shared-user-role {
-          font-size: 0.625rem;
-          font-weight: 600;
-          text-transform: uppercase;
-        }
+                .iq-user-name {
+                    font-size: 0.8125rem;
+                    font-weight: 600;
+                    color: #F9FAFB;
+                    line-height: 1.2;
+                }
 
-        .shared-btn-logout {
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          color: #64748b;
-          padding: 0.5rem;
-          border-radius: 0.75rem;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
+                .iq-user-role {
+                    font-size: 0.625rem;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.04em;
+                    line-height: 1.2;
+                }
 
-        .shared-btn-logout:hover {
-          color: #ef4444;
-          background: rgba(239, 68, 68, 0.1);
-        }
+                .iq-btn-logout {
+                    background: rgba(255, 255, 255, 0.04);
+                    border: 1px solid rgba(255, 255, 255, 0.06);
+                    color: #6B7280;
+                    width: 34px;
+                    height: 34px;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: all 200ms ease-in-out;
+                }
 
-        @media (max-width: 768px) {
-          .shared-navbar-content {
-            flex-direction: column;
-            gap: 0.75rem;
-          }
+                .iq-btn-logout:hover {
+                    color: #EF4444;
+                    background: rgba(239, 68, 68, 0.08);
+                    border-color: rgba(239, 68, 68, 0.15);
+                }
 
-          .shared-navbar-links {
-            gap: 1.5rem;
-          }
-
-          .shared-user-text {
-            display: none;
-          }
-        }
-      `}</style>
+                @media (max-width: 768px) {
+                    .iq-navbar-inner {
+                        padding: 0 16px;
+                    }
+                    .iq-user-meta {
+                        display: none;
+                    }
+                    .iq-nav-links {
+                        gap: 2px;
+                    }
+                    .iq-nav-link {
+                        padding: 6px 10px;
+                        font-size: 0.75rem;
+                    }
+                }
+            `}</style>
         </>
     );
 }
