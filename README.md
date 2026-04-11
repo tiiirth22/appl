@@ -28,8 +28,6 @@ ApplianceIQ supports multiple user roles, including administrators, business own
 
 - **RAG-Powered Chat**: Ask questions about any uploaded manual in natural language. The system retrieves the most relevant passages and generates accurate, context-aware answers using a Large Language Model.
 - **Smart Document Processing**: Automatic text extraction from PDFs and images (JPG, PNG) using OCR. Extracted content is chunked, embedded into vectors, and stored for fast retrieval.
-- **Image-Based Query**: Upload a photo of an appliance issue (e.g., an error code on a display) and receive diagnostic guidance based on the manual content.
-- **Live Camera Analysis**: Use your device camera to capture a frame of an appliance and get real-time identification and troubleshooting assistance.
 - **Multi-Tenant Role-Based Dashboards**:
   - **Admin Dashboard**: Full system oversight including user management, manual management across all business owners, and platform-wide analytics.
   - **Business Owner Dashboard**: Upload and manage manuals, view per-manual usage statistics, generate and download QR codes, and monitor customer interaction analytics.
@@ -142,29 +140,14 @@ The following sections describe how the major use cases flow through the system 
 9. The backend logs the query and response in MongoDB for analytics and future context, then streams the response back to the frontend.
 10. The frontend displays the answer with source citations and confidence indicators.
 
-### 4. Image-Based Query
-
-1. A customer uploads a photo of their appliance (e.g., showing an error code or a damaged part) via the chat interface.
-2. The frontend sends the image as a multipart POST to `/api/chat/image`.
-3. The backend encodes the image to base64 and forwards it to the Chat Service's image analysis endpoint.
-4. The Chat Service uses a vision-capable LLM to analyze the image, extract the visible problem, and then performs RAG against the manual to find relevant troubleshooting steps.
-5. The diagnostic answer is returned and displayed to the customer.
-
-### 5. Live Camera Analysis
-
-1. A customer activates the live camera overlay in the frontend.
-2. The frontend captures a frame from the device camera and sends it as base64 to `/api/analyze-frame`.
-3. The backend proxies the frame to the Chat Service, which uses a vision model to identify the appliance and any visible issues.
-4. The identification result is returned to the frontend and displayed as an overlay.
-
-### 6. QR Code Scanning (Guest Access)
+### 4. QR Code Scanning (Guest Access)
 
 1. A customer scans the QR code sticker on their physical appliance using their phone camera.
 2. The QR code URL directs them to the ApplianceIQ chat interface with the manual ID pre-loaded.
 3. No login is required. The backend allows unauthenticated access to the chat endpoint when a valid manual ID is provided.
 4. The customer can immediately start asking questions about their appliance.
 
-### 7. Admin and Analytics Workflow
+### 5. Admin and Analytics Workflow
 
 1. An admin logs in and is directed to the Admin Dashboard.
 2. The dashboard displays platform-wide statistics: total users, total manuals, total queries, and active sessions.
