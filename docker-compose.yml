@@ -1,0 +1,61 @@
+# ApplianceIQ — Optimized 2-Service Architecture
+# ================================================
+# Before: 3 services (backend + chat_service + ingestion_service)
+# After:  2 services (backend + ml_service)
+#
+# RAM: ~1.5GB → ~800MB
+# Model loading: 2× duplicate → 1× shared ONNX
+
+version: "3.8"
+
+services:
+  # ─── Backend (API Gateway + Auth + Routing) ───────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8080"
+    environment:
+      - PORT=8080
+      - ML_SERVICE_URL=http://ml_service:8080
+      - INGESTION_SERVICE_URL=http://ml_service:8080  # Same service!
+    env_file:
+      - ./backend/.env
+    depends_on:
+      ml_service:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+
+  # ─── Unified ML Service (Embeddings + RAG + Ingestion) ────────────
+  ml_service:
+    build:
+      context: ./ml_service
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8080"
+    environment:
+      - PORT=8080
+      - OMP_NUM_THREADS=1
+      - MKL_NUM_THREADS=1
+      - TOKENIZERS_PARALLELISM=false
+      - ONNX_MODEL_DIR=/app/model_onnx
+    env_file:
+      - ./backend/.env   # Shares API keys from backend .env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 15s
+      start_period: 45s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.75"
+          memory: 768M
