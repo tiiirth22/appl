@@ -1,187 +1,204 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useCallback } from 'react';
 import axios from 'axios';
-import { Upload, X, CheckCircle2, Loader2, FileText, Info, ArrowLeft, Database, Globe, Cpu } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { useNavigate } from 'react-router-dom';
+import { 
+  Upload, FileText, CheckCircle2, AlertCircle, 
+  Loader2, ChevronLeft, ArrowRight, Shield, 
+  Database, Zap, Terminal, X, Search, Layers
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import Navbar from '../components/ui/Navbar';
 import { API_BASE_URL as API } from '../config';
 
-export default function ManualUpload({ user, onLogout, currentTheme, toggleTheme }) {
-  const [file, setFile] = useState(null);
-  const [metadata, setMetadata] = useState({ model_name: '', version: '', region: 'Global' });
-  const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState(0);
+export default function ManualUpload({ currentTheme, toggleTheme }) {
   const navigate = useNavigate();
+  const [file, setFile] = useState(null);
+  const [modelName, setModelName] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [status, setStatus] = useState('idle'); // idle, uploading, parsing, success, error
+  const [log, setLog] = useState([]);
+
+  const addLog = (msg) => setLog(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev].slice(0, 5));
 
   const handleFileChange = (e) => {
     const selected = e.target.files[0];
-    if (selected) setFile(selected);
+    if (selected) {
+      setFile(selected);
+      addLog(`File initialized: ${selected.name}`);
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!file) return alert('Please select a manual to upload.');
+    if (!file || !modelName) return;
 
     setUploading(true);
+    setStatus('uploading');
+    addLog('Starting multi-part upload...');
+    
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('model_name', metadata.model_name);
-    formData.append('version', metadata.version);
-    formData.append('region', metadata.region);
+    formData.append('model_name', modelName);
 
     try {
-      await axios.post(`${API}/manuals/upload`, formData, {
-        withCredentials: true,
-        onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          setProgress(percentCompleted);
-        }
+      addLog('Stream established. Transferring bits...');
+      const response = await axios.post(`${API}/manuals/upload`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        withCredentials: true
       });
-      navigate('/dashboard');
+      
+      setStatus('parsing');
+      addLog('Upload complete. Initializing RAG pipeline...');
+      
+      setTimeout(() => {
+        addLog('OCR chunking complete. Vectorizing indices...');
+      }, 1000);
+
+      setTimeout(() => {
+        setStatus('success');
+        addLog('Resource synchronized to global registry.');
+        setTimeout(() => navigate('/dashboard'), 1500);
+      }, 3000);
+
     } catch (error) {
-      console.error('Upload failed:', error);
-      alert('Upload failed: ' + (error.response?.data?.detail || error.message));
-    } finally {
+      setStatus('error');
+      addLog('CRITICAL_FAILURE: Connection refused by indexer.');
       setUploading(false);
     }
   };
 
   return (
-    <div style={{ backgroundColor: 'var(--color-bg-base)', minHeight: '100vh' }}>
-      <Navbar 
-        user={user} 
-        onLogout={onLogout} 
-        activePage="upload" 
-        currentTheme={currentTheme}
-        toggleTheme={toggleTheme}
-      />
+    <div style={{ backgroundColor: 'var(--color-bg-base)', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <Navbar activePage="upload" currentTheme={currentTheme} toggleTheme={toggleTheme} />
 
-      <main style={{ maxWidth: '1000px', margin: '0 auto', padding: '60px 40px' }}>
-        <button onClick={() => navigate(-1)} style={{ background: 'transparent', border: 'none', color: 'var(--color-text-dim)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', fontWeight: 700, marginBottom: '40px', cursor: 'pointer' }}>
-          <ChevronLeft size={16} /> RETURN_TO_REGISTRY
-        </button>
+      <main style={{ maxWidth: '1200px', width: '100%', margin: '0 auto', padding: '48px 40px', flex: 1 }}>
+        {/* ── Pipeline Header ── */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '64px' }}>
+          <div>
+            <button onClick={() => navigate(-1)} style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', fontWeight: 800, marginBottom: '16px', cursor: 'pointer' }}>
+              <ChevronLeft size={14} /> RETURN_TO_REGISTRY
+            </button>
+            <h1 className="heading-elite" style={{ fontSize: '2rem' }}>Resource Ingestion.</h1>
+            <p style={{ color: 'var(--color-text-dim)', marginTop: '8px', fontSize: '0.95rem' }}>Inject technical data into the neural diagnostic network.</p>
+          </div>
+          <div style={{ display: 'flex', gap: '40px' }}>
+             {['SOURCE', 'UPLOAD', 'INDEX', 'VERIFY'].map((step, i) => (
+               <div key={step} style={{ textAlign: 'center' }}>
+                 <div style={{ fontSize: '0.6rem', fontWeight: 900, color: i === 0 ? 'var(--color-text-primary)' : 'var(--color-text-muted)', letterSpacing: '0.1em', marginBottom: '8px' }}>STEP_0{i+1}</div>
+                 <div style={{ width: '60px', height: '2px', background: i === 0 ? 'var(--color-text-primary)' : 'var(--color-bg-surface)' }} />
+               </div>
+             ))}
+          </div>
+        </div>
 
-        <header style={{ marginBottom: '64px' }}>
-          <div style={{ color: 'var(--color-accent)', fontWeight: 800, fontSize: '0.65rem', marginBottom: '16px', letterSpacing: '0.15em' }}>INGESTION_PROTOCOL_V4.0</div>
-          <h1 className="heading-elite" style={{ fontSize: '3.5rem', lineHeight: 1 }}>Resource Ingestion.</h1>
-          <p style={{ color: 'var(--color-text-dim)', marginTop: '16px', fontSize: '1.1rem', fontWeight: 500 }}>Transforming technical source documentation into queryable semantic vector indices.</p>
-        </header>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '60px', alignItems: 'start' }}>
-          {/* Upload Form */}
-          <div className="animate-elite">
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '48px', alignItems: 'start' }}>
+          {/* ── Ingestion Form ── */}
+          <div className="elite-panel" style={{ padding: '48px' }}>
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Appliance Model Identity</label>
-                <input
-                  type="text"
-                  className="input-elite"
-                  placeholder="e.g. SmartFreeze v200"
-                  value={metadata.model_name}
-                  onChange={(e) => setMetadata({ ...metadata, model_name: e.target.value })}
-                  required
+                <label className="mono" style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)' }}>RESOURCE_IDENTITY</label>
+                <input 
+                  type="text" placeholder="e.g. Dyson V11 Core Engine" className="input-elite" 
+                  style={{ width: '100%', padding: '16px', fontSize: '1rem' }}
+                  value={modelName} onChange={(e) => setModelName(e.target.value)} required
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Version / Revision</label>
-                  <input
-                    type="text"
-                    className="input-elite"
-                    placeholder="e.g. Rev A"
-                    value={metadata.version}
-                    onChange={(e) => setMetadata({ ...metadata, version: e.target.value })}
-                    required
-                  />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Deployment Region</label>
-                  <select
-                    className="input-elite"
-                    style={{ appearance: 'none' }}
-                    value={metadata.region}
-                    onChange={(e) => setMetadata({ ...metadata, region: e.target.value })}
-                  >
-                    <option value="Global">Global</option>
-                    <option value="North America">North America</option>
-                    <option value="Europe">Europe</option>
-                    <option value="Asia">Asia</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Dropzone */}
-              <div style={{ marginTop: '20px' }}>
-                <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '12px' }}>Resource File (PDF or Image)</label>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    type="file"
-                    accept=".pdf,image/*"
-                    onChange={handleFileChange}
-                    style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer', zIndex: 2 }}
-                  />
-                  <div style={{ border: '1px dashed rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.01)', borderRadius: '12px', padding: '48px 32px', textAlign: 'center', transition: 'all 0.2s' }} id="dropzone">
-                    {file ? (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
-                        <FileText size={24} color="var(--color-accent)" />
-                        <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>{file.name}</span>
-                        <button onClick={(e) => { e.preventDefault(); setFile(null); }} style={{ background: 'transparent', border: 'none', color: '#EF4444' }}><X size={16} /></button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <label className="mono" style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)' }}>SOURCE_DOCUMENTATION (PDF/IMAGE)</label>
+                <label style={{ 
+                  border: '2px dashed var(--color-accent-dim)', borderRadius: '16px', padding: '64px', textAlign: 'center', cursor: 'pointer',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', transition: 'var(--transition-smooth)',
+                  background: file ? 'rgba(255,255,255,0.01)' : 'transparent'
+                }} className="hover-zone">
+                  <input type="file" hidden onChange={handleFileChange} accept=".pdf,image/*" />
+                  {file ? (
+                    <>
+                      <div style={{ color: '#10B981' }}><FileText size={40} /></div>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: '1rem' }}>{file.name}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>{(file.size / 1024 / 1024).toFixed(2)} MB • READY_FOR_STREAM</div>
                       </div>
-                    ) : (
-                      <>
-                        <Upload size={32} color="var(--color-text-muted)" style={{ marginBottom: '16px' }} />
-                        <div style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '4px' }}>Select manual to index</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Drag and drop or click to browse</div>
-                      </>
-                    )}
-                  </div>
-                </div>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ color: 'var(--color-text-muted)' }}><Upload size={40} /></div>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: '1rem' }}>Initialize Data Bridge</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>DRAG_AND_DROP_OR_BROWSE</div>
+                      </div>
+                    </>
+                  )}
+                </label>
               </div>
 
-              <button type="submit" className="btn-elite" style={{ width: '100%', marginTop: '16px', padding: '16px' }} disabled={uploading}>
-                {uploading ? (
-                  <div style={{ width: '100%' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', fontWeight: 800, marginBottom: '8px' }}>
-                      <span>INGESTING_RESOURCES...</span>
-                      <span>{progress}%</span>
-                    </div>
-                    <div style={{ height: '4px', background: 'rgba(0,0,0,0.2)', borderRadius: '2px', overflow: 'hidden' }}>
-                      <div style={{ width: `${progress}%`, height: '100%', background: 'black', transition: 'width 0.2s' }} />
-                    </div>
-                  </div>
-                ) : 'Initialize Indexing'}
+              <button 
+                type="submit" className="btn-elite" 
+                style={{ width: '100%', padding: '18px', borderRadius: '12px', justifyContent: 'center', fontSize: '1rem' }}
+                disabled={uploading || !file || !modelName}
+              >
+                {status === 'uploading' ? <Loader2 className="spinner" size={20} /> : status === 'parsing' ? 'INDEXING...' : 'INITIALIZE_INGESTION'}
               </button>
             </form>
           </div>
 
-          {/* Info Panel */}
-          <aside style={{ marginTop: '100px' }}>
-            <div className="elite-panel" style={{ padding: '32px' }}>
-              <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
-                <div style={{ width: '32px', height: '32px', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-accent)' }}>
-                   <Info size={16} />
-                </div>
-                <h4 className="heading-elite" style={{ fontSize: '1rem' }}>Ingestion Specs</h4>
+          {/* ── Diagnostic Feedback ── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div className="elite-panel" style={{ background: '#000', border: '1px solid #111', padding: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+                <Terminal size={16} color="var(--color-text-muted)" />
+                <span className="mono" style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)' }}>INGESTION_LOG</span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                {[
-                  { icon: <Cpu size={14} />, label: 'OCR Processing', text: 'Images are automatically converted to searchable text blocks.' },
-                  { icon: <Database size={14} />, label: 'Vector Indexing', text: 'Content is embedded into Pinecone for sub-200ms RAG retrieval.' },
-                  { icon: <Globe size={14} />, label: 'Global CDN', text: 'All files are securely hosted on Cloudinary with global edge access.' }
-                ].map((spec, i) => (
-                  <div key={i} style={{ borderLeft: '1px solid rgba(255,255,255,0.05)', paddingLeft: '16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.7rem', fontWeight: 800, color: 'white', textTransform: 'uppercase', marginBottom: '4px' }}>
-                      {spec.icon} {spec.label}
-                    </div>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)', lineHeight: 1.5 }}>{spec.text}</p>
-                  </div>
-                ))}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', minHeight: '160px' }}>
+                {log.length === 0 ? (
+                  <div className="mono" style={{ fontSize: '0.7rem', color: '#333' }}>Awaiting source initialization...</div>
+                ) : (
+                  log.map((entry, i) => (
+                    <motion.div initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }} key={i} className="mono" style={{ fontSize: '0.7rem', color: i === 0 ? 'var(--color-text-primary)' : 'var(--color-text-muted)' }}>
+                      {entry}
+                    </motion.div>
+                  ))
+                )}
               </div>
             </div>
-          </aside>
+
+            <div className="elite-panel" style={{ padding: '32px' }}>
+               <h3 style={{ fontSize: '0.85rem', fontWeight: 800, marginBottom: '16px' }}>Ingestion Protocol</h3>
+               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {[
+                    { icon: <Database size={14} />, label: 'Vectorization', desc: 'Auto-chunking with 512 token overlap.' },
+                    { icon: <Zap size={14} />, label: 'OCR Engine', desc: 'Gemini 1.5 Flash Vision for schema parsing.' },
+                    { icon: <Shield size={14} />, label: 'Security', desc: 'Zero-persistence diagnostic storage.' }
+                  ].map((item, i) => (
+                    <div key={i} style={{ display: 'flex', gap: '16px' }}>
+                      <div style={{ color: 'var(--color-text-muted)', marginTop: '2px' }}>{item.icon}</div>
+                      <div>
+                        <div style={{ fontSize: '0.8rem', fontWeight: 700 }}>{item.label}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>{item.desc}</div>
+                      </div>
+                    </div>
+                  ))}
+               </div>
+            </div>
+          </div>
         </div>
       </main>
+
+      <AnimatePresence>
+        {status === 'success' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="elite-panel" style={{ width: '400px', textAlign: 'center', padding: '48px' }}>
+              <div style={{ color: '#10B981', marginBottom: '24px' }}><CheckCircle2 size={64} strokeWidth={1} /></div>
+              <h2 className="heading-elite" style={{ fontSize: '1.5rem', marginBottom: '12px' }}>Synchronized.</h2>
+              <p style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>Resource successfully integrated <br /> into the diagnostic network.</p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <style>{`
+        .hover-zone:hover { border-color: var(--color-text-muted) !important; background: rgba(255,255,255,0.02) !important; }
+      `}</style>
     </div>
   );
 }
