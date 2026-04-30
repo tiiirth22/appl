@@ -43,7 +43,7 @@ except ImportError:
     PINECONE_AVAILABLE = False
 
 from config import (
-    PINECONE_API_KEY, PINECONE_INDEX_NAME,
+    PINECONE_API_KEY, PINECONE_INDEX_NAME, PINECONE_NAMESPACE,
     EMBEDDING_MODEL, MAX_FILE_SIZE_BYTES, CHUNK_SIZE, CHUNK_OVERLAP,
     DOWNLOAD_TIMEOUT, OCR_TIMEOUT, EMBEDDING_TIMEOUT, PINECONE_TIMEOUT,
     TESSERACT_PATH, POPPLER_PATH,
@@ -366,5 +366,5 @@ class AsyncDocumentProcessor:
     def _batch_upsert(self, index, vectors: List[Tuple], batch_size: int = 100) -> int:
         for i in range(0, len(vectors), batch_size):
             batch = vectors[i : i + batch_size]
-            index.upsert(vectors=batch)
+            index.upsert(vectors=batch, namespace=PINECONE_NAMESPACE)
         return len(vectors)
