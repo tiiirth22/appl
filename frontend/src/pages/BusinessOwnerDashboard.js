@@ -7,7 +7,7 @@ import Navbar from '../components/ui/Navbar';
 
 import { API_BASE_URL as API } from '../config';
 
-export default function BusinessOwnerDashboard({ user, onLogout }) {
+export default function BusinessOwnerDashboard({ user, onLogout, currentTheme, toggleTheme }) {
   const [manuals, setManuals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedQR, setSelectedQR] = useState(null);
@@ -63,7 +63,13 @@ export default function BusinessOwnerDashboard({ user, onLogout }) {
 
   return (
     <div style={{ backgroundColor: 'var(--color-bg-base)', minHeight: '100vh' }}>
-      <Navbar user={user} onLogout={onLogout} activePage="dashboard" />
+      <Navbar
+        user={user}
+        onLogout={onLogout}
+        activePage="dashboard"
+        currentTheme={currentTheme}
+        toggleTheme={toggleTheme}
+      />
 
       <main style={{ maxWidth: '1400px', margin: '0 auto', padding: '40px' }}>
         {/* Elite Header */}
