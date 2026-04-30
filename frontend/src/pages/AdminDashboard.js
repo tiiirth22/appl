@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { Upload, FileText, Loader, Users, Trash2, Search, Database, Server, Activity, Settings } from 'lucide-react';
+import { Upload, FileText, Loader, Users, Trash2, Search, Database, Server, Activity, Settings, ChevronRight, ShieldCheck } from 'lucide-react';
 import { motion } from 'motion/react';
 import Navbar from '../components/ui/Navbar';
-
 import { API_BASE_URL as API } from '../config';
 
 export default function AdminDashboard({ user, onLogout }) {
@@ -33,14 +32,9 @@ export default function AdminDashboard({ user, onLogout }) {
   };
 
   const handleDeleteManual = async (manualId) => {
-    if (!window.confirm('As Admin: Permanently delete this manual and its entire vector index?')) {
-      return;
-    }
-
+    if (!window.confirm('As Admin: Permanently delete this manual and its entire vector index?')) return;
     try {
-      await axios.delete(`${API}/manuals/${manualId}`, {
-        withCredentials: true
-      });
+      await axios.delete(`${API}/manuals/${manualId}`, { withCredentials: true });
       fetchData();
     } catch (error) {
       console.error('Error deleting manual:', error);
@@ -56,401 +50,128 @@ export default function AdminDashboard({ user, onLogout }) {
   const completedCount = manuals.filter(m => m.status === 'completed').length;
 
   return (
-    <div className="iq-admin" id="admin-dashboard">
+    <div style={{ backgroundColor: 'var(--color-bg-base)', minHeight: '100vh' }}>
       <Navbar
         user={user}
         onLogout={onLogout}
         activePage="dashboard"
-        accentColor="#10B981"
+        accentColor="#FFFFFF"
         roleLabel="Superuser"
         brandSuffix=" Console"
       />
 
-      <div className="iq-admin-main">
-        <header className="iq-admin-header" id="admin-header">
+      <main style={{ maxWidth: '1400px', margin: '0 auto', padding: '40px' }}>
+        {/* Elite Header */}
+        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '48px' }}>
           <div>
-            <h1>System Governance</h1>
-            <p>Monitoring {users.length} operators and {manuals.length} indexed resources.</p>
+            <div style={{ color: 'var(--color-accent)', fontWeight: 800, fontSize: '0.65rem', marginBottom: '12px', letterSpacing: '0.1em' }}>SYSTEM_GOVERNANCE</div>
+            <h1 className="heading-elite" style={{ fontSize: '2.5rem' }}>Core Control.</h1>
+            <p style={{ color: 'var(--color-text-dim)', marginTop: '8px', fontSize: '0.9rem' }}>Monitoring {users.length} operators and {manuals.length} indexed resources platform-wide.</p>
           </div>
-          <div className="iq-admin-header-actions">
-            <button className="iq-btn-glass">
-              <Settings size={16} /> Config
-            </button>
-            <Link to="/upload" className="iq-btn-emerald" id="admin-upload-btn">
-              <Upload size={16} /> Upload
-            </Link>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button className="btn-elite-ghost" style={{ padding: '8px 16px', fontSize: '0.7rem' }}><Settings size={14} /> CONFIG</button>
+            <Link to="/upload" className="btn-elite" style={{ textDecoration: 'none' }}><Upload size={14} /> INITIALIZE</Link>
           </div>
         </header>
 
-        {/* KPI Cards */}
-        <div className="iq-admin-kpi" id="admin-kpis">
+        {/* Elite KPI Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px', background: 'rgba(255,255,255,0.05)', border: 'var(--border-thin)', borderRadius: '12px', overflow: 'hidden', marginBottom: '48px' }}>
           {[
-            { label: 'Registered Users', value: users.length, icon: <Users size={18} />, color: 'emerald' },
-            { label: 'Knowledge Base', value: manuals.length, icon: <Database size={18} />, color: 'blue' },
-            { label: 'Active Indexes', value: completedCount, icon: <Activity size={18} />, color: 'violet' },
+            { label: 'Registered Operators', value: users.length, icon: <Users size={18} /> },
+            { label: 'Global Knowledge Base', value: manuals.length, icon: <Database size={18} /> },
+            { label: 'Active Vector Nodes', value: completedCount, icon: <Activity size={18} /> },
           ].map((kpi, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              className="iq-admin-kpi-card"
-            >
-              <div className={`iq-ak-icon ${kpi.color}`}>{kpi.icon}</div>
-              <div className="iq-ak-body">
-                <span className="iq-ak-value">{kpi.value}</span>
-                <span className="iq-ak-label">{kpi.label}</span>
+            <div key={i} style={{ background: 'var(--color-bg-elevated)', padding: '32px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+                <div style={{ color: 'var(--color-text-muted)' }}>{kpi.icon}</div>
+                <div style={{ width: '8px', height: '8px', background: '#10B981', borderRadius: '50%' }} />
               </div>
-            </motion.div>
+              <div style={{ fontSize: '2rem', fontWeight: 800, color: 'white' }}>{kpi.value}</div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '4px' }}>{kpi.label}</div>
+            </div>
           ))}
         </div>
 
-        <div className="iq-admin-layout">
-          {/* Operator Table */}
-          <section className="iq-admin-section" id="operators-section">
-            <div className="iq-section-head">
-              <div className="iq-sh-title">
-                <Users size={18} />
-                <h2>Operator Management</h2>
-              </div>
-              <div className="iq-sh-search">
-                <Search size={14} />
+        <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1fr', gap: '32px' }}>
+          {/* Operator Management Registry */}
+          <div className="elite-panel" style={{ padding: '0' }}>
+            <div style={{ padding: '24px 32px', borderBottom: 'var(--border-thin)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 className="heading-elite" style={{ fontSize: '1rem' }}>Operator Registry</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(255,255,255,0.02)', padding: '8px 16px', borderRadius: '6px', border: 'var(--border-thin)', width: '240px' }}>
+                <Search size={14} color="var(--color-text-muted)" />
                 <input
                   type="text"
                   placeholder="Search operators..."
+                  style={{ background: 'transparent', border: 'none', color: 'white', fontSize: '0.75rem', width: '100%', outline: 'none' }}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  id="search-operators"
                 />
               </div>
             </div>
 
-            <div className="iq-table-card">
+            <div style={{ minHeight: '400px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', padding: '12px 32px', background: 'rgba(255,255,255,0.02)', borderBottom: 'var(--border-thin)', fontSize: '0.65rem', fontWeight: 800, color: 'var(--color-text-muted)', letterSpacing: '0.05em' }}>
+                <span>IDENTITY</span>
+                <span>PERMISSION</span>
+                <span>ASSETS</span>
+                <span style={{ textAlign: 'right' }}>ESTABLISHED</span>
+              </div>
               {loading ? (
-                <div className="iq-loading"><Loader className="spinner" size={28} /></div>
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}><Loader className="spinner" size={24} /></div>
               ) : (
-                <table className="iq-table" id="operators-table">
-                  <thead>
-                    <tr>
-                      <th>Identity</th>
-                      <th>Role</th>
-                      <th>Resources</th>
-                      <th>Created</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredUsers.map(u => (
-                      <tr key={u.id}>
-                        <td>
-                          <div className="iq-ident">
-                            <div className="iq-ident-avatar">{u.name.charAt(0)}</div>
-                            <div className="iq-ident-text">
-                              <span className="iq-ident-name">{u.name}</span>
-                              <span className="iq-ident-email">{u.email}</span>
-                            </div>
-                          </div>
-                        </td>
-                        <td>
-                          <span className={`iq-role-badge ${u.role === 'admin' ? 'admin' : 'owner'}`}>
-                            {u.role === 'admin' ? 'Superuser' : 'Merchant'}
-                          </span>
-                        </td>
-                        <td>
-                          <div className="iq-resource-count">
-                            <Database size={12} />
-                            <span>{manuals.filter(m => m.user_id === u.id).length} docs</span>
-                          </div>
-                        </td>
-                        <td className="iq-time">{new Date(u.created_at || Date.now()).toLocaleDateString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </section>
-
-          {/* Resources Sidebar */}
-          <aside className="iq-admin-aside" id="resources-aside">
-            <div className="iq-section-head">
-              <div className="iq-sh-title">
-                <FileText size={18} />
-                <h2>Resources</h2>
-              </div>
-            </div>
-
-            <div className="iq-resource-stack">
-              {manuals.map(m => (
-                <div className="iq-resource-item" key={m.id}>
-                  <div className="iq-ri-info">
-                    <h4>{m.model_name}</h4>
-                    <span>{m.status === 'completed' ? 'Indexed' : 'Processing'}</span>
+                filteredUsers.map((u, i) => (
+                  <div key={u.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', padding: '20px 32px', borderBottom: i < filteredUsers.length - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ width: '32px', height: '32px', background: '#0B0F1A', border: 'var(--border-thin)', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-dim)' }}>{u.name.charAt(0)}</div>
+                      <div>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'white' }}>{u.name}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{u.email}</div>
+                      </div>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.6rem', fontWeight: 800, color: u.role === 'admin' ? 'white' : 'var(--color-text-dim)', background: u.role === 'admin' ? 'rgba(255,255,255,0.05)' : 'transparent', padding: '4px 8px', borderRadius: '4px', border: u.role === 'admin' ? 'var(--border-thin)' : 'none' }}>
+                        {u.role === 'admin' ? 'SUPERUSER' : 'OPERATOR'}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                       <Database size={12} /> {manuals.filter(m => m.user_id === u.id).length} docs
+                    </div>
+                    <div style={{ textAlign: 'right', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{new Date(u.created_at || Date.now()).toLocaleDateString()}</div>
                   </div>
-                  <button className="iq-ri-delete" onClick={() => handleDeleteManual(m.id)}>
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              ))}
-              {manuals.length === 0 && (
-                <p className="iq-no-data">No resources indexed yet.</p>
+                ))
               )}
             </div>
+          </div>
 
-            <div className="iq-health-card" id="system-health">
-              <div className="iq-health-row">
-                <Server size={14} />
-                <span>Llama 3.1 70B: Online</span>
-              </div>
-              <div className="iq-health-row">
-                <Activity size={14} />
-                <span>Vector DB: Healthy</span>
-              </div>
+          {/* Global Resource Stack */}
+          <aside>
+            <div className="elite-panel" style={{ padding: '0' }}>
+               <div style={{ padding: '24px 32px', borderBottom: 'var(--border-thin)' }}>
+                  <h3 className="heading-elite" style={{ fontSize: '1rem' }}>Global Assets</h3>
+               </div>
+               <div style={{ maxHeight: '500px', overflowY: 'auto', padding: '20px' }}>
+                  {manuals.map(m => (
+                    <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', background: 'rgba(255,255,255,0.01)', border: 'var(--border-thin)', borderRadius: '8px', marginBottom: '12px' }}>
+                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                         <div style={{ color: 'var(--color-text-muted)' }}><FileText size={16} /></div>
+                         <div>
+                            <div style={{ fontSize: '0.8rem', fontWeight: 700 }}>{m.model_name}</div>
+                            <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>{m.status === 'completed' ? 'INDEXED' : 'PROCESSING'}</div>
+                         </div>
+                      </div>
+                      <button onClick={() => handleDeleteManual(m.id)} style={{ background: 'transparent', border: 'none', color: '#EF4444', opacity: 0.5 }}><Trash2 size={14} /></button>
+                    </div>
+                  ))}
+               </div>
+               <div style={{ padding: '24px', borderTop: 'var(--border-thin)', background: 'rgba(16, 185, 129, 0.02)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#10B981', fontSize: '0.75rem', fontWeight: 800 }}>
+                     <ShieldCheck size={16} /> SYSTEM_HEALTH_NOMINAL
+                  </div>
+               </div>
             </div>
           </aside>
         </div>
-      </div>
-
-      <style jsx>{`
-        .iq-admin {
-          min-height: 100vh;
-          background: #0B0F1A;
-          color: #F9FAFB;
-          font-family: 'Inter', system-ui, sans-serif;
-        }
-        .iq-admin-main {
-          max-width: 1280px;
-          margin: 0 auto;
-          padding: 32px;
-        }
-
-        .iq-admin-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 32px;
-        }
-        .iq-admin-header h1 { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.03em; }
-        .iq-admin-header p { color: #6B7280; margin-top: 4px; font-size: 0.9375rem; }
-        .iq-admin-header-actions { display: flex; gap: 8px; }
-
-        .iq-btn-glass {
-          background: rgba(255,255,255,0.04);
-          border: 1px solid rgba(255,255,255,0.06);
-          color: #D1D5DB;
-          padding: 10px 16px;
-          border-radius: 12px;
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          font-size: 0.8125rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 200ms;
-        }
-        .iq-btn-glass:hover { background: rgba(255,255,255,0.08); }
-
-        .iq-btn-emerald {
-          background: linear-gradient(135deg, #10B981, #059669);
-          color: white;
-          padding: 10px 20px;
-          border-radius: 12px;
-          font-weight: 600;
-          font-size: 0.8125rem;
-          text-decoration: none;
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          transition: all 200ms;
-          box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);
-        }
-        .iq-btn-emerald:hover { transform: translateY(-1px); }
-
-        /* KPI */
-        .iq-admin-kpi {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 16px;
-          margin-bottom: 32px;
-        }
-        .iq-admin-kpi-card {
-          background: #111827;
-          border: 1px solid rgba(255,255,255,0.06);
-          border-radius: 16px;
-          padding: 24px;
-          display: flex;
-          align-items: center;
-          gap: 16px;
-          transition: all 200ms;
-        }
-        .iq-admin-kpi-card:hover { border-color: rgba(255,255,255,0.12); }
-        .iq-ak-icon {
-          width: 44px;
-          height: 44px;
-          border-radius: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .iq-ak-icon.emerald { background: rgba(16,185,129,0.1); color: #10B981; }
-        .iq-ak-icon.blue { background: rgba(59,130,246,0.1); color: #3B82F6; }
-        .iq-ak-icon.violet { background: rgba(139,92,246,0.1); color: #8B5CF6; }
-        .iq-ak-value { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.04em; display: block; line-height: 1; }
-        .iq-ak-label { font-size: 0.75rem; color: #6B7280; font-weight: 500; display: block; margin-top: 4px; }
-
-        /* Layout */
-        .iq-admin-layout {
-          display: grid;
-          grid-template-columns: 1.8fr 1fr;
-          gap: 24px;
-        }
-
-        .iq-section-head {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 16px;
-        }
-        .iq-sh-title { display: flex; align-items: center; gap: 8px; color: #3B82F6; }
-        .iq-sh-title h2 { font-size: 1rem; font-weight: 700; color: #F9FAFB; }
-        .iq-sh-search {
-          background: rgba(255,255,255,0.04);
-          border: 1px solid rgba(255,255,255,0.06);
-          padding: 6px 12px;
-          border-radius: 8px;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          color: #4B5563;
-        }
-        .iq-sh-search input {
-          background: none;
-          border: none;
-          color: #F9FAFB;
-          font-size: 0.75rem;
-          width: 140px;
-          transition: width 200ms;
-        }
-        .iq-sh-search input:focus { outline: none; width: 180px; }
-
-        .iq-table-card {
-          background: #111827;
-          border: 1px solid rgba(255,255,255,0.06);
-          border-radius: 16px;
-          overflow: hidden;
-        }
-        .iq-table {
-          width: 100%;
-          border-collapse: collapse;
-          text-align: left;
-        }
-        .iq-table th {
-          padding: 14px 20px;
-          font-size: 0.6875rem;
-          text-transform: uppercase;
-          letter-spacing: 0.06em;
-          color: #6B7280;
-          font-weight: 700;
-          border-bottom: 1px solid rgba(255,255,255,0.04);
-        }
-        .iq-table td {
-          padding: 14px 20px;
-          border-bottom: 1px solid rgba(255,255,255,0.02);
-          font-size: 0.8125rem;
-        }
-        .iq-table tr:hover td { background: rgba(255,255,255,0.02); }
-
-        .iq-ident { display: flex; align-items: center; gap: 10px; }
-        .iq-ident-avatar {
-          width: 32px;
-          height: 32px;
-          background: #1F2937;
-          border-radius: 8px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 0.6875rem;
-          font-weight: 700;
-          color: #3B82F6;
-        }
-        .iq-ident-name { display: block; font-weight: 600; font-size: 0.8125rem; }
-        .iq-ident-email { display: block; font-size: 0.6875rem; color: #6B7280; }
-
-        .iq-role-badge {
-          font-size: 0.5625rem;
-          font-weight: 700;
-          padding: 3px 8px;
-          border-radius: 9999px;
-          text-transform: uppercase;
-          letter-spacing: 0.04em;
-        }
-        .iq-role-badge.admin { background: rgba(16,185,129,0.1); color: #10B981; }
-        .iq-role-badge.owner { background: rgba(59,130,246,0.1); color: #3B82F6; }
-
-        .iq-resource-count { display: flex; align-items: center; gap: 6px; color: #6B7280; font-size: 0.75rem; }
-        .iq-time { color: #4B5563; font-size: 0.75rem; }
-
-        /* Aside */
-        .iq-resource-stack { display: flex; flex-direction: column; gap: 8px; }
-        .iq-resource-item {
-          background: #111827;
-          border: 1px solid rgba(255,255,255,0.06);
-          padding: 16px;
-          border-radius: 14px;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          transition: all 200ms;
-        }
-        .iq-resource-item:hover { border-color: rgba(255,255,255,0.12); }
-        .iq-ri-info h4 { font-size: 0.8125rem; font-weight: 600; margin: 0; }
-        .iq-ri-info span { font-size: 0.6875rem; color: #6B7280; }
-        .iq-ri-delete {
-          background: rgba(255,255,255,0.04);
-          border: none;
-          color: #4B5563;
-          width: 30px;
-          height: 30px;
-          border-radius: 8px;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: all 200ms;
-        }
-        .iq-ri-delete:hover { background: rgba(239,68,68,0.1); color: #EF4444; }
-
-        .iq-no-data { color: #4B5563; font-size: 0.8125rem; text-align: center; padding: 32px; }
-
-        .iq-health-card {
-          margin-top: 16px;
-          background: rgba(16,185,129,0.04);
-          border: 1px solid rgba(16,185,129,0.1);
-          padding: 20px;
-          border-radius: 14px;
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
-        }
-        .iq-health-row {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          font-size: 0.75rem;
-          color: #10B981;
-          font-weight: 600;
-        }
-
-        .iq-loading { padding: 48px; text-align: center; }
-
-        @media (max-width: 1100px) {
-          .iq-admin-layout { grid-template-columns: 1fr; }
-        }
-        @media (max-width: 768px) {
-          .iq-admin-main { padding: 16px; }
-          .iq-admin-header { flex-direction: column; align-items: flex-start; gap: 16px; }
-          .iq-admin-kpi { grid-template-columns: 1fr; }
-        }
-      `}</style>
+      </main>
     </div>
   );
 }
