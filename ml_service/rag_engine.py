@@ -25,7 +25,7 @@ from config import (
     EMBEDDING_MODEL, LLM_MODEL, GROQ_API_KEY,
     GROQ_API_KEY_SECONDARY, LLM_MODEL_SECONDARY,
     GROQ_VISION_MODEL, GEMINI_API_KEY,
-    PINECONE_API_KEY, PINECONE_INDEX_NAME,
+    PINECONE_API_KEY, PINECONE_INDEX_NAME, PINECONE_NAMESPACE,
     QUERY_TIMEOUT, EMBEDDING_TIMEOUT, PINECONE_TIMEOUT
 )
 from model_manager import model_manager
@@ -222,6 +222,7 @@ class RAGQueryEngine:
                 asyncio.to_thread(lambda: index.query(
                     vector=embedding, top_k=top_k, include_metadata=True,
                     filter={"manual_id": {"$eq": manual_id}},
+                    namespace=PINECONE_NAMESPACE,
                 )),
                 timeout=timeout,
             )
