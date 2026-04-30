@@ -4,7 +4,7 @@ import axios from 'axios';
 import { Cpu, Loader2, ArrowRight, QrCode, Database, Layers, CheckCircle2, Shield } from 'lucide-react';
 import { API_BASE_URL as API } from '../config';
 
-export default function Signup() {
+export default function Signup(props) {
   const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'business_owner' });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -13,12 +13,20 @@ export default function Signup() {
     e.preventDefault();
     setLoading(true);
     try {
-      await axios.post(`${API}/auth/signup`, formData);
-      alert('Account initialized. Please sign in.');
-      navigate('/login');
+      const response = await axios.post(`${API}/auth/signup`, formData, { withCredentials: true });
+      const { user: userData, session_token } = response.data;
+      
+      if (props.onLogin) {
+        props.onLogin(userData, session_token);
+      }
+      
+      alert('Account initialized.');
+      window.location.href = '/dashboard';
     } catch (error) {
       console.error('Signup error:', error);
-      alert('Signup failed: ' + (error.response?.data?.detail || 'Check your details'));
+      const detail = error.response?.data?.detail;
+      const errorMsg = typeof detail === 'string' ? detail : (Array.isArray(detail) ? detail[0].msg : 'Check your details');
+      alert('Signup failed: ' + errorMsg);
     } finally {
       setLoading(false);
     }
