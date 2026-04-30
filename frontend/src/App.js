@@ -67,14 +67,16 @@ function App() {
 
   if (loading) {
     return (
-      <div className="loading-screen">
-        <div className="loader"></div>
+      <div className="premium-loading">
+        <div className="pulse-logo"></div>
+        <p style={{ marginTop: '24px', color: 'var(--color-text-dim)', letterSpacing: '0.1em', fontSize: '0.8rem', fontWeight: 600 }}>INITIALIZING APPLIANCEIQ</p>
       </div>
     );
   }
 
   return (
     <div className="App">
+      <div className="bg-aura"></div>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Landing />} />
