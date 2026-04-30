@@ -1,207 +1,152 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
 import axios from 'axios';
-import { Send, Camera, Image as ImageIcon, X, Loader2, Cpu, ArrowLeft, MessageSquare, Shield, Info, AlertTriangle, CheckCircle2, ChevronRight, Settings } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { useSearchParams, useNavigate, Link } from 'react-router-dom';
+import { 
+  Send, Bot, User, Loader2, QrCode, 
+  ArrowLeft, Cpu, Activity, Zap, Shield, 
+  ChevronRight, Scan, Clock, Terminal, Globe, 
+  Database, Layers, MessageSquare, Info, History, ArrowRight
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { API_BASE_URL as API } from '../config';
-import LiveCameraOverlay from '../components/LiveCameraOverlay';
 import Navbar from '../components/ui/Navbar';
-
-// ── Shared Diagnostic Panels ──
-const RepairStepPanel = ({ steps }) => (
-  <div className="elite-panel" style={{ marginTop: '16px', background: 'rgba(255,255,255,0.02)' }}>
-    <div style={{ padding: '12px 16px', borderBottom: 'var(--border-thin)', fontSize: '0.65rem', fontWeight: 800, color: 'var(--color-accent)', textTransform: 'uppercase' }}>DIAGNOSTIC_REPAIR_STEPS</div>
-    <div style={{ padding: '16px' }}>
-      {steps.map((step, i) => (
-        <div key={i} style={{ display: 'flex', gap: '12px', marginBottom: i < steps.length - 1 ? '12px' : 0 }}>
-          <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)' }}>0{i+1}</div>
-          <div style={{ fontSize: '0.85rem', color: 'white', lineHeight: 1.5 }}>{step}</div>
-        </div>
-      ))}
-    </div>
-  </div>
-);
-
-const CostAnalysisPanel = ({ estimate }) => (
-  <div className="elite-panel" style={{ marginTop: '16px', background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.1)' }}>
-    <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(16, 185, 129, 0.1)', fontSize: '0.65rem', fontWeight: 800, color: '#10B981', textTransform: 'uppercase' }}>COST_ANALYSIS_PROJECTED</div>
-    <div style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      <div>
-        <div style={{ fontSize: '1.25rem', fontWeight: 800 }}>{estimate}</div>
-        <div style={{ fontSize: '0.65rem', color: '#10B981', fontWeight: 700 }}>ESTIMATED MARKET RATE</div>
-      </div>
-      <CheckCircle2 size={24} color="#10B981" />
-    </div>
-  </div>
-);
 
 export default function ChatBot({ currentTheme, toggleTheme }) {
   const [searchParams] = useSearchParams();
   const manualId = searchParams.get('manual_id');
-  const qrId = searchParams.get('qr_id');
-
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
-  const [isCameraOpen, setIsCameraOpen] = useState(false);
-  const messagesEndRef = useRef(null);
+  const scrollRef = useRef(null);
 
   useEffect(() => {
-    if (manualId || qrId) {
-      const idType = qrId ? 'QR_KEY' : 'MANUAL_ID';
-      const idVal = qrId || manualId;
-      setMessages([{ 
-        role: 'ai', 
-        content: `System ready. Connected via ${idType}:${idVal}. How can I assist with your appliance today?`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      }]);
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [manualId, qrId]);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSend = async (overrideInput) => {
-    const text = overrideInput || input;
-    if (!text.trim() && !imageFile) return;
-
-    const userMsg = { 
-      role: 'user', 
-      content: text, 
-      image: imagePreview,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
+  const handleSend = async () => {
+    if (!input.trim() || !manualId) return;
+    const userMsg = { role: 'user', content: input };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
-    setImageFile(null);
-    setImagePreview(null);
     setLoading(true);
 
     try {
       const response = await axios.post(`${API}/chat`, {
         manual_id: manualId,
-        qr_id: qrId,
-        question: text,
-        image_data: imagePreview
-      }, { withCredentials: true });
-
-      setMessages(prev => [...prev, { 
-        role: 'ai', 
-        content: response.data.answer,
-        repair_steps: response.data.repair_steps,
-        cost_estimate: response.data.cost_estimate,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      }]);
+        question: input,
+        history: messages.slice(-4)
+      });
+      setMessages(prev => [...prev, { role: 'assistant', content: response.data.answer }]);
     } catch (error) {
-      console.error('Chat error:', error);
-      setMessages(prev => [...prev, { role: 'ai', content: "SYSTEM_ERROR: Failed to retrieve data from RAG engine." }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: 'SYSTEM_ERROR: Neural link interrupted.' }]);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ backgroundColor: 'var(--color-bg-base)', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ backgroundColor: 'var(--color-bg-base)', height: '100vh', display: 'flex', flexDirection: 'column', color: 'var(--color-text-primary)', overflow: 'hidden' }}>
       <Navbar activePage="chat" currentTheme={currentTheme} toggleTheme={toggleTheme} />
       
-      <header style={{ padding: '16px 40px', borderBottom: 'var(--border-thin)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-bg-base)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ width: '12px', height: '12px', background: '#10B981', borderRadius: '50%', boxShadow: '0 0 10px #10B981' }} />
-          <div>
-            <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text-primary)' }}>Neural Diagnostic Active</div>
-            <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontWeight: 800 }}>PROBING_INDEX: {manualId || 'GLOBAL_REGISTRY'}</div>
+      {/* ── Terminal Header ── */}
+      <header style={{ padding: '20px 40px', borderBottom: 'var(--border-thin)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-bg-base)', fontFamily: 'monospace' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ width: '8px', height: '8px', background: '#10B981', borderRadius: '50%', boxShadow: '0 0 12px #10B981' }} />
+            <span style={{ fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.15em' }}>LINK_ESTABLISHED_v4.0</span>
+          </div>
+          <div style={{ width: '1px', height: '16px', background: 'var(--color-text-muted)', opacity: 0.3 }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Database size={14} color="var(--color-text-muted)" />
+            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 800 }}>IDX_{manualId?.substring(0,8) || 'GLOBAL'}</span>
           </div>
         </div>
-        <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--color-text-muted)', letterSpacing: '0.1em' }}>RAG_LATENCY: 142MS</div>
+        <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
+          <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)' }}>LATENCY: 142MS</div>
+          <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)' }}>STATUS: OPTIMAL</div>
+        </div>
       </header>
 
-      {/* Message Stream */}
-      <main style={{ flex: 1, overflowY: 'auto', padding: '40px' }}>
-        <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '40px' }}>
+      {/* ── Cinematic Message Stream ── */}
+      <main ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '60px 40px' }}>
+        <div style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '64px' }}>
           <AnimatePresence>
-            {messages.map((msg, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}
-              >
-                <div style={{ 
-                  width: '32px', height: '32px', borderRadius: '4px', flexShrink: 0,
-                  background: msg.role === 'ai' ? 'white' : 'rgba(255,255,255,0.05)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: msg.role === 'ai' ? 'black' : 'white'
-                }}>
-                  {msg.role === 'ai' ? <Cpu size={16} /> : <MessageSquare size={16} />}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{msg.role === 'ai' ? 'System_Agent' : 'Authorized_Operator'}</span>
-                    <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>{msg.timestamp}</span>
+            {messages.length === 0 ? (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ padding: '120px 0', textAlign: 'center' }}>
+                 <div style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--color-accent)', letterSpacing: '0.5em', marginBottom: '40px' }}>AWAITING_SYSTEM_PROBE</div>
+                 <h2 className="heading-elite" style={{ fontSize: '3.5rem', lineHeight: 1, marginBottom: '24px' }}>Neural Diagnostic <br /> Terminal.</h2>
+                 <p style={{ color: 'var(--color-text-dim)', fontSize: '1.2rem', maxWidth: '500px', margin: '0 auto' }}>Submit high-precision diagnostic queries to the grounded RAG network.</p>
+              </motion.div>
+            ) : (
+              messages.map((msg, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--color-text-muted)', letterSpacing: '0.2em', fontFamily: 'monospace' }}>
+                      {msg.role === 'user' ? 'OPERATOR_SIGNAL' : 'SYSTEM_RESPONSE'}
+                    </div>
+                    <div style={{ flex: 1, height: '1px', background: 'var(--color-text-muted)', opacity: 0.1 }} />
                   </div>
-                  {msg.image && <img src={msg.image} alt="User Upload" style={{ maxWidth: '300px', borderRadius: '8px', border: 'var(--border-thin)', marginBottom: '12px' }} />}
-                  <div style={{ fontSize: '0.95rem', color: 'white', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                  <div style={{ 
+                    fontSize: '1.2rem', 
+                    color: msg.role === 'user' ? 'var(--color-text-primary)' : 'var(--color-text-dim)',
+                    lineHeight: 1.6,
+                    fontWeight: msg.role === 'user' ? 600 : 500,
+                    padding: msg.role === 'assistant' ? '40px' : '0',
+                    background: msg.role === 'assistant' ? 'var(--color-bg-elevated)' : 'transparent',
+                    borderRadius: '32px',
+                    border: msg.role === 'assistant' ? 'var(--border-thin)' : 'none',
+                    boxShadow: msg.role === 'assistant' ? '0 10px 40px rgba(0,0,0,0.1)' : 'none'
+                  }}>
                     {msg.content}
                   </div>
-                  {msg.repair_steps && <RepairStepPanel steps={msg.repair_steps} />}
-                  {msg.cost_estimate && <CostAnalysisPanel estimate={msg.cost_estimate} />}
-                </div>
+                </motion.div>
+              ))
+            )}
+            {loading && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <Loader2 className="spinner" size={16} color="var(--color-accent)" />
+                <span style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--color-text-muted)', letterSpacing: '0.2em' }}>SYNTHESIZING_RESPONSE...</span>
               </motion.div>
-            ))}
+            )}
           </AnimatePresence>
-          {loading && (
-            <div style={{ display: 'flex', gap: '24px' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '4px', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'black' }}>
-                <Cpu size={16} />
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text-muted)', fontSize: '0.8rem', fontWeight: 700 }}>
-                <Loader2 className="spinner" size={14} /> PROCESSING_QUERY...
-              </div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
         </div>
       </main>
 
-      {/* Elite Input Console */}
-      <footer style={{ padding: '24px 40px', borderTop: 'var(--border-thin)', background: '#020408' }}>
-        <div style={{ maxWidth: '800px', margin: '0 auto', position: 'relative' }}>
-          {imagePreview && (
-            <div style={{ position: 'absolute', bottom: '100%', left: 0, padding: '16px', background: 'var(--color-bg-elevated)', border: 'var(--border-thin)', borderRadius: '8px 8px 0 0', marginBottom: '-1px' }}>
-              <img src={imagePreview} style={{ height: '60px', borderRadius: '4px' }} />
-              <button onClick={() => { setImageFile(null); setImagePreview(null); }} style={{ position: 'absolute', top: -8, right: -8, background: '#EF4444', border: 'none', color: 'white', borderRadius: '50%', width: '20px', height: '20px' }}><X size={12} /></button>
-            </div>
-          )}
-          <div style={{ display: 'flex', gap: '12px', background: '#0D1117', border: 'var(--border-thin)', borderRadius: '12px', padding: '8px' }}>
-            <div style={{ display: 'flex', gap: '4px' }}>
-               <button onClick={() => setIsCameraOpen(true)} className="btn-elite-ghost" style={{ width: '40px', height: '40px', padding: 0, borderRadius: '8px' }}><Camera size={18} /></button>
-               <button onClick={() => document.getElementById('chat-file').click()} className="btn-elite-ghost" style={{ width: '40px', height: '40px', padding: 0, borderRadius: '8px' }}><ImageIcon size={18} /></button>
-               <input id="chat-file" type="file" hidden onChange={(e) => {
-                 const f = e.target.files[0];
-                 if(f) { setImageFile(f); setImagePreview(URL.createObjectURL(f)); }
-               }} />
+      {/* ── Terminal Input Layer ── */}
+      <footer style={{ padding: '60px 40px', borderTop: 'var(--border-thin)', background: 'var(--color-bg-base)' }}>
+        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+          <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '8px' }}>
+               <button className="btn-elite-ghost" style={{ width: '56px', height: '56px', padding: 0, borderRadius: '18px' }}><Scan size={24} strokeWidth={1.5} /></button>
             </div>
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Enter diagnostic query (e.g. 'Identify filter location')..."
+              placeholder="INITIALIZE_DIAGNOSTIC_QUERY_STRING..."
               className="input-elite"
-              style={{ flex: 1, padding: '18px 24px', borderRadius: '16px' }}
+              style={{ flex: 1, padding: '22px 36px', borderRadius: '100px', fontSize: '1rem', fontWeight: 600, letterSpacing: '0.05em' }}
+              onKeyDown={(e) => { if(e.key === 'Enter') handleSend(); }}
               disabled={loading}
-              onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }}}
             />
-            <button onClick={() => handleSend()} className="btn-elite" style={{ width: '40px', height: '40px', padding: 0, borderRadius: '8px' }} disabled={loading}>
-              <Send size={18} />
-            </button>
+            <motion.button 
+              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+              onClick={handleSend} className="btn-elite" 
+              style={{ width: '56px', height: '56px', padding: 0, borderRadius: '18px' }}
+              disabled={loading}
+            >
+              <ArrowRight size={24} />
+            </motion.button>
           </div>
         </div>
       </footer>
-
-      {isCameraOpen && <LiveCameraOverlay onClose={() => setIsCameraOpen(false)} onIssueDetected={(q) => { setIsCameraOpen(false); handleSend(q); }} manualId={manualId} />}
     </div>
   );
 }
