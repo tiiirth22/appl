@@ -5,6 +5,7 @@ import { Send, Camera, Image as ImageIcon, X, Loader2, Cpu, ArrowLeft, MessageSq
 import { motion, AnimatePresence } from 'motion/react';
 import { API_BASE_URL as API } from '../config';
 import LiveCameraOverlay from '../components/LiveCameraOverlay';
+import Navbar from '../components/ui/Navbar';
 
 // ── Shared Diagnostic Panels ──
 const RepairStepPanel = ({ steps }) => (
