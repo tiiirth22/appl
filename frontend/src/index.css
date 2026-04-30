@@ -1,198 +1,124 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@400;600;700;800&display=swap');
 
-/* ============================================================
-   ApplianceIQ Design System — v2.0
-   Consistent dark-theme palette inspired by Stripe/Vercel/Linear
-   ============================================================ */
+:root {
+  /* ── Solid Premium Palette ── */
+  --color-bg-base: #04070D;
+  --color-bg-elevated: #0B0F1A;
+  --color-bg-panel: #111827;
+  
+  --color-primary: #3B82F6;
+  --color-primary-dim: #1D4ED8;
+  --color-accent: #8B5CF6;
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+  
+  --color-text-bright: #FFFFFF;
+  --color-text-dim: #9CA3AF;
+  --color-text-muted: #4B5563;
+  
+  --border-glass: 1px solid rgba(255, 255, 255, 0.08);
+  --border-active: 1px solid rgba(59, 130, 246, 0.5);
+  
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-    margin: 0;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    background-color: #0B0F1A;
-    color: #F9FAFB;
+  background-color: var(--color-bg-base);
+  color: var(--color-text-bright);
+  font-family: 'Inter', sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
-code {
-    font-family: 'JetBrains Mono', source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
+/* ── Typography ── */
+.heading-premium {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--color-text-bright);
 }
 
-@layer base {
-    :root {
-        /* Core palette */
-        --color-bg-base: #0B0F1A;
-        --color-bg-surface: #111827;
-        --color-bg-elevated: #1F2937;
-        --color-bg-hover: #263244;
-
-        /* Accent */
-        --color-primary: #3B82F6;
-        --color-primary-hover: #2563EB;
-        --color-primary-glow: rgba(59, 130, 246, 0.15);
-
-        /* Text hierarchy */
-        --color-text-primary: #F9FAFB;
-        --color-text-secondary: #9CA3AF;
-        --color-text-muted: #6B7280;
-
-        /* Borders */
-        --color-border: rgba(255, 255, 255, 0.08);
-        --color-border-hover: rgba(255, 255, 255, 0.15);
-
-        /* Semantic */
-        --color-success: #10B981;
-        --color-warning: #F59E0B;
-        --color-error: #EF4444;
-
-        /* Spacing scale: 4, 8, 16, 24, 32 */
-        --space-1: 4px;
-        --space-2: 8px;
-        --space-3: 16px;
-        --space-4: 24px;
-        --space-5: 32px;
-
-        /* Radius */
-        --radius-sm: 8px;
-        --radius-md: 12px;
-        --radius-lg: 16px;
-        --radius-xl: 24px;
-        --radius-full: 9999px;
-
-        /* Shadows */
-        --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.15);
-        --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.2);
-        --shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.3);
-        --shadow-glow: 0 0 30px rgba(59, 130, 246, 0.15);
-
-        /* Transitions */
-        --transition-fast: 150ms ease-in-out;
-        --transition-base: 200ms ease-in-out;
-        --transition-slow: 300ms ease-in-out;
-
-        /* shadcn/ui variables */
-        --background: 222 47% 7%;
-        --foreground: 210 40% 98%;
-        --card: 220 39% 10%;
-        --card-foreground: 210 40% 98%;
-        --popover: 220 39% 10%;
-        --popover-foreground: 210 40% 98%;
-        --primary: 217 91% 60%;
-        --primary-foreground: 222 47% 7%;
-        --secondary: 217 32% 17%;
-        --secondary-foreground: 210 40% 98%;
-        --muted: 217 32% 17%;
-        --muted-foreground: 215 20% 65%;
-        --accent: 217 32% 17%;
-        --accent-foreground: 210 40% 98%;
-        --destructive: 0 62.8% 30.6%;
-        --destructive-foreground: 210 40% 98%;
-        --border: 217 32% 17%;
-        --input: 217 32% 17%;
-        --ring: 224 76% 48%;
-        --radius: 0.75rem;
-    }
+/* ── Components (Solid Overhaul) ── */
+.glass-panel {
+  background-color: var(--color-bg-panel);
+  border: var(--border-glass);
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
 }
 
-@layer base {
-    * {
-        @apply border-border;
-    }
-
-    body {
-        @apply bg-background text-foreground;
-        overflow-x: hidden;
-    }
+.btn-premium {
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
-/* ============================================================
-   Scrollbar
-   ============================================================ */
-::-webkit-scrollbar {
-    width: 6px;
-}
-::-webkit-scrollbar-track {
-    background: transparent;
-}
-::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.08);
-    border-radius: 10px;
-}
-::-webkit-scrollbar-thumb:hover {
-    background: rgba(59, 130, 246, 0.2);
+.btn-premium:hover {
+  background-color: var(--color-primary-dim);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
 }
 
-/* ============================================================
-   Animations
-   ============================================================ */
-@keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+.input-premium {
+  width: 100%;
+  background-color: var(--color-bg-base);
+  border: var(--border-glass);
+  color: var(--color-text-bright);
+  padding: 14px 18px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  transition: all 0.2s;
 }
 
-@keyframes fadeInUp {
-    from { opacity: 0; transform: translateY(16px); }
-    to { opacity: 1; transform: translateY(0); }
+.input-premium:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  background-color: rgba(59, 130, 246, 0.05);
 }
 
-@keyframes shimmer {
-    0% { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
+/* ── Messaging (Solid) ── */
+.message-bubble {
+  max-width: 80%;
+  padding: 16px 20px;
+  border-radius: 20px;
+  font-size: 0.95rem;
+  line-height: 1.6;
 }
 
-@keyframes pulse-glow {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
-    50% { box-shadow: 0 0 20px 4px rgba(59, 130, 246, 0.15); }
+.message-user {
+  background-color: var(--color-primary);
+  color: white;
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
 }
 
-.spinner {
-    animation: spin 1s linear infinite;
+.message-ai {
+  background-color: var(--color-bg-panel);
+  border: var(--border-glass);
+  color: var(--color-text-bright);
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
 }
 
-.animate-fade-in-up {
-    animation: fadeInUp 0.5s ease-out forwards;
-}
+/* ── Animations ── */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.animate-reveal { animation: fadeIn 0.6s ease-out forwards; }
 
-/* ============================================================
-   Glass Card — shared surface style
-   ============================================================ */
-.glass-surface {
-    background: var(--color-bg-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    transition: border-color var(--transition-base),
-                box-shadow var(--transition-base),
-                transform var(--transition-base);
-}
-
-.glass-surface:hover {
-    border-color: var(--color-border-hover);
-    box-shadow: var(--shadow-md);
-}
-
-.glass-surface-elevated {
-    background: var(--color-bg-elevated);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-}
-
-/* ============================================================
-   Gradient Text Utility
-   ============================================================ */
-.gradient-text {
-    background: linear-gradient(135deg, #3B82F6, #2563EB, #60A5FA);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-.gradient-text-glow {
-    background: linear-gradient(135deg, #3B82F6 0%, #818CF8 50%, #3B82F6 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    background-size: 200% auto;
-    animation: shimmer 3s linear infinite;
+.page-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 40px 24px;
 }
