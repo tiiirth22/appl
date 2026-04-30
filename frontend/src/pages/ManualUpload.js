@@ -34,35 +34,35 @@ export default function ManualUpload({ currentTheme, toggleTheme }) {
 
     setUploading(true);
     setStatus('uploading');
-    addLog('Starting multi-part upload...');
+    addLog('PROC: UPLOAD_PROTOCOL_INITIATED | MULTIPART_MODE');
     
     const formData = new FormData();
     formData.append('file', file);
     formData.append('model_name', modelName);
 
     try {
-      addLog('Stream established. Transferring bits...');
+      addLog('PROC: DATA_STREAM_ESTABLISHED | SYNCHRONIZING_PAYLOAD');
       const response = await axios.post(`${API}/manuals/upload`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         withCredentials: true
       });
       
       setStatus('parsing');
-      addLog('Upload complete. Initializing RAG pipeline...');
+      addLog('INIT: RAG_PIPELINE_ORCHESTRATION | CHUNKING_SOURCE');
       
       setTimeout(() => {
-        addLog('OCR chunking complete. Vectorizing indices...');
+        addLog('INIT: VECTOR_INDEX_SYNCHRONIZATION | EMBEDDING_V3');
       }, 1000);
 
       setTimeout(() => {
         setStatus('success');
-        addLog('Resource synchronized to global registry.');
+        addLog('DONE: RESOURCE_INDEX_SYNCHRONIZED');
         setTimeout(() => navigate('/dashboard'), 1500);
       }, 3000);
 
     } catch (error) {
       setStatus('error');
-      addLog('CRITICAL_FAILURE: Connection refused by indexer.');
+      addLog('FAIL: INDEXER_CONNECTION_REFUSED | RETRY_COOLDOWN_ACTIVE');
       setUploading(false);
     }
   };
