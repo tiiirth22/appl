@@ -107,9 +107,9 @@ class ONNXEmbeddingModel:
             outputs = self.session.run(
                 None,
                 {
-                    "input_ids": input_ids,
-                    "attention_mask": attention_mask,
-                    "token_type_ids": token_type_ids,
+                    "input_ids": input_ids.astype(np.int64),
+                    "attention_mask": attention_mask.astype(np.int64),
+                    "token_type_ids": token_type_ids.astype(np.int64),
                 },
             )
 
