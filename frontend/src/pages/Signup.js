@@ -1,124 +1,130 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Eye, EyeOff, ArrowLeft, Loader2, Mail, Lock, User, Briefcase, Cpu } from 'lucide-react';
+import { Cpu, Loader2, ArrowRight, QrCode, Database, Layers, CheckCircle2 } from 'lucide-react';
 import { API_BASE_URL as API } from '../config';
 
-export default function Signup({ onLogin }) {
-  const [formData, setFormData] = useState({
-    name: '', email: '', password: '', confirmPassword: '', role: 'business_owner'
-  });
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+export default function Signup() {
+  const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'business_owner' });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
-
   const handleSubmit = async (e) => {
-    if (e) e.preventDefault();
+    e.preventDefault();
     setLoading(true);
-    setError('');
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      setLoading(false);
-      return;
-    }
     try {
-      const signupData = { name: formData.name, email: formData.email, password: formData.password, role: formData.role };
-      const response = await axios.post(`${API}/auth/signup`, signupData);
-      const { session_token, user } = response.data;
-      onLogin(user, session_token);
-      navigate('/dashboard');
+      await axios.post(`${API}/auth/signup`, formData);
+      alert('Account initialized. Please sign in.');
+      navigate('/login');
     } catch (error) {
-      const detail = error.response?.data?.detail || error.response?.data || error.message;
-      setError(detail || 'Registration failed');
-    } finally { setLoading(false); }
+      console.error('Signup error:', error);
+      alert('Signup failed: ' + (error.response?.data?.detail || 'Check your details'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="page-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
-      <Link to="/" style={{ position: 'absolute', top: '40px', left: '40px', color: 'var(--color-text-dim)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem' }}>
-        <ArrowLeft size={16} /> Back to Home
-      </Link>
-
-      <div className="glass-panel animate-reveal" style={{ width: '100%', maxWidth: '600px', padding: '48px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-          <div style={{ width: '56px', height: '56px', background: 'var(--color-success)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', margin: '0 auto 24px' }}>
-            <Cpu size={28} />
-          </div>
-          <h1 className="heading-premium" style={{ fontSize: '2rem', marginBottom: '8px' }}>Create Account</h1>
-          <p style={{ color: 'var(--color-text-dim)', fontSize: '0.95rem' }}>Join the network for appliance intelligence</p>
-        </div>
-
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {error && (
-            <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#F87171', padding: '12px', borderRadius: '12px', fontSize: '0.85rem' }}>
-              {error}
+    <div style={{ backgroundColor: 'var(--color-bg-base)', minHeight: '100vh', display: 'flex' }}>
+      {/* ── Left Side: Form ── */}
+      <div style={{ flex: '1', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px' }}>
+        <div className="animate-elite" style={{ width: '100%', maxWidth: '440px' }}>
+          <Link to="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '12px', marginBottom: '64px' }}>
+            <div style={{ width: '32px', height: '32px', background: 'white', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'black' }}>
+              <Cpu size={18} />
             </div>
-          )}
+            <span className="heading-elite" style={{ fontSize: '1.1rem', color: 'white' }}>ApplianceIQ</span>
+          </Link>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>Full Name</label>
-              <div style={{ position: 'relative' }}>
-                <User size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-                <input name="name" type="text" className="input-premium" style={{ paddingLeft: '48px' }} placeholder="John Doe" onChange={handleChange} required />
-              </div>
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>Email</label>
-              <div style={{ position: 'relative' }}>
-                <Mail size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-                <input name="email" type="email" className="input-premium" style={{ paddingLeft: '48px' }} placeholder="john@company.com" onChange={handleChange} required />
-              </div>
-            </div>
+          <div style={{ marginBottom: '40px' }}>
+            <h1 className="heading-elite" style={{ fontSize: '2.5rem', marginBottom: '12px' }}>Initialize.</h1>
+            <p style={{ color: 'var(--color-text-dim)', fontSize: '1rem', lineHeight: 1.5 }}>Create your operator identity to start indexing your hardware knowledge.</p>
           </div>
 
-          <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>Account Type</label>
-            <div style={{ position: 'relative' }}>
-              <Briefcase size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-              <select name="role" className="input-premium" style={{ paddingLeft: '48px' }} onChange={handleChange}>
-                <option value="business_owner">Business Owner / Merchant</option>
-                <option value="admin">System Administrator</option>
-              </select>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Full Identity</label>
+              <input
+                type="text"
+                className="input-elite"
+                placeholder="John Doe"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                required
+              />
             </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>Password</label>
-              <div style={{ position: 'relative' }}>
-                <Lock size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-                <input name="password" type={showPassword ? 'text' : 'password'} className="input-premium" style={{ paddingLeft: '48px', paddingRight: '48px' }} placeholder="••••••••" onChange={handleChange} required />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}>
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Work Email</label>
+              <input
+                type="email"
+                className="input-elite"
+                placeholder="name@company.com"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                required
+              />
             </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>Confirm</label>
-              <div style={{ position: 'relative' }}>
-                <Lock size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-                <input name="confirmPassword" type={showConfirmPassword ? 'text' : 'password'} className="input-premium" style={{ paddingLeft: '48px', paddingRight: '48px' }} placeholder="••••••••" onChange={handleChange} required />
-                <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}>
-                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Access Key (Min 8 chars)</label>
+              <input
+                type="password"
+                className="input-elite"
+                placeholder="••••••••"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                required
+              />
             </div>
-          </div>
+            
+            <button type="submit" className="btn-elite" style={{ width: '100%', padding: '16px', marginTop: '12px' }} disabled={loading}>
+              {loading ? 'Initializing Profile...' : 'Initialize Account'} <ArrowRight size={16} />
+            </button>
+          </form>
 
-          <button type="submit" className="btn-premium" style={{ width: '100%', padding: '16px', background: 'var(--color-success)' }} disabled={loading}>
-            {loading ? <><Loader2 className="spinner" size={20} /> Creating Account...</> : 'Create Account'}
-          </button>
-        </form>
-
-        <div style={{ marginTop: '32px', textAlign: 'center', paddingTop: '24px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-          <p style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>
-            Already have an account? <Link to="/login" style={{ color: 'var(--color-primary)', textDecoration: 'none', fontWeight: 600 }}>Sign in</Link>
+          <p style={{ marginTop: '40px', textAlign: 'center', color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>
+            Already registered? <Link to="/login" style={{ color: 'white', textDecoration: 'none', fontWeight: 700 }}>Access console</Link>
           </p>
+        </div>
+      </div>
+
+      {/* ── Right Side: Impact Panel ── */}
+      <div style={{ flex: '1.2', background: '#080A0F', borderLeft: 'var(--border-thin)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', inset: 0, opacity: 0.05, backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '40px 40px' }} />
+        
+        <div style={{ position: 'relative', zIndex: 1, maxWidth: '500px', padding: '60px' }}>
+          <div className="elite-panel" style={{ padding: '40px', background: 'rgba(2, 4, 8, 0.5)', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '32px' }}>
+              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#EF4444' }} />
+              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#F59E0B' }} />
+              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10B981' }} />
+            </div>
+            
+            <div style={{ marginBottom: '40px' }}>
+              <div style={{ color: 'var(--color-accent)', fontWeight: 800, fontSize: '0.65rem', marginBottom: '12px', letterSpacing: '0.1em' }}>GLOBAL_DEPLOYMENT_STACK</div>
+              <h2 className="heading-elite" style={{ fontSize: '1.75rem', marginBottom: '16px' }}>Physical-to-Digital.</h2>
+              <p style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem', lineHeight: 1.6 }}>
+                Every manual you upload becomes a unique RAG-node accessible via custom QR deployments.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {[
+                { icon: <QrCode size={16} />, text: 'One-click QR code generation.' },
+                { icon: <Database size={16} />, text: 'Automated Pinecone vector indexing.' },
+                { icon: <Layers size={16} />, text: 'Multi-tenant role-based governance.' }
+              ].map((item, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px', background: 'rgba(255,255,255,0.02)', border: 'var(--border-thin)', borderRadius: '8px' }}>
+                  <div style={{ color: 'var(--color-accent)' }}>{item.icon}</div>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'white' }}>{item.text}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ marginTop: '40px', padding: '0 20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <CheckCircle2 size={20} color="#10B981" />
+            <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Join 1,400+ operators managing appliance intelligence.</span>
+          </div>
         </div>
       </div>
     </div>
