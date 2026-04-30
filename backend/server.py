@@ -101,11 +101,11 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
 # MongoDB configuration
-mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
+mongo_url = os.environ.get('MONGO_URL', 'mongodb://127.0.0.1:27017')
 db_name = os.environ.get('DB_NAME', 'applianceiq_db')
 
 # ML Service configuration
-ml_service_url = os.environ.get('ML_SERVICE_URL', 'http://localhost:8001')
+ml_service_url = os.environ.get('ML_SERVICE_URL', 'http://127.0.0.1:8001')
 ingestion_service_url = os.environ.get('INGESTION_SERVICE_URL', ml_service_url)
 
 # Global clients
