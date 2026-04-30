@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Cpu, Loader2, ArrowRight, QrCode, Database, Layers, CheckCircle2, Shield } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Cpu, Loader2, ArrowRight, QrCode, Database, Layers, CheckCircle2, Shield, User, Mail, Lock } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { API_BASE_URL as API } from '../config';
 
 export default function Signup(props) {
@@ -33,131 +34,108 @@ export default function Signup(props) {
   };
 
   return (
-    <div style={{ backgroundColor: 'var(--color-bg-base)', minHeight: '100vh', display: 'flex' }}>
-      {/* ── Left Side: Form ── */}
-      <div style={{ flex: '1', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px' }}>
-        <div className="animate-elite" style={{ width: '100%', maxWidth: '440px' }}>
-          <Link to="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '12px', marginBottom: '64px' }}>
-            <div style={{ width: '32px', height: '32px', background: 'white', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'black' }}>
-              <Cpu size={18} />
-            </div>
-            <span className="heading-elite" style={{ fontSize: '1.1rem', color: 'white' }}>ApplianceIQ</span>
-          </Link>
+    <div style={{ backgroundColor: 'var(--color-bg-base)', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px' }}>
+      <div className="bg-aura" />
+      
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+        className="elite-panel"
+        style={{ width: '100%', maxWidth: '560px', padding: '64px', borderRadius: '32px', background: 'var(--color-bg-elevated)', border: 'var(--border-thin)', boxShadow: '0 40px 120px rgba(0,0,0,0.5)' }}
+      >
+        <header style={{ textAlign: 'center', marginBottom: '48px' }}>
+          <div style={{ 
+            width: '48px', height: '48px', background: 'var(--color-text-primary)', borderRadius: '14px', 
+            display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-bg-base)',
+            margin: '0 auto 24px'
+          }}>
+            <Cpu size={24} />
+          </div>
+          <h1 className="heading-elite" style={{ fontSize: '2rem', marginBottom: '8px' }}>Operator Onboarding.</h1>
+          <p style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem', fontWeight: 500 }}>Join the ApplianceIQ network.</p>
+        </header>
 
-          <div style={{ marginBottom: '40px' }}>
-            <h1 className="heading-elite" style={{ fontSize: '2.5rem', marginBottom: '12px' }}>Initialize.</h1>
-            <p style={{ color: 'var(--color-text-dim)', fontSize: '1rem', lineHeight: 1.5 }}>Select your operational role and create your identity.</p>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div style={{ position: 'relative' }}>
+            <User style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} size={16} />
+            <input 
+              type="text" 
+              placeholder="Full Name" 
+              className="input-elite" 
+              style={{ width: '100%', padding: '16px 16px 16px 48px', borderRadius: '14px' }}
+              value={formData.name}
+              onChange={(e) => setFormData({...formData, name: e.target.value})}
+              required
+            />
           </div>
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            {/* Role Selection */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Operational Role</label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, role: 'business_owner' })}
-                  className={formData.role === 'business_owner' ? 'btn-elite' : 'btn-elite-ghost'}
-                  style={{ padding: '12px', fontSize: '0.7rem' }}
-                >
-                  Business Owner
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, role: 'admin' })}
-                  className={formData.role === 'admin' ? 'btn-elite' : 'btn-elite-ghost'}
-                  style={{ padding: '12px', fontSize: '0.7rem' }}
-                >
-                   System Admin
-                </button>
-              </div>
-            </div>
+          <div style={{ position: 'relative' }}>
+            <Mail style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} size={16} />
+            <input 
+              type="email" 
+              placeholder="System Email" 
+              className="input-elite" 
+              style={{ width: '100%', padding: '16px 16px 16px 48px', borderRadius: '14px' }}
+              value={formData.email}
+              onChange={(e) => setFormData({...formData, email: e.target.value})}
+              required
+            />
+          </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Full Identity</label>
-              <input
-                type="text"
-                className="input-elite"
-                placeholder="John Doe"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                required
-              />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Work Email</label>
-              <input
-                type="email"
-                className="input-elite"
-                placeholder="name@company.com"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                required
-              />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Access Key</label>
-              <input
-                type="password"
-                className="input-elite"
-                placeholder="••••••••"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                required
-              />
-            </div>
-            
-            <button type="submit" className="btn-elite" style={{ width: '100%', padding: '16px', marginTop: '12px' }} disabled={loading}>
-              {loading ? 'Initializing Profile...' : 'Initialize Account'} <ArrowRight size={16} />
-            </button>
-          </form>
+          <div style={{ position: 'relative' }}>
+            <Lock style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} size={16} />
+            <input 
+              type="password" 
+              placeholder="Access Key" 
+              className="input-elite" 
+              style={{ width: '100%', padding: '16px 16px 16px 48px', borderRadius: '14px' }}
+              value={formData.password}
+              onChange={(e) => setFormData({...formData, password: e.target.value})}
+              required
+            />
+          </div>
 
-          <p style={{ marginTop: '40px', textAlign: 'center', color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>
-            Already registered? <Link to="/login" style={{ color: 'white', textDecoration: 'none', fontWeight: 700 }}>Access console</Link>
+          {/* Designer Role Toggle */}
+          <div style={{ background: 'rgba(255,255,255,0.02)', padding: '6px', borderRadius: '14px', border: 'var(--border-thin)', display: 'flex', gap: '4px' }}>
+            {[
+              { id: 'business_owner', label: 'Business Owner' },
+              { id: 'admin', label: 'System Admin' }
+            ].map(role => (
+              <button 
+                key={role.id}
+                type="button"
+                onClick={() => setFormData({...formData, role: role.id})}
+                style={{ 
+                  flex: 1, padding: '12px', border: 'none', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer',
+                  background: formData.role === role.id ? 'var(--color-text-primary)' : 'transparent',
+                  color: formData.role === role.id ? 'var(--color-bg-base)' : 'var(--color-text-dim)',
+                  transition: 'var(--transition-smooth)'
+                }}
+              >
+                {role.label}
+              </button>
+            ))}
+          </div>
+
+          <motion.button 
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            type="submit" 
+            className="btn-elite" 
+            style={{ width: '100%', padding: '18px', borderRadius: '14px' }}
+            disabled={loading}
+          >
+            {loading ? <Loader2 className="spinner" size={20} /> : <>Initialize Account <ArrowRight size={18} /></>}
+          </motion.button>
+        </form>
+
+        <footer style={{ marginTop: '48px', textAlign: 'center' }}>
+          <p style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>
+            Already registered? <Link to="/login" style={{ color: 'var(--color-text-primary)', fontWeight: 700, textDecoration: 'none' }}>Access Portal</Link>
           </p>
-        </div>
-      </div>
-
-      {/* ── Right Side: Impact Panel ── */}
-      <div style={{ flex: '1.2', background: '#080A0F', borderLeft: 'var(--border-thin)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', inset: 0, opacity: 0.05, backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '40px 40px' }} />
-        
-        <div style={{ position: 'relative', zIndex: 1, maxWidth: '500px', padding: '60px' }}>
-          <div className="elite-panel" style={{ padding: '40px', background: 'rgba(2, 4, 8, 0.5)', border: '1px solid rgba(255,255,255,0.1)' }}>
-            <div style={{ display: 'flex', gap: '12px', marginBottom: '32px' }}>
-              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#EF4444' }} />
-              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#F59E0B' }} />
-              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10B981' }} />
-            </div>
-            
-            <div style={{ marginBottom: '40px' }}>
-              <div style={{ color: 'var(--color-accent)', fontWeight: 800, fontSize: '0.65rem', marginBottom: '12px', letterSpacing: '0.1em' }}>MULTI_TENANT_GOVERNANCE</div>
-              <h2 className="heading-elite" style={{ fontSize: '1.75rem', marginBottom: '16px' }}>Role-Based Control.</h2>
-              <p style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem', lineHeight: 1.6 }}>
-                Whether you're managing a single business or an entire platform, our governance-first architecture scale with you.
-              </p>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {[
-                { icon: <Shield size={16} />, text: 'Superuser oversight for Platform Admins.' },
-                { icon: <QrCode size={16} />, text: 'Resource management for Business Owners.' },
-                { icon: <Database size={16} />, text: 'Secure, isolated data environments.' }
-              ].map((item, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px', background: 'rgba(255,255,255,0.02)', border: 'var(--border-thin)', borderRadius: '8px' }}>
-                  <div style={{ color: 'var(--color-accent)' }}>{item.icon}</div>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'white' }}>{item.text}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ marginTop: '40px', padding: '0 20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <CheckCircle2 size={20} color="#10B981" />
-            <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Join 1,400+ operators managing appliance intelligence.</span>
-          </div>
-        </div>
-      </div>
+        </footer>
+      </motion.div>
     </div>
   );
 }
