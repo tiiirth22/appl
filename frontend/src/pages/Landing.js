@@ -20,19 +20,19 @@ export default function Landing({ currentTheme, toggleTheme }) {
             style={{ maxWidth: '1000px', margin: '0 auto' }}
           >
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 16px', background: 'rgba(255,255,255,0.03)', border: 'var(--border-thin)', borderRadius: '100px', marginBottom: '40px' }}>
-              <span style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.15em' }}>Unified Diagnostic Ecosystem v4.0</span>
+              <span style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.15em' }}>Retrieval-Augmented Intelligence v4.0</span>
             </div>
             
             <h1 className="heading-elite" style={{ fontSize: '6rem', lineHeight: 0.85, marginBottom: '40px', letterSpacing: '-0.05em' }}>
-              Operational <br /> Intelligence.
+              Diagnostic <br /> Sovereignty.
             </h1>
-            <p style={{ fontSize: '1.4rem', color: 'var(--color-text-dim)', maxWidth: '700px', margin: '0 auto 64px', lineHeight: 1.5, fontWeight: 500 }}>
-              The high-performance RAG gateway for technical engineering and precision diagnostics.
+            <p style={{ fontSize: '1.4rem', color: 'var(--color-text-dim)', maxWidth: '750px', margin: '0 auto 64px', lineHeight: 1.5, fontWeight: 500 }}>
+              The high-performance RAG gateway that transforms static appliance manuals into interactive, context-aware diagnostic intelligence.
             </p>
             
             <div style={{ display: 'flex', gap: '20px', justifyContent: 'center' }}>
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                <Link to="/signup" className="btn-elite" style={{ padding: '20px 48px', fontSize: '1rem', borderRadius: '14px' }}>Get Started <ArrowRight size={20} style={{ marginLeft: '8px' }} /></Link>
+                <Link to="/signup" className="btn-elite" style={{ padding: '20px 48px', fontSize: '1rem', borderRadius: '14px' }}>Initialize Platform <ArrowRight size={20} style={{ marginLeft: '8px' }} /></Link>
               </motion.div>
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                 <a href="#vision" className="btn-elite-ghost" style={{ padding: '20px 48px', fontSize: '1rem', borderRadius: '14px' }}>System Architecture</a>
@@ -41,25 +41,25 @@ export default function Landing({ currentTheme, toggleTheme }) {
           </motion.div>
         </section>
 
-        {/* ── Architecture Showcase ── */}
+        {/* ── Technical Showcase ── */}
         <section id="vision" style={{ padding: '120px 40px', borderTop: 'var(--border-thin)' }}>
           <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '40px' }}>
               {[
                 { 
                   icon: <Chip size={28} />, 
-                  title: 'Vector Intelligence', 
-                  desc: 'Pinecone-powered RAG core with semantic grounding across entire resource registries.' 
+                  title: 'Vector Grounding', 
+                  desc: 'Eliminate AI hallucinations. Every response is semantically anchored to your technical documentation via high-dimensional vector search.' 
                 },
                 { 
                   icon: <Globe size={28} />, 
-                  title: 'Edge Deployment', 
-                  desc: 'Instant diagnostic access via unique cryptographic QR identifiers for physical devices.' 
+                  title: 'Edge Integration', 
+                  desc: 'Deploy diagnostic nodes instantly. Cryptographic QR identifiers provide unauthenticated, zero-friction access at the physical point of failure.' 
                 },
                 { 
                   icon: <Lock size={28} />, 
-                  title: 'Zero Trust Auth', 
-                  desc: 'Multi-tenant role-based isolation with encrypted diagnostic auditing protocols.' 
+                  title: 'RBAC Infrastructure', 
+                  desc: 'Secure multi-tenant management. Sophisticated role-based access control for Admins and Business Operators.' 
                 }
               ].map((feature, i) => (
                 <motion.div 
@@ -85,22 +85,22 @@ export default function Landing({ currentTheme, toggleTheme }) {
           </div>
         </section>
 
-        {/* ── Technical Specs ── */}
+        {/* ── Ingestion Pipeline ── */}
         <section style={{ padding: '160px 40px', background: 'var(--color-bg-elevated)', borderTop: 'var(--border-thin)' }}>
           <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '100px', alignItems: 'center' }}>
             <div>
-              <h2 className="heading-elite" style={{ fontSize: '4rem', lineHeight: 1, marginBottom: '32px' }}>Built for <br /> Scale.</h2>
+              <h2 className="heading-elite" style={{ fontSize: '4rem', lineHeight: 1, marginBottom: '32px' }}>Neural <br /> Ingestion.</h2>
               <p style={{ color: 'var(--color-text-dim)', fontSize: '1.2rem', lineHeight: 1.6, marginBottom: '48px' }}>
-                A performance-tuned Python backbone merging Llama 3.1 LLM core with a lightning-fast vector indexing pipeline.
+                Advanced OCR processing powered by Gemini 1.5 Flash Vision. Transform technical PDFs and visual schema into queryable knowledge in seconds.
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
                 <div>
                    <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-text-primary)' }}>142ms</div>
-                   <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 800 }}>AVG LATENCY</div>
+                   <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 800 }}>RETRIEVAL LATENCY</div>
                 </div>
                 <div>
-                   <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-text-primary)' }}>99.9%</div>
-                   <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 800 }}>UPTIME SLA</div>
+                   <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-text-primary)' }}>95.8%</div>
+                   <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 800 }}>OCR ACCURACY</div>
                 </div>
               </div>
             </div>
@@ -119,7 +119,7 @@ export default function Landing({ currentTheme, toggleTheme }) {
       </main>
       
       <footer style={{ padding: '120px 40px', textAlign: 'center', borderTop: 'var(--border-thin)' }}>
-        <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.2em' }}>© 2026 ApplianceIQ Precision Infrastructure. ISO-27001 Certified.</p>
+        <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.2em' }}>© 2026 ApplianceIQ Operations. Proprietary RAG Infrastructure.</p>
       </footer>
     </div>
   );
