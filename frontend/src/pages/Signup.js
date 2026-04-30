@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Cpu, Loader2, ArrowRight, QrCode, Database, Layers, CheckCircle2 } from 'lucide-react';
+import { Cpu, Loader2, ArrowRight, QrCode, Database, Layers, CheckCircle2, Shield } from 'lucide-react';
 import { API_BASE_URL as API } from '../config';
 
 export default function Signup() {
@@ -38,10 +38,33 @@ export default function Signup() {
 
           <div style={{ marginBottom: '40px' }}>
             <h1 className="heading-elite" style={{ fontSize: '2.5rem', marginBottom: '12px' }}>Initialize.</h1>
-            <p style={{ color: 'var(--color-text-dim)', fontSize: '1rem', lineHeight: 1.5 }}>Create your operator identity to start indexing your hardware knowledge.</p>
+            <p style={{ color: 'var(--color-text-dim)', fontSize: '1rem', lineHeight: 1.5 }}>Select your operational role and create your identity.</p>
           </div>
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Role Selection */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Operational Role</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, role: 'business_owner' })}
+                  className={formData.role === 'business_owner' ? 'btn-elite' : 'btn-elite-ghost'}
+                  style={{ padding: '12px', fontSize: '0.7rem' }}
+                >
+                  Business Owner
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, role: 'admin' })}
+                  className={formData.role === 'admin' ? 'btn-elite' : 'btn-elite-ghost'}
+                  style={{ padding: '12px', fontSize: '0.7rem' }}
+                >
+                   System Admin
+                </button>
+              </div>
+            </div>
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Full Identity</label>
               <input
@@ -65,7 +88,7 @@ export default function Signup() {
               />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Access Key (Min 8 chars)</label>
+              <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Access Key</label>
               <input
                 type="password"
                 className="input-elite"
@@ -100,18 +123,18 @@ export default function Signup() {
             </div>
             
             <div style={{ marginBottom: '40px' }}>
-              <div style={{ color: 'var(--color-accent)', fontWeight: 800, fontSize: '0.65rem', marginBottom: '12px', letterSpacing: '0.1em' }}>GLOBAL_DEPLOYMENT_STACK</div>
-              <h2 className="heading-elite" style={{ fontSize: '1.75rem', marginBottom: '16px' }}>Physical-to-Digital.</h2>
+              <div style={{ color: 'var(--color-accent)', fontWeight: 800, fontSize: '0.65rem', marginBottom: '12px', letterSpacing: '0.1em' }}>MULTI_TENANT_GOVERNANCE</div>
+              <h2 className="heading-elite" style={{ fontSize: '1.75rem', marginBottom: '16px' }}>Role-Based Control.</h2>
               <p style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem', lineHeight: 1.6 }}>
-                Every manual you upload becomes a unique RAG-node accessible via custom QR deployments.
+                Whether you're managing a single business or an entire platform, our governance-first architecture scale with you.
               </p>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {[
-                { icon: <QrCode size={16} />, text: 'One-click QR code generation.' },
-                { icon: <Database size={16} />, text: 'Automated Pinecone vector indexing.' },
-                { icon: <Layers size={16} />, text: 'Multi-tenant role-based governance.' }
+                { icon: <Shield size={16} />, text: 'Superuser oversight for Platform Admins.' },
+                { icon: <QrCode size={16} />, text: 'Resource management for Business Owners.' },
+                { icon: <Database size={16} />, text: 'Secure, isolated data environments.' }
               ].map((item, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px', background: 'rgba(255,255,255,0.02)', border: 'var(--border-thin)', borderRadius: '8px' }}>
                   <div style={{ color: 'var(--color-accent)' }}>{item.icon}</div>
