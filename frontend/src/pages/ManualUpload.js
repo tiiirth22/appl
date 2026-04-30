@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import Navbar from '../components/ui/Navbar';
 import { API_BASE_URL as API } from '../config';
 
-export default function ManualUpload({ user, onLogout }) {
+export default function ManualUpload({ user, onLogout, currentTheme, toggleTheme }) {
   const [file, setFile] = useState(null);
   const [metadata, setMetadata] = useState({ model_name: '', version: '', region: 'Global' });
   const [uploading, setUploading] = useState(false);
@@ -48,7 +48,13 @@ export default function ManualUpload({ user, onLogout }) {
 
   return (
     <div style={{ backgroundColor: 'var(--color-bg-base)', minHeight: '100vh' }}>
-      <Navbar user={user} onLogout={onLogout} activePage="upload" />
+      <Navbar 
+        user={user} 
+        onLogout={onLogout} 
+        activePage="upload" 
+        currentTheme={currentTheme}
+        toggleTheme={toggleTheme}
+      />
 
       <main style={{ maxWidth: '1000px', margin: '0 auto', padding: '60px 40px' }}>
         <button onClick={() => navigate(-1)} style={{ background: 'transparent', border: 'none', color: 'var(--color-text-dim)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', fontWeight: 700, marginBottom: '40px' }}>
