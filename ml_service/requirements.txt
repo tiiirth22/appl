@@ -9,6 +9,7 @@ python-multipart>=0.0.9
 httpx>=0.25.0
 
 # ─── ONNX Runtime (replaces PyTorch at runtime) ──────────────────────
+onnx>=1.15.0
 onnxruntime>=1.17.0
 transformers>=4.38.0
 tokenizers>=0.15.0
