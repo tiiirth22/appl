@@ -1,0 +1,15 @@
+[33m5720361[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m build: add v2 startup script for unified architecture
+[33m0ad30ff[m build: update docker-compose to 2-service architecture
+[33me09d465[m build(ml_service): add multi-stage Dockerfile with ONNX optimization
+[33m9517594[m build(ml_service): add runtime requirements (ONNX-optimized)
+[33m7ebca0b[m feat(ml_service): add unified FastAPI server with all endpoints
+[33m2193355[m feat(ml_service): add RAG query engine (merged from chat_service)
+[33m35f49d9[m feat(ml_service): add unified document processor (merged from ingestion_service)
+[33m336e7e8[m feat(ml_service): add lightweight observability metrics module
+[33m16c14b5[m feat(ml_service): add dynamic embedding batcher for CPU throughput
+[33m14d3c5d[m feat(ml_service): add LRU embedding cache with SHA-256 keys
+[33mdede26e[m feat(ml_service): add ONNX-first singleton model manager
+[33m6ddcd49[m feat(ml_service): add ONNX export and INT8 quantization script
+[33m3e9d404[m feat(ml_service): add structured JSON logging with context tracking
+[33ma583765[m feat(ml_service): add error hierarchy and Pydantic request/response models
+[33md3be1af[m feat(ml_service): add unified configuration module
