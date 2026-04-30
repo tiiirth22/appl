@@ -34,7 +34,7 @@ const CostAnalysisPanel = ({ estimate }) => (
   </div>
 );
 
-export default function ChatBot() {
+export default function ChatBot({ currentTheme, toggleTheme }) {
   const [searchParams] = useSearchParams();
   const manualId = searchParams.get('manual_id');
   const qrId = searchParams.get('qr_id');
@@ -103,7 +103,9 @@ export default function ChatBot() {
   };
 
   return (
-    <div style={{ backgroundColor: 'var(--color-bg-base)', height: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ backgroundColor: 'var(--color-bg-base)', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <Navbar activePage="chat" currentTheme={currentTheme} toggleTheme={toggleTheme} />
+      
       {/* Elite Chat Header */}
       <header style={{ padding: '16px 40px', borderBottom: 'var(--border-thin)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#020408' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
