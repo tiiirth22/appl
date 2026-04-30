@@ -6,7 +6,7 @@ import { motion } from 'motion/react';
 import Navbar from '../components/ui/Navbar';
 import { API_BASE_URL as API } from '../config';
 
-export default function AdminDashboard({ user, onLogout }) {
+export default function AdminDashboard({ user, onLogout, currentTheme, toggleTheme }) {
   const [manuals, setManuals] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -58,6 +58,8 @@ export default function AdminDashboard({ user, onLogout }) {
         accentColor="#FFFFFF"
         roleLabel="Superuser"
         brandSuffix=" Console"
+        currentTheme={currentTheme}
+        toggleTheme={toggleTheme}
       />
 
       <main style={{ maxWidth: '1400px', margin: '0 auto', padding: '40px' }}>
