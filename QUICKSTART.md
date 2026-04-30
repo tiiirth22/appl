@@ -45,22 +45,21 @@ echo "REACT_APP_BACKEND_URL=http://localhost:8000" > .env.local
 # Add-Content -Path .env.local -Value "REACT_APP_BACKEND_URL=http://localhost:8000"
 ```
 
-### 3. Start Services
+**Terminal 1 - ML Service (Port 8001):**
+```bash
+cd ml_service
+# Activation: .\venv\Scripts\activate
+python server.py
+```
 
-**Terminal 1 - Backend Server:**
+**Terminal 2 - Backend Server (Port 8000):**
 ```bash
 cd backend
-# Activation (if not already): .\venv\Scripts\Activate.ps1
-uvicorn server:app --reload --host 0.0.0.0 --port 8000
+# Activation: .\venv\Scripts\activate
+python server.py
 ```
 
-Expected output:
-```
-INFO:     Uvicorn running on http://0.0.0.0:8000
-INFO:     Application startup complete
-```
-
-**Terminal 2 - Frontend Dev Server:**
+**Terminal 3 - Frontend Dev Server (Port 3000):**
 ```bash
 cd frontend
 npm start
@@ -108,10 +107,9 @@ PINECONE_CLOUD=aws
 QR_SECRET_KEY=your-secret-key
 APP_BASE_URL=http://localhost:3000
 
-# Optional (ML models)
-EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
-OLLAMA_MODEL=llama3.1
-OLLAMA_BASE_URL=http://localhost:11434
+# Unified ML Service
+ML_SERVICE_URL=http://localhost:8001
+INGESTION_SERVICE_URL=http://localhost:8001
 
 # Optional (CORS)
 CORS_ORIGINS=http://localhost:3000,http://localhost:8000
