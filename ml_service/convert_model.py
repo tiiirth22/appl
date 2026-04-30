@@ -22,7 +22,8 @@ import shutil
 from pathlib import Path
 
 MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
-OUTPUT_DIR = Path("/app/model_onnx")
+SCRIPT_DIR = Path(__file__).parent
+OUTPUT_DIR = SCRIPT_DIR / "model_onnx"
 ONNX_PATH = OUTPUT_DIR / "model.onnx"
 QUANTIZED_PATH = OUTPUT_DIR / "model_quantized.onnx"
 TOKENIZER_DIR = OUTPUT_DIR / "tokenizer"
@@ -91,7 +92,6 @@ def quantize_model():
         model_input=str(ONNX_PATH),
         model_output=str(QUANTIZED_PATH),
         weight_type=QuantType.QInt8,
-        optimize_model=True,
     )
 
     original_size = ONNX_PATH.stat().st_size / 1024 / 1024
@@ -130,11 +130,11 @@ def verify_model():
     outputs = session.run(
         None,
         {
-            "input_ids": encoded["input_ids"],
-            "attention_mask": encoded["attention_mask"],
+            "input_ids": encoded["input_ids"].astype(np.int64),
+            "attention_mask": encoded["attention_mask"].astype(np.int64),
             "token_type_ids": encoded.get(
                 "token_type_ids", np.zeros_like(encoded["input_ids"])
-            ),
+            ).astype(np.int64),
         },
     )
 
