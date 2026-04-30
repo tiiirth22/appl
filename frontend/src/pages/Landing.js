@@ -1,125 +1,145 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Cpu, Zap, Scan, MessageSquare, ArrowRight, Shield, FileText, Search, Database, QrCode, Layers, ChevronRight, Globe, Lock, Cpu as Chip } from 'lucide-react';
+import { Cpu, Zap, Scan, MessageSquare, ArrowRight, Shield, FileText, Search, Database, QrCode, Layers, ChevronRight, Globe, Lock, Cpu as Chip, BarChart3, Binary } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Navbar from '../components/ui/Navbar';
 
 export default function Landing({ currentTheme, toggleTheme }) {
   return (
-    <div style={{ backgroundColor: 'var(--color-bg-base)', minHeight: '100vh' }}>
+    <div style={{ backgroundColor: 'var(--color-bg-base)', minHeight: '100vh', color: 'var(--color-text-primary)', overflowX: 'hidden' }}>
       <Navbar currentTheme={currentTheme} toggleTheme={toggleTheme} />
 
       <main>
-        {/* ── High-Contrast Hero ── */}
-        <section style={{ padding: '160px 40px 120px', textAlign: 'center', position: 'relative' }}>
-          <div className="bg-aura" />
+        {/* ── Section 1: The Manifest (Purpose) ── */}
+        <section style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '120px 40px', position: 'relative' }}>
+          <div className="bg-aura" style={{ filter: 'blur(120px)', opacity: 0.15 }} />
+          
           <motion.div 
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-            style={{ maxWidth: '1000px', margin: '0 auto' }}
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
+            style={{ maxWidth: '1200px', width: '100%', textAlign: 'center' }}
           >
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 16px', background: 'rgba(255,255,255,0.03)', border: 'var(--border-thin)', borderRadius: '100px', marginBottom: '40px' }}>
-              <span style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.15em' }}>Retrieval-Augmented Intelligence v4.0</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '48px' }}>
+              <div style={{ width: '40px', height: '1px', background: 'var(--color-accent)' }} />
+              <span style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--color-accent)', textTransform: 'uppercase', letterSpacing: '0.3em' }}>THE_MANIFEST_v4.0</span>
+              <div style={{ width: '40px', height: '1px', background: 'var(--color-accent)' }} />
             </div>
-            
-            <h1 className="heading-elite" style={{ fontSize: '6rem', lineHeight: 0.85, marginBottom: '40px', letterSpacing: '-0.05em' }}>
-              Diagnostic <br /> Sovereignty.
+
+            <h1 className="heading-elite" style={{ fontSize: '7rem', lineHeight: 0.85, marginBottom: '64px', letterSpacing: '-0.06em' }}>
+              Intelligence <br /> for the <br /> Physical World.
             </h1>
-            <p style={{ fontSize: '1.4rem', color: 'var(--color-text-dim)', maxWidth: '750px', margin: '0 auto 64px', lineHeight: 1.5, fontWeight: 500 }}>
-              The high-performance RAG gateway that transforms static appliance manuals into interactive, context-aware diagnostic intelligence.
-            </p>
-            
-            <div style={{ display: 'flex', gap: '20px', justifyContent: 'center' }}>
-              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                <Link to="/signup" className="btn-elite" style={{ padding: '20px 48px', fontSize: '1rem', borderRadius: '14px' }}>Initialize Platform <ArrowRight size={20} style={{ marginLeft: '8px' }} /></Link>
-              </motion.div>
-              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                <a href="#vision" className="btn-elite-ghost" style={{ padding: '20px 48px', fontSize: '1rem', borderRadius: '14px' }}>System Architecture</a>
-              </motion.div>
+
+            <div style={{ maxWidth: '800px', margin: '0 auto', textAlign: 'left', borderLeft: '2px solid var(--color-accent)', paddingLeft: '40px' }}>
+              <p style={{ fontSize: '1.6rem', color: 'var(--color-text-dim)', lineHeight: 1.4, fontWeight: 500, marginBottom: '40px' }}>
+                ApplianceIQ was engineered to solve a single, critical failure: <br />
+                <span style={{ color: 'var(--color-text-primary)' }}>The disconnect between complex machinery and the humans who maintain them.</span>
+              </p>
+              <p style={{ fontSize: '1.1rem', color: 'var(--color-text-muted)', lineHeight: 1.8, maxWidth: '600px' }}>
+                We bridge this gap using a high-precision RAG (Retrieval-Augmented Generation) infrastructure, turning static technical manuals into live, conversational diagnostic brains.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '24px', justifyContent: 'center', marginTop: '80px' }}>
+              <Link to="/signup" className="btn-elite" style={{ padding: '24px 64px', fontSize: '1.1rem', borderRadius: '100px' }}>Initialize Platform</Link>
+              <a href="#architecture" className="btn-elite-ghost" style={{ padding: '24px 64px', fontSize: '1.1rem', borderRadius: '100px' }}>The Architecture</a>
             </div>
           </motion.div>
         </section>
 
-        {/* ── Technical Showcase ── */}
-        <section id="vision" style={{ padding: '120px 40px', borderTop: 'var(--border-thin)' }}>
-          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '40px' }}>
-              {[
-                { 
-                  icon: <Chip size={28} />, 
-                  title: 'Vector Grounding', 
-                  desc: 'Eliminate AI hallucinations. Every response is semantically anchored to your technical documentation via high-dimensional vector search.' 
-                },
-                { 
-                  icon: <Globe size={28} />, 
-                  title: 'Edge Integration', 
-                  desc: 'Deploy diagnostic nodes instantly. Cryptographic QR identifiers provide unauthenticated, zero-friction access at the physical point of failure.' 
-                },
-                { 
-                  icon: <Lock size={28} />, 
-                  title: 'RBAC Infrastructure', 
-                  desc: 'Secure multi-tenant management. Sophisticated role-based access control for Admins and Business Operators.' 
-                }
-              ].map((feature, i) => (
-                <motion.div 
-                  key={i} 
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
-                  style={{ 
-                    padding: '48px', 
-                    background: 'var(--color-bg-elevated)', 
-                    border: 'var(--border-thin)', 
-                    borderRadius: '24px',
-                    transition: 'var(--transition-smooth)'
-                  }}
-                >
-                  <div style={{ color: 'var(--color-text-primary)', marginBottom: '32px' }}>{feature.icon}</div>
-                  <h3 className="heading-elite" style={{ fontSize: '1.5rem', marginBottom: '20px' }}>{feature.title}</h3>
-                  <p style={{ color: 'var(--color-text-dim)', fontSize: '1rem', lineHeight: 1.6 }}>{feature.desc}</p>
-                </motion.div>
-              ))}
+        {/* ── Section 2: The Bento Core (How it Works) ── */}
+        <section id="architecture" style={{ padding: '160px 40px', borderTop: 'var(--border-thin)', background: 'var(--color-bg-elevated)' }}>
+          <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+            <div style={{ marginBottom: '80px' }}>
+              <h2 className="heading-elite" style={{ fontSize: '3rem', marginBottom: '16px' }}>Precision Engineering.</h2>
+              <p style={{ color: 'var(--color-text-dim)', fontSize: '1.2rem' }}>Three layers of intelligence, one unified diagnostic pipeline.</p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '24px', height: '800px' }}>
+              {/* Layer 1: Neural Ingestion */}
+              <motion.div 
+                whileHover={{ y: -8 }}
+                style={{ gridColumn: 'span 7', gridRow: 'span 1', background: 'var(--color-bg-base)', border: 'var(--border-thin)', borderRadius: '32px', padding: '64px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
+              >
+                <div>
+                  <div style={{ color: 'var(--color-accent)', marginBottom: '32px' }}><Layers size={40} strokeWidth={1} /></div>
+                  <h3 className="heading-elite" style={{ fontSize: '2rem', marginBottom: '24px' }}>Neural Ingestion.</h3>
+                  <p style={{ color: 'var(--color-text-dim)', fontSize: '1.1rem', lineHeight: 1.6, maxWidth: '400px' }}>
+                    Transforming raw PDFs and visual schema into semantic vectors using Gemini 1.5 Flash Vision.
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: '16px' }}>
+                  {['OCR', 'CHUNK', 'EMBED', 'IDX'].map(tag => (
+                    <span key={tag} style={{ fontSize: '0.6rem', fontWeight: 900, padding: '4px 12px', border: 'var(--border-thin)', borderRadius: '100px', color: 'var(--color-text-muted)' }}>{tag}</span>
+                  ))}
+                </div>
+              </motion.div>
+
+              {/* Layer 2: Vector Store */}
+              <motion.div 
+                whileHover={{ y: -8 }}
+                style={{ gridColumn: 'span 5', gridRow: 'span 2', background: 'var(--color-accent)', color: 'var(--color-bg-base)', borderRadius: '32px', padding: '64px', position: 'relative', overflow: 'hidden' }}
+              >
+                <div style={{ position: 'absolute', bottom: '-20px', right: '-20px', opacity: 0.1 }}><Database size={300} /></div>
+                <h3 className="heading-elite" style={{ fontSize: '2.5rem', lineHeight: 1, marginBottom: '24px' }}>Grounding <br /> Truth.</h3>
+                <p style={{ fontSize: '1.1rem', lineHeight: 1.5, opacity: 0.8 }}>
+                  Responses are strictly anchored to technical truth. Zero hallucinations. Total diagnostic accuracy.
+                </p>
+              </motion.div>
+
+              {/* Layer 3: Edge Access */}
+              <motion.div 
+                whileHover={{ y: -8 }}
+                style={{ gridColumn: 'span 4', gridRow: 'span 1', background: 'var(--color-bg-base)', border: 'var(--border-thin)', borderRadius: '32px', padding: '48px' }}
+              >
+                <div style={{ color: 'var(--color-text-primary)', marginBottom: '24px' }}><QrCode size={32} strokeWidth={1} /></div>
+                <h4 className="heading-elite" style={{ fontSize: '1.25rem', marginBottom: '16px' }}>Edge Deployment.</h4>
+                <p style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem', lineHeight: 1.6 }}>
+                  Physical hardware mapped to digital intelligence via cryptographic identifiers.
+                </p>
+              </motion.div>
+
+              {/* Layer 4: Real-time Analysis */}
+              <motion.div 
+                whileHover={{ y: -8 }}
+                style={{ gridColumn: 'span 3', gridRow: 'span 1', background: 'var(--color-bg-base)', border: 'var(--border-thin)', borderRadius: '32px', padding: '48px' }}
+              >
+                <div style={{ color: 'var(--color-text-primary)', marginBottom: '24px' }}><Binary size={32} strokeWidth={1} /></div>
+                <h4 className="heading-elite" style={{ fontSize: '1.25rem', marginBottom: '16px' }}>142ms Latency.</h4>
+                <p style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem', lineHeight: 1.6 }}>
+                  Built for high-throughput operational environments.
+                </p>
+              </motion.div>
             </div>
           </div>
         </section>
 
-        {/* ── Ingestion Pipeline ── */}
-        <section style={{ padding: '160px 40px', background: 'var(--color-bg-elevated)', borderTop: 'var(--border-thin)' }}>
-          <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '100px', alignItems: 'center' }}>
-            <div>
-              <h2 className="heading-elite" style={{ fontSize: '4rem', lineHeight: 1, marginBottom: '32px' }}>Neural <br /> Ingestion.</h2>
-              <p style={{ color: 'var(--color-text-dim)', fontSize: '1.2rem', lineHeight: 1.6, marginBottom: '48px' }}>
-                Advanced OCR processing powered by Gemini 1.5 Flash Vision. Transform technical PDFs and visual schema into queryable knowledge in seconds.
-              </p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
-                <div>
-                   <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-text-primary)' }}>142ms</div>
-                   <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 800 }}>RETRIEVAL LATENCY</div>
+        {/* ── Section 3: The Infrastructure (Value) ── */}
+        <section style={{ padding: '160px 40px', background: 'var(--color-bg-base)' }}>
+          <div style={{ maxWidth: '1000px', margin: '0 auto', textAlign: 'center' }}>
+            <h2 className="heading-elite" style={{ fontSize: '4.5rem', lineHeight: 0.9, marginBottom: '48px' }}>One Stack. <br /> Absolute Control.</h2>
+            <p style={{ color: 'var(--color-text-dim)', fontSize: '1.4rem', lineHeight: 1.5, marginBottom: '80px' }}>
+              ApplianceIQ is more than a tool. It's a high-performance operating system for technical diagnostics.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '40px' }}>
+              {[
+                { label: 'Security', value: 'ISO-27001' },
+                { label: 'Ingestion', value: 'Gemini 1.5' },
+                { label: 'Architecture', value: 'RAG' }
+              ].map(item => (
+                <div key={item.label}>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--color-text-muted)', marginBottom: '12px', letterSpacing: '0.2em' }}>{item.label}</div>
+                  <div style={{ fontSize: '2rem', fontWeight: 800 }}>{item.value}</div>
                 </div>
-                <div>
-                   <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-text-primary)' }}>95.8%</div>
-                   <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 800 }}>OCR ACCURACY</div>
-                </div>
-              </div>
-            </div>
-            <div style={{ position: 'relative' }}>
-               <div style={{ width: '100%', aspectRatio: '1', background: 'radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 70%)', position: 'absolute', top: 0, left: 0 }} />
-               <div className="elite-panel" style={{ padding: '48px', position: 'relative', zIndex: 1, background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                     {[80, 60, 90, 40].map((w, i) => (
-                       <div key={i} style={{ height: '2px', width: `${w}%`, background: 'var(--color-text-muted)', opacity: 0.2 }} />
-                     ))}
-                  </div>
-               </div>
+              ))}
             </div>
           </div>
         </section>
       </main>
-      
-      <footer style={{ padding: '120px 40px', textAlign: 'center', borderTop: 'var(--border-thin)' }}>
-        <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.2em' }}>© 2026 ApplianceIQ Operations. Proprietary RAG Infrastructure.</p>
+
+      <footer style={{ padding: '120px 40px', borderTop: 'var(--border-thin)', textAlign: 'center' }}>
+        <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--color-text-muted)', letterSpacing: '0.3em', marginBottom: '32px' }}>APPLIANCEIQ_PRECISION_SYSTEMS</div>
+        <p style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>© 2026 Tirth J Dalal. All systems functional.</p>
       </footer>
     </div>
   );
