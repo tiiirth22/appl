@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Cpu, Zap, Scan, MessageSquare, ArrowRight, Shield, FileText, Search, Database, QrCode, Layers } from 'lucide-react';
 
-export default function Landing() {
+export default function Landing({ currentTheme, toggleTheme }) {
   return (
     <div style={{ backgroundColor: 'var(--color-bg-base)', minHeight: '100vh' }}>
       {/* ── Elite Navbar ── */}
@@ -19,6 +19,9 @@ export default function Landing() {
             <span className="heading-elite" style={{ fontSize: '1.2rem', color: 'white' }}>ApplianceIQ</span>
           </Link>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <button onClick={toggleTheme} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', marginRight: '10px' }}>
+              {currentTheme === 'light' ? '🌙' : '☀️'}
+            </button>
             <Link to="/login" style={{ color: 'white', textDecoration: 'none', fontSize: '0.8rem', fontWeight: 700, padding: '8px 16px' }}>Sign In</Link>
             <Link to="/signup" className="btn-elite" style={{ padding: '10px 24px', fontSize: '0.75rem' }}>Create Account</Link>
           </div>
