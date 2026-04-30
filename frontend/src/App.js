@@ -17,6 +17,7 @@ const SESSION_TOKEN_KEY = 'session_token';
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
 
   useEffect(() => {
     const token = localStorage.getItem(SESSION_TOKEN_KEY);
@@ -24,7 +25,15 @@ function App() {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     }
     checkAuth();
-  }, []);
+    
+    // Apply theme
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
 
   const checkAuth = async () => {
     try {
@@ -79,23 +88,23 @@ function App() {
       <div className="bg-aura"></div>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Landing />} />
-          <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <Login onLogin={handleLogin} />} />
-          <Route path="/signup" element={user ? <Navigate to="/dashboard" /> : <Signup onLogin={handleLogin} />} />
+          <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Landing currentTheme={theme} toggleTheme={toggleTheme} />} />
+          <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <Login onLogin={handleLogin} currentTheme={theme} toggleTheme={toggleTheme} />} />
+          <Route path="/signup" element={user ? <Navigate to="/dashboard" /> : <Signup onLogin={handleLogin} currentTheme={theme} toggleTheme={toggleTheme} />} />
           <Route path="/dashboard" element={renderDashboardRedirect()} />
 
           {/* Explicit Dashboard Routes */}
           <Route path="/admin" element={
-            user?.role === 'admin' ? <AdminDashboard user={user} onLogout={handleLogout} /> : <Navigate to="/dashboard" />
+            user?.role === 'admin' ? <AdminDashboard user={user} onLogout={handleLogout} currentTheme={theme} toggleTheme={toggleTheme} /> : <Navigate to="/dashboard" />
           } />
           <Route path="/business" element={
-            user?.role === 'business_owner' ? <BusinessOwnerDashboard user={user} onLogout={handleLogout} /> : <Navigate to="/dashboard" />
+            user?.role === 'business_owner' ? <BusinessOwnerDashboard user={user} onLogout={handleLogout} currentTheme={theme} toggleTheme={toggleTheme} /> : <Navigate to="/dashboard" />
           } />
 
-          <Route path="/upload" element={user ? <ManualUpload user={user} onLogout={handleLogout} /> : <Navigate to="/login" />} />
-          <Route path="/analytics" element={user ? <Analytics user={user} onLogout={handleLogout} /> : <Navigate to="/login" />} />
-          <Route path="/chat" element={<ChatBot />} />
-          <Route path="/device/:qrId" element={<ChatBot />} />
+          <Route path="/upload" element={user ? <ManualUpload user={user} onLogout={handleLogout} currentTheme={theme} toggleTheme={toggleTheme} /> : <Navigate to="/login" />} />
+          <Route path="/analytics" element={user ? <Analytics user={user} onLogout={handleLogout} currentTheme={theme} toggleTheme={toggleTheme} /> : <Navigate to="/login" />} />
+          <Route path="/chat" element={<ChatBot currentTheme={theme} toggleTheme={toggleTheme} />} />
+          <Route path="/device/:qrId" element={<ChatBot currentTheme={theme} toggleTheme={toggleTheme} />} />
         </Routes>
       </BrowserRouter>
     </div>
