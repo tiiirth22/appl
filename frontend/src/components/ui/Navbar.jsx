@@ -3,17 +3,6 @@ import { Link } from 'react-router-dom';
 import { Cpu, LogOut } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-/**
- * Shared Navbar for all authenticated pages.
- * 
- * Props:
- *  - user: { name, picture }
- *  - onLogout: () => void
- *  - activePage: 'dashboard' | 'upload' | 'analytics'
- *  - accentColor: string (default '#3B82F6')
- *  - roleLabel: string (default 'Business Owner')
- *  - brandSuffix: string (optional, e.g. 'Console' for admin)
- */
 export default function Navbar({
     user,
     onLogout,
@@ -37,7 +26,7 @@ export default function Navbar({
             <nav className="iq-navbar" id="main-navbar">
                 <div className="iq-navbar-inner">
                     <Link to="/dashboard" className="iq-brand" style={{ textDecoration: 'none' }}>
-                        <div className="iq-brand-icon" style={{ '--accent': accentColor }}>
+                        <div className="iq-brand-icon" style={{ background: accentColor }}>
                             <Cpu size={18} />
                         </div>
                         <span className="iq-brand-text">
@@ -67,7 +56,7 @@ export default function Navbar({
                     </div>
 
                     <div className="iq-nav-user">
-                        <div className="iq-avatar" style={{ '--accent': accentColor }}>
+                        <div className="iq-avatar" style={{ background: accentColor }}>
                             {initials}
                         </div>
                         <div className="iq-user-meta">
@@ -83,9 +72,8 @@ export default function Navbar({
 
             <style>{`
                 .iq-navbar {
-                    background: rgba(11, 15, 26, 0.8);
-                    backdrop-filter: blur(16px) saturate(180%);
-                    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+                    background: #0B0F1A;
+                    border-bottom: 1px solid #1F2937;
                     position: sticky;
                     top: 0;
                     z-index: 100;
@@ -109,27 +97,24 @@ export default function Navbar({
                 }
 
                 .iq-brand-icon {
-                    width: 34px;
-                    height: 34px;
-                    background: linear-gradient(135deg, var(--accent, #3B82F6), #2563EB);
-                    border-radius: 10px;
+                    width: 32px;
+                    height: 32px;
+                    border-radius: 8px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     color: white;
-                    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
                 }
 
                 .iq-brand-text {
-                    font-size: 1.0625rem;
+                    font-size: 1rem;
                     font-weight: 800;
                     letter-spacing: -0.03em;
                 }
 
                 .iq-brand-suffix {
                     font-weight: 500;
-                    font-size: 0.8125rem;
-                    opacity: 0.8;
+                    font-size: 0.75rem;
                     margin-left: 6px;
                 }
 
@@ -141,17 +126,17 @@ export default function Navbar({
                 .iq-nav-link {
                     color: #6B7280;
                     text-decoration: none;
-                    font-weight: 500;
-                    font-size: 0.8125rem;
+                    font-weight: 600;
+                    font-size: 0.8rem;
                     padding: 8px 16px;
                     border-radius: 8px;
                     position: relative;
-                    transition: color 200ms ease-in-out, background 200ms ease-in-out;
+                    transition: all 0.2s;
                 }
 
                 .iq-nav-link:hover {
-                    color: #D1D5DB;
-                    background: rgba(255, 255, 255, 0.04);
+                    color: #F9FAFB;
+                    background: rgba(255, 255, 255, 0.05);
                 }
 
                 .iq-nav-link.active {
@@ -174,17 +159,15 @@ export default function Navbar({
                 }
 
                 .iq-avatar {
-                    width: 32px;
-                    height: 32px;
-                    background: linear-gradient(135deg, var(--accent, #3B82F6), #2563EB);
-                    border-radius: 8px;
+                    width: 30px;
+                    height: 30px;
+                    border-radius: 6px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    font-size: 0.6875rem;
-                    font-weight: 700;
+                    font-size: 0.65rem;
+                    font-weight: 800;
                     color: white;
-                    letter-spacing: 0.02em;
                 }
 
                 .iq-user-meta {
@@ -193,54 +176,43 @@ export default function Navbar({
                 }
 
                 .iq-user-name {
-                    font-size: 0.8125rem;
+                    font-size: 0.8rem;
                     font-weight: 600;
                     color: #F9FAFB;
                     line-height: 1.2;
                 }
 
                 .iq-user-role {
-                    font-size: 0.625rem;
-                    font-weight: 600;
+                    font-size: 0.6rem;
+                    font-weight: 700;
                     text-transform: uppercase;
-                    letter-spacing: 0.04em;
+                    letter-spacing: 0.05em;
                     line-height: 1.2;
                 }
 
                 .iq-btn-logout {
-                    background: rgba(255, 255, 255, 0.04);
-                    border: 1px solid rgba(255, 255, 255, 0.06);
-                    color: #6B7280;
-                    width: 34px;
-                    height: 34px;
+                    background: #111827;
+                    border: 1px solid #1F2937;
+                    color: #4B5563;
+                    width: 32px;
+                    height: 32px;
                     border-radius: 8px;
                     cursor: pointer;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    transition: all 200ms ease-in-out;
+                    transition: all 0.2s;
                 }
 
                 .iq-btn-logout:hover {
                     color: #EF4444;
-                    background: rgba(239, 68, 68, 0.08);
-                    border-color: rgba(239, 68, 68, 0.15);
+                    background: rgba(239, 68, 68, 0.1);
+                    border-color: rgba(239, 68, 68, 0.2);
                 }
 
                 @media (max-width: 768px) {
-                    .iq-navbar-inner {
-                        padding: 0 16px;
-                    }
-                    .iq-user-meta {
-                        display: none;
-                    }
-                    .iq-nav-links {
-                        gap: 2px;
-                    }
-                    .iq-nav-link {
-                        padding: 6px 10px;
-                        font-size: 0.75rem;
-                    }
+                    .iq-navbar-inner { padding: 0 16px; }
+                    .iq-user-meta { display: none; }
                 }
             `}</style>
         </>
