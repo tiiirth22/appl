@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Cpu, Zap, Scan, MessageSquare, ArrowRight, Shield, FileText, Search, Database, QrCode, Layers, ChevronRight } from 'lucide-react';
+import { Cpu, Zap, Scan, MessageSquare, ArrowRight, Shield, FileText, Search, Database, QrCode, Layers, ChevronRight, Globe, Lock, Cpu as Chip } from 'lucide-react';
+import { motion } from 'framer-motion';
 import Navbar from '../components/ui/Navbar';
 
 export default function Landing({ currentTheme, toggleTheme }) {
@@ -8,103 +9,117 @@ export default function Landing({ currentTheme, toggleTheme }) {
     <div style={{ backgroundColor: 'var(--color-bg-base)', minHeight: '100vh' }}>
       <Navbar currentTheme={currentTheme} toggleTheme={toggleTheme} />
 
-      <main style={{ paddingTop: '80px' }}>
-        {/* ── Hero Section ── */}
-        <section style={{ padding: '120px 40px 160px', textAlign: 'center', position: 'relative' }}>
+      <main>
+        {/* ── High-Contrast Hero ── */}
+        <section style={{ padding: '160px 40px 120px', textAlign: 'center', position: 'relative' }}>
           <div className="bg-aura" />
-          <div className="animate-elite" style={{ maxWidth: '800px', margin: '0 auto' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: 'rgba(255,255,255,0.03)', border: 'var(--border-thin)', borderRadius: '100px', marginBottom: '32px' }}>
-              <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-accent)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>v4.0 Obsidian Elite</span>
-              <div style={{ width: '4px', height: '4px', background: 'var(--color-text-dim)', borderRadius: '50%' }} />
-              <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-dim)' }}>Precision Engineering</span>
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+            style={{ maxWidth: '1000px', margin: '0 auto' }}
+          >
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 16px', background: 'rgba(255,255,255,0.03)', border: 'var(--border-thin)', borderRadius: '100px', marginBottom: '40px' }}>
+              <span style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.15em' }}>Unified Diagnostic Ecosystem v4.0</span>
             </div>
             
-            <h1 className="heading-elite" style={{ fontSize: '4.5rem', lineHeight: 0.95, marginBottom: '32px' }}>
-              Engineered for <br /> Appliance Intelligence.
+            <h1 className="heading-elite" style={{ fontSize: '6rem', lineHeight: 0.85, marginBottom: '40px', letterSpacing: '-0.05em' }}>
+              Operational <br /> Intelligence.
             </h1>
-            <p style={{ fontSize: '1.2rem', color: 'var(--color-text-dim)', maxWidth: '600px', margin: '0 auto 48px', lineHeight: 1.6 }}>
-              A unified RAG ecosystem that transforms technical documentation into interactive diagnostic intelligence.
+            <p style={{ fontSize: '1.4rem', color: 'var(--color-text-dim)', maxWidth: '700px', margin: '0 auto 64px', lineHeight: 1.5, fontWeight: 500 }}>
+              The high-performance RAG gateway for technical engineering and precision diagnostics.
             </p>
             
-            <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
-              <Link to="/signup" className="btn-elite" style={{ padding: '16px 32px', fontSize: '0.9rem' }}>Initialize Platform <ArrowRight size={18} /></Link>
-              <a href="#features" className="btn-elite-ghost" style={{ padding: '16px 32px', fontSize: '0.9rem' }}>System Overview</a>
+            <div style={{ display: 'flex', gap: '20px', justifyContent: 'center' }}>
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <Link to="/signup" className="btn-elite" style={{ padding: '20px 48px', fontSize: '1rem', borderRadius: '14px' }}>Get Started <ArrowRight size={20} style={{ marginLeft: '8px' }} /></Link>
+              </motion.div>
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <a href="#vision" className="btn-elite-ghost" style={{ padding: '20px 48px', fontSize: '1rem', borderRadius: '14px' }}>System Architecture</a>
+              </motion.div>
             </div>
-          </div>
+          </motion.div>
         </section>
 
-        {/* ── Precision Showcase ── */}
-        <section id="features" style={{ padding: '120px 40px', background: 'var(--color-bg-elevated)', borderTop: 'var(--border-thin)' }}>
+        {/* ── Architecture Showcase ── */}
+        <section id="vision" style={{ padding: '120px 40px', borderTop: 'var(--border-thin)' }}>
           <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-            <div style={{ textAlign: 'center', marginBottom: '80px' }}>
-              <h2 className="heading-elite" style={{ fontSize: '2.5rem', marginBottom: '16px' }}>Technical Capabilities.</h2>
-              <p style={{ color: 'var(--color-text-dim)', fontSize: '1rem' }}>Bridging the gap between static manuals and real-world diagnostics.</p>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '32px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '40px' }}>
               {[
                 { 
-                  icon: <MessageSquare size={24} />, 
-                  title: 'Vector RAG Chat', 
-                  desc: 'Sub-200ms semantic retrieval across thousands of technical pages using Pinecone indexing.' 
+                  icon: <Chip size={28} />, 
+                  title: 'Vector Intelligence', 
+                  desc: 'Pinecone-powered RAG core with semantic grounding across entire resource registries.' 
                 },
                 { 
-                  icon: <Scan size={24} />, 
-                  title: 'Visual Ingestion', 
-                  desc: 'Advanced OCR pipeline powered by Gemini 1.5 Flash Vision for real-time diagnostic analysis.' 
+                  icon: <Globe size={28} />, 
+                  title: 'Edge Deployment', 
+                  desc: 'Instant diagnostic access via unique cryptographic QR identifiers for physical devices.' 
                 },
                 { 
-                  icon: <QrCode size={24} />, 
-                  title: 'QR Deployment', 
-                  desc: 'Generate unique cryptographic QR identifiers for instant physical-to-digital diagnostic access.' 
+                  icon: <Lock size={28} />, 
+                  title: 'Zero Trust Auth', 
+                  desc: 'Multi-tenant role-based isolation with encrypted diagnostic auditing protocols.' 
                 }
               ].map((feature, i) => (
-                <div key={i} className="elite-panel" style={{ padding: '40px', transition: 'var(--transition-smooth)' }}>
-                  <div style={{ color: 'var(--color-accent)', marginBottom: '24px' }}>{feature.icon}</div>
-                  <h3 className="heading-elite" style={{ fontSize: '1.25rem', marginBottom: '16px' }}>{feature.title}</h3>
-                  <p style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem', lineHeight: 1.6 }}>{feature.desc}</p>
-                </div>
+                <motion.div 
+                  key={i} 
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
+                  style={{ 
+                    padding: '48px', 
+                    background: 'var(--color-bg-elevated)', 
+                    border: 'var(--border-thin)', 
+                    borderRadius: '24px',
+                    transition: 'var(--transition-smooth)'
+                  }}
+                >
+                  <div style={{ color: 'var(--color-text-primary)', marginBottom: '32px' }}>{feature.icon}</div>
+                  <h3 className="heading-elite" style={{ fontSize: '1.5rem', marginBottom: '20px' }}>{feature.title}</h3>
+                  <p style={{ color: 'var(--color-text-dim)', fontSize: '1rem', lineHeight: 1.6 }}>{feature.desc}</p>
+                </motion.div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* ── Infrastructure Stack ── */}
-        <section style={{ padding: '120px 40px', borderTop: 'var(--border-thin)' }}>
-          <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '80px', alignItems: 'center' }}>
+        {/* ── Technical Specs ── */}
+        <section style={{ padding: '160px 40px', background: 'var(--color-bg-elevated)', borderTop: 'var(--border-thin)' }}>
+          <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '100px', alignItems: 'center' }}>
             <div>
-              <div style={{ color: 'var(--color-accent)', fontWeight: 800, fontSize: '0.65rem', marginBottom: '16px', letterSpacing: '0.1em' }}>CORE_INFRASTRUCTURE</div>
-              <h2 className="heading-elite" style={{ fontSize: '3rem', marginBottom: '24px', lineHeight: 1.1 }}>One Stack. <br /> Total Control.</h2>
-              <p style={{ color: 'var(--color-text-dim)', fontSize: '1.1rem', marginBottom: '40px', lineHeight: 1.6 }}>
-                Unified ML Service merging high-performance chat, ingestion, and vision diagnostics into a single sub-2GB memory footprint.
+              <h2 className="heading-elite" style={{ fontSize: '4rem', lineHeight: 1, marginBottom: '32px' }}>Built for <br /> Scale.</h2>
+              <p style={{ color: 'var(--color-text-dim)', fontSize: '1.2rem', lineHeight: 1.6, marginBottom: '48px' }}>
+                A performance-tuned Python backbone merging Llama 3.1 LLM core with a lightning-fast vector indexing pipeline.
               </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {['Motor / MongoDB Multi-tenant Auth', 'Quantized Llama 3.1 LLM Core', 'Real-time Ingestion Progress Visualization'].map((item, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.9rem', fontWeight: 600 }}>
-                    <Shield size={16} color="var(--color-accent)" /> {item}
-                  </div>
-                ))}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
+                <div>
+                   <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-text-primary)' }}>142ms</div>
+                   <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 800 }}>AVG LATENCY</div>
+                </div>
+                <div>
+                   <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-text-primary)' }}>99.9%</div>
+                   <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 800 }}>UPTIME SLA</div>
+                </div>
               </div>
             </div>
-            <div className="elite-panel" style={{ padding: '40px', background: 'rgba(255,255,255,0.01)' }}>
-               <div style={{ borderBottom: 'var(--border-thin)', paddingBottom: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)' }}>SYSTEM_HEALTH_MONITOR</span>
-                  <div style={{ width: '8px', height: '8px', background: '#10B981', borderRadius: '50%' }} />
-               </div>
-               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {[1, 2, 3].map(i => (
-                    <div key={i} style={{ height: '40px', background: 'rgba(255,255,255,0.02)', borderRadius: '4px', border: 'var(--border-thin)', display: 'flex', alignItems: 'center', padding: '0 16px' }}>
-                      <div style={{ width: '40%', height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px' }} />
-                    </div>
-                  ))}
+            <div style={{ position: 'relative' }}>
+               <div style={{ width: '100%', aspectRatio: '1', background: 'radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 70%)', position: 'absolute', top: 0, left: 0 }} />
+               <div className="elite-panel" style={{ padding: '48px', position: 'relative', zIndex: 1, background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                     {[80, 60, 90, 40].map((w, i) => (
+                       <div key={i} style={{ height: '2px', width: `${w}%`, background: 'var(--color-text-muted)', opacity: 0.2 }} />
+                     ))}
+                  </div>
                </div>
             </div>
           </div>
         </section>
       </main>
       
-      <footer style={{ padding: '80px 40px', borderTop: 'var(--border-thin)', textAlign: 'center' }}>
-        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>© 2026 ApplianceIQ Precision Systems. All rights reserved.</p>
+      <footer style={{ padding: '120px 40px', textAlign: 'center', borderTop: 'var(--border-thin)' }}>
+        <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.2em' }}>© 2026 ApplianceIQ Precision Infrastructure. ISO-27001 Certified.</p>
       </footer>
     </div>
   );
