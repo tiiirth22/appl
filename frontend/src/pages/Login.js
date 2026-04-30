@@ -36,66 +36,55 @@ export default function Login(props) {
       <div className="bg-aura" />
       
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-        className="elite-panel"
-        style={{ width: '100%', maxWidth: '480px', padding: '64px', borderRadius: '32px', background: 'var(--color-bg-elevated)', border: 'var(--border-thin)', boxShadow: '0 40px 120px rgba(0,0,0,0.5)' }}
+        initial={{ opacity: 0, scale: 0.9, y: 40 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+        style={{ width: '100%', maxWidth: '440px', textAlign: 'center' }}
       >
-        <header style={{ textAlign: 'center', marginBottom: '48px' }}>
-          <div style={{ 
-            width: '48px', height: '48px', background: 'var(--color-text-primary)', borderRadius: '14px', 
-            display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-bg-base)',
-            margin: '0 auto 24px'
-          }}>
-            <Cpu size={24} />
-          </div>
-          <h1 className="heading-elite" style={{ fontSize: '2rem', marginBottom: '8px' }}>Identity Vault.</h1>
-          <p style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem', fontWeight: 500 }}>Authorized personnel only.</p>
-        </header>
+        <div style={{ 
+          width: '64px', height: '64px', background: 'var(--color-text-primary)', borderRadius: '18px', 
+          display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-bg-base)',
+          margin: '0 auto 40px', boxShadow: '0 0 40px rgba(255,255,255,0.1)'
+        }}>
+          <Cpu size={32} />
+        </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          <div style={{ position: 'relative' }}>
-            <Mail style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} size={16} />
-            <input 
-              type="email" 
-              placeholder="System Email" 
-              className="input-elite" 
-              style={{ width: '100%', padding: '16px 16px 16px 48px', borderRadius: '14px' }}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
+        <h1 className="heading-elite" style={{ fontSize: '3rem', lineHeight: 1, marginBottom: '16px' }}>Terminal_Access.</h1>
+        <p style={{ color: 'var(--color-text-dim)', fontSize: '1rem', fontWeight: 500, marginBottom: '64px' }}>Initialize secure link to the diagnostic network.</p>
 
-          <div style={{ position: 'relative' }}>
-            <Lock style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} size={16} />
-            <input 
-              type="password" 
-              placeholder="Access Key" 
-              className="input-elite" 
-              style={{ width: '100%', padding: '16px 16px 16px 48px', borderRadius: '14px' }}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
-
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <input 
+            type="email" 
+            placeholder="OPERATOR_EMAIL" 
+            className="input-elite" 
+            style={{ width: '100%', padding: '20px 24px', borderRadius: '16px', textAlign: 'center', fontSize: '0.9rem', fontWeight: 600, letterSpacing: '0.05em' }}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <input 
+            type="password" 
+            placeholder="ACCESS_KEY" 
+            className="input-elite" 
+            style={{ width: '100%', padding: '20px 24px', borderRadius: '16px', textAlign: 'center', fontSize: '0.9rem', fontWeight: 600, letterSpacing: '0.05em' }}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
           <motion.button 
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
             type="submit" 
             className="btn-elite" 
-            style={{ width: '100%', padding: '18px', borderRadius: '14px', marginTop: '12px' }}
+            style={{ width: '100%', padding: '20px', borderRadius: '16px', marginTop: '16px' }}
             disabled={loading}
           >
-            {loading ? <Loader2 className="spinner" size={20} /> : <>Initialize Session <ArrowRight size={18} /></>}
+            {loading ? <Loader2 className="spinner" size={20} /> : 'SYNCHRONIZE'}
           </motion.button>
         </form>
 
-        <footer style={{ marginTop: '48px', textAlign: 'center' }}>
-          <p style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>
-            New operator? <Link to="/signup" style={{ color: 'var(--color-text-primary)', fontWeight: 700, textDecoration: 'none' }}>Initialize Account</Link>
+        <footer style={{ marginTop: '64px' }}>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.1em' }}>
+            NO ACCOUNT? <Link to="/signup" style={{ color: 'var(--color-text-primary)', textDecoration: 'none', borderBottom: '1px solid var(--color-text-primary)' }}>REGISTER_NEW_OPERATOR</Link>
           </p>
         </footer>
       </motion.div>
