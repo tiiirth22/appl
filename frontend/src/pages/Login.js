@@ -4,7 +4,7 @@ import axios from 'axios';
 import { Cpu, Loader2, ArrowRight, Shield, Zap, Activity } from 'lucide-react';
 import { API_BASE_URL as API } from '../config';
 
-export default function Login() {
+export default function Login(props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -13,11 +13,21 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     try {
-      await axios.post(`${API}/auth/login`, { email, password }, { withCredentials: true });
+      const response = await axios.post(`${API}/auth/login`, { email, password }, { withCredentials: true });
+      const { user: userData, session_token } = response.data;
+      
+      if (props.onLogin) {
+        props.onLogin(userData, session_token);
+      }
+      
+      // Navigate is handled by App.js when user state changes, 
+      // but we'll force a redirect to be safe.
       window.location.href = '/dashboard';
     } catch (error) {
       console.error('Login error:', error);
-      alert('Login failed: ' + (error.response?.data?.detail || 'Invalid credentials'));
+      const detail = error.response?.data?.detail;
+      const errorMsg = typeof detail === 'string' ? detail : (Array.isArray(detail) ? detail[0].msg : 'Invalid credentials');
+      alert('Login failed: ' + errorMsg);
     } finally {
       setLoading(false);
     }
