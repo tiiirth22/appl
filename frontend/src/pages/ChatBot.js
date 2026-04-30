@@ -107,24 +107,15 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
     <div style={{ backgroundColor: 'var(--color-bg-base)', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Navbar activePage="chat" currentTheme={currentTheme} toggleTheme={toggleTheme} />
       
-      {/* Elite Chat Header */}
-      <header style={{ padding: '16px 40px', borderBottom: 'var(--border-thin)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#020408' }}>
+      <header style={{ padding: '16px 40px', borderBottom: 'var(--border-thin)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-bg-base)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <Link to="/dashboard" style={{ color: 'var(--color-text-dim)', display: 'flex', alignItems: 'center' }}><ArrowLeft size={18} /></Link>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ width: '32px', height: '32px', background: 'white', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'black' }}>
-              <Cpu size={16} />
-            </div>
-            <div>
-              <div style={{ fontSize: '0.9rem', fontWeight: 800 }}>ApplianceIQ Console</div>
-              <div style={{ fontSize: '0.6rem', color: '#10B981', fontWeight: 800 }}>● NODE_CONNECTED</div>
-            </div>
+          <div style={{ width: '12px', height: '12px', background: '#10B981', borderRadius: '50%', boxShadow: '0 0 10px #10B981' }} />
+          <div>
+            <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text-primary)' }}>Neural Diagnostic Active</div>
+            <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontWeight: 800 }}>PROBING_INDEX: {manualId || 'GLOBAL_REGISTRY'}</div>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <button className="btn-elite-ghost" style={{ padding: '6px 12px', fontSize: '0.65rem' }}>HISTORY</button>
-          <button className="btn-elite-ghost" style={{ padding: '6px 12px', fontSize: '0.65rem' }}>SPECS</button>
-        </div>
+        <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--color-text-muted)', letterSpacing: '0.1em' }}>RAG_LATENCY: 142MS</div>
       </header>
 
       {/* Message Stream */}
@@ -193,12 +184,15 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
                  if(f) { setImageFile(f); setImagePreview(URL.createObjectURL(f)); }
                }} />
             </div>
-            <textarea
+            <input
+              type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              placeholder="Enter diagnostic query (e.g. 'Identify filter location')..."
+              className="input-elite"
+              style={{ flex: 1, padding: '18px 24px', borderRadius: '16px' }}
+              disabled={loading}
               onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }}}
-              placeholder="Query system for technical data..."
-              style={{ flex: 1, background: 'transparent', border: 'none', color: 'white', padding: '10px', fontSize: '0.9rem', outline: 'none', resize: 'none', height: '40px', fontFamily: 'inherit' }}
             />
             <button onClick={() => handleSend()} className="btn-elite" style={{ width: '40px', height: '40px', padding: 0, borderRadius: '8px' }} disabled={loading}>
               <Send size={18} />
