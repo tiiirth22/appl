@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Cpu, LogOut } from 'lucide-react';
+import { Cpu, LogOut, LayoutDashboard, Upload, BarChart3 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function Navbar({
@@ -12,9 +12,9 @@ export default function Navbar({
     brandSuffix = '',
 }) {
     const links = [
-        { key: 'dashboard', to: '/dashboard', label: 'Dashboard' },
-        { key: 'upload', to: '/upload', label: 'Upload' },
-        { key: 'analytics', to: '/analytics', label: 'Insights' },
+        { key: 'dashboard', to: '/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={14} /> },
+        { key: 'upload', to: '/upload', label: 'Upload Manual', icon: <Upload size={14} /> },
+        { key: 'analytics', to: '/analytics', label: 'Insights', icon: <BarChart3 size={14} /> },
     ];
 
     const initials = user?.name
@@ -26,8 +26,8 @@ export default function Navbar({
             <nav className="iq-navbar" id="main-navbar">
                 <div className="iq-navbar-inner">
                     <Link to="/dashboard" className="iq-brand" style={{ textDecoration: 'none' }}>
-                        <div className="iq-brand-icon" style={{ background: accentColor }}>
-                            <Cpu size={18} />
+                        <div className="iq-brand-icon" style={{ background: 'white' }}>
+                            <Cpu size={18} color="black" />
                         </div>
                         <span className="iq-brand-text">
                             ApplianceIQ
@@ -42,12 +42,15 @@ export default function Navbar({
                                 to={link.to}
                                 className={`iq-nav-link ${activePage === link.key ? 'active' : ''}`}
                             >
-                                {link.label}
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    {link.icon}
+                                    {link.label}
+                                </span>
                                 {activePage === link.key && (
                                     <motion.div
                                         layoutId="nav-indicator"
                                         className="iq-nav-indicator"
-                                        style={{ background: accentColor }}
+                                        style={{ background: 'white' }}
                                         transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                                     />
                                 )}
@@ -56,12 +59,12 @@ export default function Navbar({
                     </div>
 
                     <div className="iq-nav-user">
-                        <div className="iq-avatar" style={{ background: accentColor }}>
-                            {initials}
-                        </div>
                         <div className="iq-user-meta">
                             <span className="iq-user-name">{user?.name}</span>
-                            <span className="iq-user-role" style={{ color: accentColor }}>{roleLabel}</span>
+                            <span className="iq-user-role" style={{ color: 'var(--color-text-muted)' }}>{roleLabel}</span>
+                        </div>
+                        <div className="iq-avatar">
+                            {initials}
                         </div>
                         <button onClick={onLogout} className="iq-btn-logout" title="Sign Out" id="logout-btn">
                             <LogOut size={15} />
@@ -72,18 +75,18 @@ export default function Navbar({
 
             <style>{`
                 .iq-navbar {
-                    background: #0B0F1A;
-                    border-bottom: 1px solid #1F2937;
+                    background: #020408;
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
                     position: sticky;
                     top: 0;
                     z-index: 100;
                 }
 
                 .iq-navbar-inner {
-                    max-width: 1280px;
+                    max-width: 1400px;
                     margin: 0 auto;
-                    padding: 0 32px;
-                    height: 64px;
+                    padding: 0 40px;
+                    height: 72px;
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
@@ -92,62 +95,62 @@ export default function Navbar({
                 .iq-brand {
                     display: flex;
                     align-items: center;
-                    gap: 10px;
-                    color: #F9FAFB;
+                    gap: 12px;
+                    color: white;
                 }
 
                 .iq-brand-icon {
                     width: 32px;
                     height: 32px;
-                    border-radius: 8px;
+                    border-radius: 4px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    color: white;
                 }
 
                 .iq-brand-text {
-                    font-size: 1rem;
+                    font-size: 1.1rem;
                     font-weight: 800;
-                    letter-spacing: -0.03em;
+                    letter-spacing: -0.04em;
                 }
 
                 .iq-brand-suffix {
-                    font-weight: 500;
+                    font-weight: 600;
                     font-size: 0.75rem;
-                    margin-left: 6px;
+                    margin-left: 8px;
+                    opacity: 0.8;
                 }
 
                 .iq-nav-links {
                     display: flex;
-                    gap: 4px;
+                    gap: 8px;
                 }
 
                 .iq-nav-link {
-                    color: #6B7280;
+                    color: #475569;
                     text-decoration: none;
-                    font-weight: 600;
+                    font-weight: 700;
                     font-size: 0.8rem;
-                    padding: 8px 16px;
-                    border-radius: 8px;
+                    padding: 8px 20px;
+                    border-radius: 6px;
                     position: relative;
                     transition: all 0.2s;
                 }
 
                 .iq-nav-link:hover {
-                    color: #F9FAFB;
-                    background: rgba(255, 255, 255, 0.05);
+                    color: white;
+                    background: rgba(255, 255, 255, 0.03);
                 }
 
                 .iq-nav-link.active {
-                    color: #F9FAFB;
+                    color: white;
                 }
 
                 .iq-nav-indicator {
                     position: absolute;
                     bottom: -1px;
-                    left: 16px;
-                    right: 16px;
+                    left: 20px;
+                    right: 20px;
                     height: 2px;
                     border-radius: 2px;
                 }
@@ -155,17 +158,19 @@ export default function Navbar({
                 .iq-nav-user {
                     display: flex;
                     align-items: center;
-                    gap: 12px;
+                    gap: 16px;
                 }
 
                 .iq-avatar {
-                    width: 30px;
-                    height: 30px;
+                    width: 32px;
+                    height: 32px;
                     border-radius: 6px;
+                    background: #0D1117;
+                    border: 1px solid rgba(255, 255, 255, 0.05);
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    font-size: 0.65rem;
+                    font-size: 0.7rem;
                     font-weight: 800;
                     color: white;
                 }
@@ -173,30 +178,30 @@ export default function Navbar({
                 .iq-user-meta {
                     display: flex;
                     flex-direction: column;
+                    text-align: right;
                 }
 
                 .iq-user-name {
                     font-size: 0.8rem;
-                    font-weight: 600;
-                    color: #F9FAFB;
+                    font-weight: 700;
+                    color: white;
                     line-height: 1.2;
                 }
 
                 .iq-user-role {
                     font-size: 0.6rem;
-                    font-weight: 700;
+                    font-weight: 800;
                     text-transform: uppercase;
                     letter-spacing: 0.05em;
-                    line-height: 1.2;
                 }
 
                 .iq-btn-logout {
-                    background: #111827;
-                    border: 1px solid #1F2937;
-                    color: #4B5563;
+                    background: transparent;
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    color: #475569;
                     width: 32px;
                     height: 32px;
-                    border-radius: 8px;
+                    border-radius: 6px;
                     cursor: pointer;
                     display: flex;
                     align-items: center;
