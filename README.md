@@ -44,8 +44,7 @@ ApplianceIQ supports multiple user roles, including administrators, business own
 |-------------------|-------------------------------------|----------------------------------------------|
 | Frontend          | React, Tailwind CSS                 | User interface and role-based dashboards      |
 | Backend API       | FastAPI (Python)                    | REST API, authentication, orchestration      |
-| Chat Service      | FastAPI (Python)                    | RAG engine, vector search, LLM integration   |
-| Ingestion Service | FastAPI (Python)                    | PDF/image processing, text extraction, embedding |
+| Unified ML Service | FastAPI (Python)                    | RAG engine, PDF/image processing, vector search, LLM integration |
 | Database          | MongoDB (Motor async driver)        | User profiles, manual metadata, chat history |
 | Vector Store      | Pinecone                            | Semantic search over document embeddings     |
 | File Storage      | Cloudinary                          | Manual PDFs, images, and QR code hosting     |
@@ -75,25 +74,26 @@ ApplianceIQ follows a microservices-inspired architecture with three independent
                     |  - QR Code Gen      |
                     |  - Chat Proxy       |
                     |  - Rate Limiting    |
+                    +----------+----------+
+                               |
+                               | HTTP REST
+                               v
+                    +----------+----------+
+                    |  Unified ML Service |
+                    |  (FastAPI :8001)    |
+                    |                     |
+                    |  - RAG Engine       |
+                    |  - PDF Processing   |
+                    |  - Vector Search    |
+                    |  - LLM Generation   |
                     +----+----------+-----+
                          |          |
-              +----------+          +----------+
-              v                                v
-   +----------+----------+         +-----------+-----------+
-   |  Chat Service        |         |  Ingestion Service    |
-   |  (FastAPI :8001)     |         |  (FastAPI :8002)      |
-   |                      |         |                       |
-   |  - RAG Engine        |         |  - PDF Text Extraction|
-   |  - Vector Search     |         |  - OCR Processing     |
-   |  - LLM Generation    |         |  - Text Chunking      |
-   |  - Image Analysis    |         |  - Vector Embedding   |
-   +----+----------+------+         +----+----------+-------+
-        |          |                      |          |
-        v          v                      v          v
-   +----+---+  +---+------+         +----+---+  +---+------+
-   |Pinecone|  |Groq/Gemini|        |Pinecone|  |Cloudinary|
-   |        |  |(LLM API)  |        |        |  |          |
-   +--------+  +-----------+        +--------+  +----------+
+               +---------+          +---------+
+               v                              v
+          +----+---+                     +----+------+
+          |Pinecone|                     |Groq/Gemini|
+          |        |                     |(LLM API)  |
+          +--------+                     +-----------+
                     
                     +--------+
                     |MongoDB |
@@ -122,8 +122,8 @@ The following sections describe how the major use cases flow through the system 
 2. The frontend sends a multipart POST request to `/api/manuals/upload`.
 3. The backend reads the file content and uploads it to Cloudinary, obtaining a public URL.
 4. A manual record is created in MongoDB with status set to "processing".
-5. The backend forwards the file URL and metadata to the Ingestion Service (`/ingest` endpoint).
-6. The Ingestion Service downloads the file from Cloudinary, extracts text (using PDF parsing or OCR for images), splits the text into chunks, generates vector embeddings for each chunk, and upserts them into the Pinecone vector index.
+5. The backend forwards the file URL and metadata to the Unified ML Service (`/ingest` endpoint).
+6. The Unified ML Service downloads the file from Cloudinary, extracts text (using PDF parsing or OCR for images), splits the text into chunks, generates vector embeddings for each chunk, and upserts them into the Pinecone vector index.
 7. Once processing completes, the manual status is updated to "ready".
 8. A QR code is automatically generated for the manual, linking to the chat interface with the manual ID embedded. The QR code image is uploaded to Cloudinary and the record is stored in MongoDB.
 
@@ -133,8 +133,8 @@ The following sections describe how the major use cases flow through the system 
 2. The customer types a question (e.g., "How do I clean the filter?").
 3. The frontend sends a POST request to `/api/chat` with the manual ID and question.
 4. The backend retrieves the manual record from MongoDB to get the model name, then fetches conversation history from the database (last 3 exchanges) for context continuity.
-5. The backend forwards the query, history, and manual metadata to the Chat Service (`/query` endpoint).
-6. The Chat Service generates a vector embedding of the question, searches Pinecone for the top-k most similar document chunks from that specific manual, and constructs a prompt combining the retrieved context with the user's question.
+5. The backend forwards the query, history, and manual metadata to the Unified ML Service (`/query` endpoint).
+6. The Unified ML Service generates a vector embedding of the question, searches Pinecone for the top-k most similar document chunks from that specific manual, and constructs a prompt combining the retrieved context with the user's question.
 7. The prompt is sent to the LLM provider (Groq Llama-3 or Google Gemini), which generates a natural language answer.
 8. The answer, along with source references and a confidence score, is returned to the backend.
 9. The backend logs the query and response in MongoDB for analytics and future context, then streams the response back to the frontend.
@@ -167,26 +167,17 @@ applianceiq/
 |   |-- models.py              # Pydantic models and database schemas
 |   |-- ml_client.py           # HTTP client for communicating with ML services
 |   |-- qr_handler.py          # QR code generation and management
-|   |-- .env                   # Environment variables (MongoDB, Cloudinary, API keys)
+|   |-- .env                   # Environment variables
 |   +-- requirements.txt       # Python dependencies for the backend
 |
-|-- chat_service/              # Chat and RAG Service (FastAPI)
-|   |-- server.py              # Chat service API endpoints
-|   |-- rag_engine.py          # Core RAG logic (retrieval, prompt construction, LLM calls)
-|   |-- config.py              # Service configuration and environment loading
-|   |-- model_manager.py       # LLM model initialization and management
-|   |-- errors.py              # Custom error types and error handling
-|   |-- logger_config.py       # Structured logging configuration
-|   +-- requirements.txt       # Python dependencies for the chat service
-|
-|-- ingestion_service/         # Document Ingestion Service (FastAPI)
-|   |-- server.py              # Ingestion service API endpoints
-|   |-- processor.py           # PDF/image text extraction, chunking, and embedding
+|-- ml_service/                # Unified ML Service (FastAPI)
+|   |-- server.py              # Single API entry point for all ML/RAG tasks
+|   |-- rag_engine.py          # RAG logic (retrieval, LLM calls)
+|   |-- processor.py           # Document processing and embedding
+|   |-- model_manager.py       # Shared model instance
 |   |-- config.py              # Service configuration
-|   |-- model_manager.py       # Embedding model management
-|   |-- errors.py              # Custom error types
-|   |-- logger_config.py       # Logging configuration
-|   +-- requirements.txt       # Python dependencies for the ingestion service
+|   |-- errors.py              # Custom error handling
+|   +-- requirements.txt       # Unified Python dependencies
 |
 |-- frontend/                  # React Frontend Application
 |   |-- public/                # Static assets and index.html
@@ -259,18 +250,11 @@ applianceiq/
    CLOUDINARY_API_KEY=your_cloudinary_api_key
    CLOUDINARY_API_SECRET=your_cloudinary_api_secret
    ML_SERVICE_URL=http://localhost:8001
-   INGESTION_SERVICE_URL=http://localhost:8002
    ```
 
-3. Set up the Chat Service:
+3. Set up the ML Service:
    ```bash
-   cd chat_service
-   pip install -r requirements.txt
-   ```
-
-4. Set up the Ingestion Service:
-   ```bash
-   cd ingestion_service
+   cd ml_service
    pip install -r requirements.txt
    ```
 
@@ -290,15 +274,9 @@ Start each service in a separate terminal:
   python server.py
   ```
 
-- Chat Service (Port 8001):
+- ML Service (Port 8001):
   ```bash
-  cd chat_service
-  python server.py
-  ```
-
-- Ingestion Service (Port 8002):
-  ```bash
-  cd ingestion_service
+  cd ml_service
   python server.py
   ```
 
