@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Cpu, Zap, Scan, MessageSquare, ArrowRight, Shield, BarChart3, PieChart, Activity, Globe, FileText, Search, Users, Database } from 'lucide-react';
+import { Cpu, Zap, Scan, MessageSquare, ArrowRight, Shield, BarChart3, PieChart, Activity, Globe, FileText, Search, Users, Database, Terminal, Layers } from 'lucide-react';
 
 export default function Landing() {
   return (
@@ -9,7 +9,7 @@ export default function Landing() {
       <nav style={{ 
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
         height: '72px', display: 'flex', alignItems: 'center',
-        background: '#0B0F1A', borderBottom: '1px solid #1F2937'
+        background: '#04070D', borderBottom: '1px solid #1F2937'
       }}>
         <div style={{ maxWidth: '1400px', margin: '0 auto', width: '100%', padding: '0 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -18,95 +18,151 @@ export default function Landing() {
             </div>
             <span className="heading-premium" style={{ fontSize: '1.1rem', color: 'white' }}>ApplianceIQ</span>
           </Link>
-          <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
-            <Link to="/login" style={{ color: 'var(--color-text-dim)', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 600 }}>Operator Login</Link>
+          <div style={{ display: 'flex', gap: '32px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '24px' }}>
+              <a href="#features" style={{ color: 'var(--color-text-muted)', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 600 }}>Features</a>
+              <a href="#mockup" style={{ color: 'var(--color-text-muted)', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 600 }}>Dashboard</a>
+            </div>
+            <div style={{ width: '1px', height: '24px', background: '#1F2937' }} />
+            <Link to="/login" style={{ color: 'var(--color-text-dim)', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 600 }}>Login</Link>
             <Link to="/signup" className="btn-premium" style={{ padding: '10px 24px', fontSize: '0.8rem', borderRadius: '8px' }}>Get Started</Link>
           </div>
         </div>
       </nav>
 
       {/* ── Hero Section ── */}
-      <section style={{ paddingTop: '160px', paddingBottom: '100px', textAlign: 'center' }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 16px', background: '#111827', border: '1px solid #1F2937', borderRadius: '4px', color: 'var(--color-primary)', fontSize: '0.7rem', fontWeight: 700, marginBottom: '32px', letterSpacing: '0.05em' }}>
+      <section style={{ paddingTop: '180px', paddingBottom: '100px', textAlign: 'center' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 16px', background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.2)', borderRadius: '4px', color: 'var(--color-primary)', fontSize: '0.65rem', fontWeight: 800, marginBottom: '32px', letterSpacing: '0.1em' }}>
           <Zap size={14} /> NEW: ONNX-OPTIMIZED RAG ENGINE v2.0
         </div>
         
-        <h1 className="heading-premium animate-reveal" style={{ fontSize: 'clamp(2.5rem, 6vw, 4rem)', lineHeight: 1.1, marginBottom: '24px' }}>
-          The Intelligence Layer for <br/> <span style={{ color: 'var(--color-primary)' }}>Consumer Hardware.</span>
+        <h1 className="heading-premium animate-reveal" style={{ fontSize: 'clamp(2.5rem, 8vw, 4.5rem)', lineHeight: 1.05, marginBottom: '24px' }}>
+          Infrastructure for <br/> <span style={{ color: 'var(--color-primary)' }}>AI Hardware Support.</span>
         </h1>
         
-        <p className="animate-reveal" style={{ fontSize: '1.1rem', color: 'var(--color-text-dim)', maxWidth: '600px', margin: '0 auto 48px', lineHeight: 1.6 }}>
-          Transform legacy PDF manuals into high-fidelity AI agents. 
-          Deploy instant technical support across your hardware fleet in minutes.
+        <p className="animate-reveal" style={{ fontSize: '1.25rem', color: 'var(--color-text-dim)', maxWidth: '650px', margin: '0 auto 56px', lineHeight: 1.6 }}>
+          Automate technical assistance at scale. From PDF ingestion to global QR deployment, manage your appliance intelligence in one console.
         </p>
 
-        {/* ── Real Dashboard Alignment Mockup ── */}
-        <div className="animate-reveal" style={{ marginTop: '40px', padding: '0 24px' }}>
+        {/* ── HIGH-DENSITY DASHBOARD MOCKUP ── */}
+        <div id="mockup" className="animate-reveal" style={{ marginTop: '40px', padding: '0 24px' }}>
           <div style={{ 
-            maxWidth: '1100px', margin: '0 auto', 
-            background: '#0B0F1A', border: '1px solid #1F2937', borderRadius: '12px',
-            boxShadow: '0 40px 80px rgba(0,0,0,0.5)', overflow: 'hidden'
+            maxWidth: '1200px', margin: '0 auto', 
+            background: '#04070D', border: '1px solid #1F2937', borderRadius: '16px',
+            boxShadow: '0 60px 120px rgba(0,0,0,0.8)', overflow: 'hidden'
           }}>
-            {/* Real App Header */}
-            <div style={{ padding: '24px', borderBottom: '1px solid #1F2937', display: 'flex', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left' }}>
-              <div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0 }}>Workspace Overview</h3>
-                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>Managing 12 indexed appliance manuals across the network.</p>
-              </div>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <div style={{ width: '200px', background: '#111827', border: '1px solid #1F2937', borderRadius: '8px', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Search size={14} color="#4B5563" />
-                  <div style={{ width: '100px', height: '10px', background: '#1F2937', borderRadius: '2px' }} />
+            {/* Command Bar */}
+            <div style={{ padding: '16px 24px', background: '#0B0F1A', borderBottom: '1px solid #1F2937', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#374151' }} />
+                  <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#374151' }} />
+                  <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#374151' }} />
                 </div>
-                <div style={{ width: '100px', height: '36px', background: 'var(--color-primary)', borderRadius: '8px' }} />
+                <div style={{ width: '1px', height: '16px', background: '#1F2937' }} />
+                <span style={{ fontSize: '0.7rem', color: '#4B5563', fontFamily: 'monospace', fontWeight: 600 }}>SYSTEM_CONTROL_CONSOLE_V3.1</span>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ width: '120px', height: '28px', background: '#111827', borderRadius: '6px', border: '1px solid #1F2937' }} />
+                <div style={{ width: '28px', height: '28px', background: '#1F2937', borderRadius: '6px' }} />
               </div>
             </div>
 
-            {/* Real KPI Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', padding: '24px' }}>
-              {[
-                { icon: <FileText size={18} />, label: 'Total Manuals', value: '12', color: 'blue' },
-                { icon: <Activity size={18} />, label: 'Active Agents', value: '10', color: 'emerald' },
-                { icon: <Scan size={18} />, label: 'Deployments', value: '124', color: 'violet' }
-              ].map((kpi, i) => (
-                <div key={i} style={{ background: '#111827', border: '1px solid #1F2937', borderRadius: '12px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px', textAlign: 'left' }}>
-                  <div style={{ width: '40px', height: '40px', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)' }}>{kpi.icon}</div>
-                  <div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 800 }}>{kpi.value}</div>
-                    <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>{kpi.label}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: '0' }}>
+              {/* Sidebar Nav */}
+              <div style={{ padding: '24px', borderRight: '1px solid #1F2937', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '32px' }}>
+                <div>
+                  <div style={{ fontSize: '0.65rem', color: '#4B5563', fontWeight: 800, marginBottom: '16px', letterSpacing: '0.05em' }}>CORE MODULES</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {[
+                      { icon: <Layers size={14} />, label: 'Fleet Registry', active: true },
+                      { icon: <Database size={14} />, label: 'Vector Stores', active: false },
+                      { icon: <Activity size={14} />, label: 'Live Inference', active: false },
+                      { icon: <Users size={14} />, label: 'Operator Hub', active: false }
+                    ].map((item, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', borderRadius: '8px', background: item.active ? 'rgba(59, 130, 246, 0.05)' : 'transparent', color: item.active ? 'var(--color-primary)' : '#6B7280', fontSize: '0.8rem', fontWeight: 600 }}>
+                        {item.icon} {item.label}
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ))}
-            </div>
+                
+                <div style={{ marginTop: 'auto', padding: '16px', background: 'rgba(16, 185, 129, 0.05)', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.1)' }}>
+                  <div style={{ fontSize: '0.6rem', color: '#10B981', fontWeight: 800, marginBottom: '4px' }}>RAG NODE STATUS</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ width: '8px', height: '8px', background: '#10B981', borderRadius: '50%', boxShadow: '0 0 10px #10B981' }} />
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700 }}>99.9% Uptime</span>
+                  </div>
+                </div>
+              </div>
 
-            {/* Real Resource Table Mockup */}
-            <div style={{ padding: '0 24px 24px', textAlign: 'left' }}>
-              <div style={{ background: '#111827', border: '1px solid #1F2937', borderRadius: '12px', overflow: 'hidden' }}>
-                <div style={{ padding: '12px 20px', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid #1F2937', fontSize: '0.65rem', fontWeight: 800, color: 'var(--color-text-muted)', letterSpacing: '0.05em' }}>RESOURCE REGISTRY</div>
-                {[
-                  { model: 'SmartFreeze v2', file: 'manual_3002.pdf', status: 'ACTIVE' },
-                  { model: 'AeroWash Pro', file: 'spec_4401.pdf', status: 'ACTIVE' },
-                  { model: 'OmniHeat G3', file: 'guide_881.pdf', status: 'PROCESSING' }
-                ].map((row, i) => (
-                  <div key={i} style={{ padding: '16px 20px', borderBottom: i < 2 ? '1px solid #1F2937' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ width: '32px', height: '32px', background: '#1F2937', borderRadius: '6px' }} />
-                      <div>
-                        <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{row.model}</div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{row.file}</div>
+              {/* Main Content Area */}
+              <div style={{ background: '#0B0F1A', padding: '32px', textAlign: 'left' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '32px' }}>
+                  {[
+                    { label: 'Fleet Queries', value: '42.8k', trend: '+12%', icon: <MessageSquare size={18} /> },
+                    { label: 'Avg Latency', value: '184ms', trend: '-14%', icon: <Zap size={18} /> },
+                    { label: 'Hit Rate', value: '98.2%', trend: '+2%', icon: <BarChart3 size={18} /> }
+                  ].map((stat, i) => (
+                    <div key={i} style={{ background: '#111827', border: '1px solid #1F2937', borderRadius: '12px', padding: '24px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                        <div style={{ color: 'var(--color-primary)' }}>{stat.icon}</div>
+                        <div style={{ fontSize: '0.7rem', color: '#10B981', fontWeight: 800 }}>{stat.trend}</div>
+                      </div>
+                      <div style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '4px' }}>{stat.value}</div>
+                      <div style={{ fontSize: '0.7rem', color: '#4B5563', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{stat.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '20px' }}>
+                  {/* Performance Chart Mockup */}
+                  <div style={{ background: '#111827', border: '1px solid #1F2937', borderRadius: '12px', padding: '24px', position: 'relative' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'white' }}>INFERENCE LATENCY (REAL-TIME)</span>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <div style={{ width: '8px', height: '8px', background: 'var(--color-primary)', borderRadius: '50%' }} />
+                        <div style={{ width: '8px', height: '8px', background: '#1F2937', borderRadius: '50%' }} />
                       </div>
                     </div>
-                    <div style={{ padding: '4px 10px', borderRadius: '99px', fontSize: '0.6rem', fontWeight: 800, background: row.status === 'ACTIVE' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)', color: row.status === 'ACTIVE' ? '#10B981' : '#F59E0B' }}>{row.status}</div>
+                    {/* SVG Line Chart Mockup */}
+                    <svg width="100%" height="120" viewBox="0 0 400 120" preserveAspectRatio="none">
+                      <path d="M0,80 Q50,70 100,90 T200,60 T300,80 T400,50" fill="none" stroke="var(--color-primary)" strokeWidth="3" />
+                      <path d="M0,80 Q50,70 100,90 T200,60 T300,80 T400,50 L400,120 L0,120 Z" fill="rgba(59, 130, 246, 0.05)" />
+                    </svg>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px', borderTop: '1px solid #1F2937', paddingTop: '12px' }}>
+                      <div style={{ fontSize: '0.65rem', color: '#4B5563', fontWeight: 700 }}>08:00 AM</div>
+                      <div style={{ fontSize: '0.65rem', color: '#4B5563', fontWeight: 700 }}>PROCESSED: 24,102 TOKENS</div>
+                      <div style={{ fontSize: '0.65rem', color: '#4B5563', fontWeight: 700 }}>12:00 PM</div>
+                    </div>
                   </div>
-                ))}
+
+                  {/* Log Feed */}
+                  <div style={{ background: '#111827', border: '1px solid #1F2937', borderRadius: '12px', padding: '24px' }}>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#4B5563', display: 'block', marginBottom: '16px', textTransform: 'uppercase' }}>SYSTEM LOGS</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {[
+                        { time: '14:22', event: 'Vector re-indexed: SM-90', color: '#10B981' },
+                        { time: '14:21', event: 'New Query: Washing Machine', color: '#3B82F6' },
+                        { time: '14:18', event: 'Vision Analysis: OK', color: '#8B5CF6' },
+                        { time: '14:15', event: 'Deployment: QR-A102', color: '#3B82F6' }
+                      ].map((log, i) => (
+                        <div key={i} style={{ display: 'flex', gap: '10px', fontSize: '0.7rem', borderLeft: `2px solid ${log.color}`, paddingLeft: '8px' }}>
+                          <span style={{ color: '#4B5563', fontWeight: 700 }}>{log.time}</span>
+                          <span style={{ color: '#9CA3AF' }}>{log.event}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── Features Grid (Solid) ── */}
-      <section className="page-container" style={{ paddingTop: 0 }}>
+      {/* ── Features Section ── */}
+      <section id="features" className="page-container" style={{ paddingTop: 0 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
           {[
             { icon: <Cpu />, title: 'Neural Ingestion', desc: 'Advanced OCR that understands complex technical diagrams and specs.' },
