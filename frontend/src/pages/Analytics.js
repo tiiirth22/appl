@@ -51,7 +51,7 @@ const EliteBarChart = ({ data }) => {
   );
 };
 
-export default function Analytics({ user, onLogout }) {
+export default function Analytics({ user, onLogout, currentTheme, toggleTheme }) {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalQueries: 0,
@@ -141,7 +141,7 @@ export default function Analytics({ user, onLogout }) {
 
   return (
     <div style={{ backgroundColor: 'var(--color-bg-base)', minHeight: '100vh' }}>
-      <Navbar user={user} onLogout={onLogout} activePage="analytics" />
+      <Navbar user={user} onLogout={onLogout} activePage="analytics" currentTheme={currentTheme} toggleTheme={toggleTheme} />
 
       <main style={{ maxWidth: '1400px', margin: '0 auto', padding: '40px' }}>
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '48px' }}>
