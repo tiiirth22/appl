@@ -51,21 +51,18 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
       <Navbar activePage="chat" currentTheme={currentTheme} toggleTheme={toggleTheme} />
       
       {/* ── Terminal Header ── */}
-      <header style={{ padding: '20px 40px', borderBottom: 'var(--border-thin)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-bg-base)', fontFamily: 'monospace' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '8px', height: '8px', background: '#10B981', borderRadius: '50%', boxShadow: '0 0 12px #10B981' }} />
-            <span style={{ fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.15em' }}>LINK_ESTABLISHED_v4.0</span>
-          </div>
-          <div style={{ width: '1px', height: '16px', background: 'var(--color-text-muted)', opacity: 0.3 }} />
+      <header style={{ padding: '12px 24px', borderBottom: 'var(--border-thin)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-bg-elevated)', fontFamily: 'monospace' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Database size={14} color="var(--color-text-muted)" />
-            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 800 }}>IDX_{manualId?.substring(0,8) || 'GLOBAL'}</span>
+            <div style={{ width: '6px', height: '6px', background: '#10B981', borderRadius: '50%', boxShadow: '0 0 8px #10B981' }} />
+            <span style={{ fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.1em' }}>LINK_ACTIVE</span>
           </div>
+          <div style={{ width: '1px', height: '12px', background: 'var(--color-text-muted)', opacity: 0.3 }} />
+          <div className="mono" style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontWeight: 800 }}>IDX_{manualId?.substring(0,8) || 'GLOBAL'}</div>
         </div>
-        <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
-          <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)' }}>LATENCY: 142MS</div>
-          <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)' }}>STATUS: OPTIMAL</div>
+        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+          <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>P95: 142MS</div>
+          <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>LOAD: 0.08</div>
         </div>
       </header>
 
