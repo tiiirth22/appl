@@ -1,5 +1,5 @@
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "https://applianceiq-production.up.railway.app";
-const ML_SERVICE_URL = process.env.REACT_APP_ML_SERVICE_URL || "https://upbeat-contentment-production-ed5c.up.railway.app";
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
+const ML_SERVICE_URL = process.env.REACT_APP_ML_SERVICE_URL || "http://localhost:8001";
 
 // Ensure no trailing slashes for consistency
 const cleanBackendUrl = BACKEND_URL.replace(/\/$/, "");
