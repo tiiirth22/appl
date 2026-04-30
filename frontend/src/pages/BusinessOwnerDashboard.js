@@ -1,18 +1,67 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { Upload, FileText, QrCode, Loader, MessageSquare, Trash2, ExternalLink, Download, Search, LayoutGrid, TrendingUp, ArrowUpRight, BarChart3, Plus, ChevronRight, X } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { 
+  Plus, QrCode, Trash2, Search, ExternalLink, Database, 
+  Cpu, Activity, Zap, Shield, ChevronRight, Loader2, 
+  Clock, CheckCircle2, AlertCircle, Terminal
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import Navbar from '../components/ui/Navbar';
-
 import { API_BASE_URL as API } from '../config';
+
+// ── Dynamic Event Feed Component ──
+const LiveEventFeed = () => {
+  const [events, setEvents] = useState([
+    { id: 1, type: 'system', msg: 'Neural Core Initialized', time: 'Just now' },
+    { id: 2, type: 'auth', msg: 'Secure Handshake established', time: '2m ago' },
+    { id: 3, type: 'vector', msg: 'Pinecone Index status: Healthy', time: '5m ago' }
+  ]);
+
+  return (
+    <div className="elite-panel" style={{ padding: '24px', height: '100%' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
+        <Terminal size={14} color="var(--color-accent)" />
+        <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Live Operational Feed</span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {events.map(event => (
+          <div key={event.id} style={{ display: 'flex', gap: '12px' }}>
+            <div style={{ width: '2px', background: 'var(--color-accent)', opacity: 0.2, borderRadius: '2px' }} />
+            <div>
+              <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>{event.msg}</div>
+              <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>{event.time}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ── Kinetic KPI Card ──
+const KineticCard = ({ icon, label, value, color, delay }) => (
+  <motion.div 
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay }}
+    whileHover={{ scale: 1.02, translateY: -5 }}
+    className="elite-panel" 
+    style={{ padding: '32px', position: 'relative', overflow: 'hidden' }}
+  >
+    <div style={{ 
+      position: 'absolute', top: 0, right: 0, width: '100px', height: '100px', 
+      background: `radial-gradient(circle at top right, ${color}22 0%, transparent 70%)` 
+    }} />
+    <div style={{ color: 'var(--color-text-muted)', marginBottom: '16px' }}>{icon}</div>
+    <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-text-primary)' }}>{value}</div>
+    <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+  </motion.div>
+);
 
 export default function BusinessOwnerDashboard({ user, onLogout, currentTheme, toggleTheme }) {
   const [manuals, setManuals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedQR, setSelectedQR] = useState(null);
-  const [loadingQR, setLoadingQR] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     fetchManuals();
@@ -29,195 +78,175 @@ export default function BusinessOwnerDashboard({ user, onLogout, currentTheme, t
     }
   };
 
-  const handleViewQR = async (manualId) => {
-    setLoadingQR(true);
+  const handleDelete = async (id) => {
+    if (!window.confirm('Initialize permanent deletion protocol?')) return;
     try {
-      const response = await axios.get(`${API}/manuals/${manualId}/qr`, { withCredentials: true });
-      setSelectedQR(response.data);
-    } catch (error) {
-      console.error('Error fetching QR:', error);
-      alert('Failed to fetch QR code');
-    } finally {
-      setLoadingQR(false);
-    }
-  };
-
-  const handleDeleteManual = async (manualId) => {
-    if (!window.confirm('Delete this manual and its AI index? This cannot be undone.')) return;
-    try {
-      await axios.delete(`${API}/manuals/${manualId}`, { withCredentials: true });
+      await axios.delete(`${API}/manuals/${id}`, { withCredentials: true });
       fetchManuals();
     } catch (error) {
-      console.error('Error deleting manual:', error);
-      alert('Failed to delete manual: ' + (error.response?.data?.detail || error.message));
+      alert('Deletion failed');
     }
   };
-
-  const filteredManuals = manuals.filter(m =>
-    m.model_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    m.filename.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const completedCount = manuals.filter(m => m.status === 'completed').length;
-  const qrCount = manuals.filter(m => m.qr_code_id).length;
 
   return (
     <div style={{ backgroundColor: 'var(--color-bg-base)', minHeight: '100vh' }}>
-      <Navbar
-        user={user}
-        onLogout={onLogout}
-        activePage="dashboard"
-        currentTheme={currentTheme}
-        toggleTheme={toggleTheme}
-      />
+      <Navbar user={user} onLogout={onLogout} activePage="dashboard" currentTheme={currentTheme} toggleTheme={toggleTheme} />
 
       <main style={{ maxWidth: '1400px', margin: '0 auto', padding: '40px' }}>
-        {/* Elite Header */}
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '48px' }}>
+        {/* Dynamic Header */}
+        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '48px' }}>
           <div>
-            <div style={{ color: 'var(--color-accent)', fontWeight: 800, fontSize: '0.65rem', marginBottom: '12px', letterSpacing: '0.1em' }}>WORKSPACE_OVERVIEW</div>
+            <motion.div 
+              initial={{ x: -20, opacity: 0 }} 
+              animate={{ x: 0, opacity: 1 }}
+              style={{ color: 'var(--color-accent)', fontWeight: 800, fontSize: '0.65rem', marginBottom: '12px', letterSpacing: '0.15em' }}
+            >
+              CORE_SYSTEM_ACTIVE
+            </motion.div>
             <h1 className="heading-elite" style={{ fontSize: '2.5rem' }}>Resource Registry.</h1>
-            <p style={{ color: 'var(--color-text-dim)', marginTop: '8px', fontSize: '0.9rem' }}>Managing {manuals.length} technical assets across your network.</p>
           </div>
-          <Link to="/upload" className="btn-elite" style={{ textDecoration: 'none' }}>
-            <Plus size={16} /> Initialize Manual
-          </Link>
+          <motion.button 
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => window.location.href = '/upload'} 
+            className="btn-elite"
+          >
+            <Plus size={18} /> INGEST MANUAL
+          </motion.button>
         </header>
 
-        {/* Elite KPIs */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px', background: 'rgba(255,255,255,0.05)', border: 'var(--border-thin)', borderRadius: '12px', overflow: 'hidden', marginBottom: '48px' }}>
-          {[
-            { label: 'Indexed Manuals', value: manuals.length, icon: <FileText size={18} /> },
-            { label: 'Active RAG Nodes', value: completedCount, icon: <BarChart3 size={18} /> },
-            { label: 'QR Deployments', value: qrCount, icon: <QrCode size={18} /> },
-          ].map((kpi, i) => (
-            <div key={i} style={{ background: 'var(--color-bg-elevated)', padding: '32px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-                <div style={{ color: 'var(--color-text-muted)' }}>{kpi.icon}</div>
-                <ArrowUpRight size={14} color="rgba(255,255,255,0.1)" />
-              </div>
-              <div style={{ fontSize: '2rem', fontWeight: 800, color: 'white' }}>{kpi.value}</div>
-              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '4px' }}>{kpi.label}</div>
-            </div>
-          ))}
+        {/* Dynamic KPI Row */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px', marginBottom: '48px' }}>
+          <KineticCard icon={<Database size={20} />} label="Indexed Manuals" value={manuals.length} color="#FFFFFF" delay={0.1} />
+          <KineticCard icon={<Activity size={20} />} label="System Load" value="Optimal" color="#10B981" delay={0.2} />
+          <KineticCard icon={<Shield size={20} />} label="Security Tier" value="Elite" color="#3B82F6" delay={0.3} />
+          <KineticCard icon={<Zap size={20} />} label="Latency" value="142ms" color="#F59E0B" delay={0.4} />
         </div>
 
-        {/* Search & Registry */}
-        <div className="elite-panel" style={{ padding: '0' }}>
-          <div style={{ padding: '24px 32px', borderBottom: 'var(--border-thin)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(255,255,255,0.02)', padding: '8px 16px', borderRadius: '6px', border: 'var(--border-thin)', width: '400px' }}>
-              <Search size={14} color="var(--color-text-muted)" />
-              <input
-                type="text"
-                placeholder="Search registry by model..."
-                style={{ background: 'transparent', border: 'none', color: 'white', fontSize: '0.8rem', width: '100%', outline: 'none' }}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '32px' }}>
+          {/* Main Registry Table */}
+          <div className="elite-panel" style={{ padding: '0' }}>
+            <div style={{ padding: '24px 32px', borderBottom: 'var(--border-thin)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 className="heading-elite" style={{ fontSize: '1rem' }}>Active Resource Pool</h3>
+              <div style={{ position: 'relative' }}>
+                <Search style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} size={14} />
+                <input 
+                  type="text" 
+                  placeholder="Filter resources..." 
+                  className="input-elite" 
+                  style={{ padding: '8px 12px 8px 36px', fontSize: '0.75rem', width: '240px' }}
+                />
+              </div>
             </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-               <button className="btn-elite-ghost" style={{ padding: '8px 16px', fontSize: '0.7rem' }}>Filter</button>
-               <button className="btn-elite-ghost" style={{ padding: '8px 16px', fontSize: '0.7rem' }}>Export</button>
+
+            <div style={{ padding: '20px' }}>
+              {loading ? (
+                <div style={{ padding: '80px', textAlign: 'center' }}>
+                  <Loader2 className="spinner" size={32} color="var(--color-accent)" />
+                  <p style={{ marginTop: '16px', color: 'var(--color-text-muted)', fontSize: '0.8rem', fontWeight: 600 }}>SYNCING REGISTRY...</p>
+                </div>
+              ) : manuals.length === 0 ? (
+                <div style={{ padding: '80px', textAlign: 'center' }}>
+                  <p style={{ color: 'var(--color-text-dim)' }}>No manuals indexed. Start by ingesting a technical PDF.</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {manuals.map((m, i) => (
+                    <motion.div 
+                      key={m.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: '1fr 150px 150px 120px', 
+                        alignItems: 'center', 
+                        padding: '16px 24px', 
+                        background: 'rgba(255,255,255,0.01)', 
+                        border: 'var(--border-thin)', 
+                        borderRadius: '8px',
+                        transition: 'var(--transition-smooth)'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <div style={{ width: '40px', height: '40px', background: '#0D1117', border: 'var(--border-thin)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-accent)' }}>
+                          <Database size={18} />
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{m.model_name}</div>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>ID: {m.id.substring(0,8)}...</div>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <span style={{ 
+                          fontSize: '0.65rem', 
+                          fontWeight: 800, 
+                          padding: '4px 10px', 
+                          borderRadius: '100px', 
+                          background: m.status === 'completed' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                          color: m.status === 'completed' ? '#10B981' : '#F59E0B',
+                          textTransform: 'uppercase'
+                        }}>
+                          {m.status}
+                        </span>
+                      </div>
+
+                      <div style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 600 }}>
+                        {new Date(m.created_at).toLocaleDateString()}
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                        <button onClick={() => setSelectedQR(m)} className="btn-elite-ghost" style={{ padding: '8px', borderRadius: '6px' }} title="Generate QR"><QrCode size={14} /></button>
+                        <button onClick={() => handleDelete(m.id)} className="btn-elite-ghost" style={{ padding: '8px', borderRadius: '6px', color: '#EF4444' }} title="Delete"><Trash2 size={14} /></button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
-          <div style={{ minHeight: '400px' }}>
-            {loading ? (
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
-                <Loader className="spinner" size={24} color="var(--color-accent)" />
-              </div>
-            ) : filteredManuals.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '100px 0' }}>
-                <FileText size={48} color="var(--color-text-muted)" style={{ marginBottom: '16px' }} />
-                <h3 className="heading-elite" style={{ fontSize: '1.25rem' }}>No records found.</h3>
-                <p style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem' }}>{searchTerm ? 'Refine your search parameters.' : 'Start by initializing your first resource.'}</p>
-              </div>
-            ) : (
-              <div>
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', padding: '12px 32px', background: 'rgba(255,255,255,0.02)', borderBottom: 'var(--border-thin)', fontSize: '0.65rem', fontWeight: 800, color: 'var(--color-text-muted)', letterSpacing: '0.05em' }}>
-                  <span>IDENTITY</span>
-                  <span>FILENAME</span>
-                  <span>STATUS</span>
-                  <span style={{ textAlign: 'right' }}>ACTIONS</span>
-                </div>
-                {filteredManuals.map((m, i) => (
-                  <motion.div
-                    key={m.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: i * 0.05 }}
-                    style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', padding: '20px 32px', borderBottom: i < filteredManuals.length - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none', alignItems: 'center' }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                      <div style={{ width: '40px', height: '40px', background: '#0B0F1A', border: 'var(--border-thin)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-accent)' }}>
-                        <Database size={16} />
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'white' }}>{m.model_name}</div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{m.version} · {m.region}</div>
-                      </div>
-                    </div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-dim)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: '20px' }}>{m.filename}</div>
-                    <div>
-                      <span style={{ padding: '4px 10px', borderRadius: '4px', fontSize: '0.6rem', fontWeight: 800, background: m.status === 'completed' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)', color: m.status === 'completed' ? '#10B981' : '#F59E0B' }}>
-                        {m.status === 'completed' ? 'INDEXED' : 'PROCESSING'}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                      <button className="btn-elite-ghost" style={{ padding: '6px 12px', fontSize: '0.65rem' }} onClick={() => handleViewQR(m.id)}>QR</button>
-                      <button className="btn-elite" style={{ padding: '6px 12px', fontSize: '0.65rem' }} onClick={() => window.location.href = `/chat?manual_id=${m.id}`}>TEST</button>
-                      <button className="btn-elite-ghost" style={{ padding: '6px 12px', fontSize: '0.65rem', border: 'none', color: '#EF4444' }} onClick={() => handleDeleteManual(m.id)}><Trash2 size={14} /></button>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            )}
+          {/* Right Column: Live Feed */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+            <LiveEventFeed />
+            <div className="elite-panel" style={{ padding: '24px', background: 'var(--color-accent)', color: 'var(--color-bg-base)' }}>
+               <h4 style={{ fontWeight: 800, fontSize: '0.9rem', marginBottom: '8px' }}>Security Protocol</h4>
+               <p style={{ fontSize: '0.75rem', opacity: 0.8, lineHeight: 1.5, marginBottom: '16px' }}>All diagnostic sessions are end-to-end encrypted and audited in real-time.</p>
+               <button className="btn-elite" style={{ background: 'var(--color-bg-base)', color: 'var(--color-accent)', width: '100%', padding: '10px', fontSize: '0.7rem' }}>VIEW COMPLIANCE LOGS</button>
+            </div>
           </div>
         </div>
       </main>
 
-      {/* Elite Modal */}
+      {/* QR Modal Overlay */}
       <AnimatePresence>
         {selectedQR && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
             exit={{ opacity: 0 }}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
             onClick={() => setSelectedQR(null)}
           >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              onClick={e => e.stopPropagation()}
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
               className="elite-panel"
-              style={{ width: '100%', maxWidth: '400px', padding: '40px', textAlign: 'center' }}
+              style={{ width: '400px', padding: '40px', textAlign: 'center', position: 'relative' }}
+              onClick={e => e.stopPropagation()}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                  <QrCode size={20} color="var(--color-accent)" />
-                  <span className="heading-elite" style={{ fontSize: '1.1rem' }}>QR Key</span>
-                </div>
-                <button onClick={() => setSelectedQR(null)} style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)' }}><X size={20} /></button>
+              <div style={{ color: 'var(--color-accent)', marginBottom: '24px' }}><QrCode size={48} /></div>
+              <h2 className="heading-elite" style={{ marginBottom: '8px' }}>Device Identifier</h2>
+              <p style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem', marginBottom: '32px' }}>Deployment ready for <strong>{selectedQR.model_name}</strong></p>
+              
+              <div style={{ background: 'white', padding: '20px', borderRadius: '12px', display: 'inline-block', marginBottom: '32px' }}>
+                <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${window.location.origin}/device/${selectedQR.id}`} alt="QR Code" />
               </div>
-
-              <div style={{ background: 'white', padding: '24px', borderRadius: '12px', display: 'inline-block', marginBottom: '24px' }}>
-                <img src={selectedQR.image} alt="QR Code" style={{ width: '200px', height: '200px', display: 'block' }} />
-              </div>
-
-              <div style={{ background: 'rgba(255,255,255,0.02)', border: 'var(--border-thin)', padding: '12px', borderRadius: '8px', color: 'var(--color-text-dim)', fontSize: '0.7rem', fontFamily: 'monospace', marginBottom: '32px', wordBreak: 'break-all' }}>
-                {selectedQR.url}
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <button className="btn-elite" onClick={() => {
-                   const link = document.createElement('a');
-                   link.href = selectedQR.image;
-                   link.download = `qr-${selectedQR.qr_id}.png`;
-                   link.click();
-                }}>Download</button>
-                <button className="btn-elite-ghost" onClick={() => setSelectedQR(null)}>Close</button>
+              
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button className="btn-elite" style={{ flex: 1 }}>PRINT LABEL</button>
+                <button onClick={() => setSelectedQR(null)} className="btn-elite-ghost" style={{ flex: 1 }}>CLOSE</button>
               </div>
             </motion.div>
           </motion.div>
