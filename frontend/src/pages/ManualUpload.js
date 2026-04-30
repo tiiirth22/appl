@@ -57,16 +57,19 @@ export default function ManualUpload({ user, onLogout, currentTheme, toggleTheme
       />
 
       <main style={{ maxWidth: '1000px', margin: '0 auto', padding: '60px 40px' }}>
-        <button onClick={() => navigate(-1)} style={{ background: 'transparent', border: 'none', color: 'var(--color-text-dim)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', fontWeight: 700, marginBottom: '40px' }}>
-          <ArrowLeft size={16} /> BACK TO REGISTRY
+        <button onClick={() => navigate(-1)} style={{ background: 'transparent', border: 'none', color: 'var(--color-text-dim)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', fontWeight: 700, marginBottom: '40px', cursor: 'pointer' }}>
+          <ChevronLeft size={16} /> RETURN_TO_REGISTRY
         </button>
+
+        <header style={{ marginBottom: '64px' }}>
+          <div style={{ color: 'var(--color-accent)', fontWeight: 800, fontSize: '0.65rem', marginBottom: '16px', letterSpacing: '0.15em' }}>INGESTION_PROTOCOL_V4.0</div>
+          <h1 className="heading-elite" style={{ fontSize: '3.5rem', lineHeight: 1 }}>Resource Ingestion.</h1>
+          <p style={{ color: 'var(--color-text-dim)', marginTop: '16px', fontSize: '1.1rem', fontWeight: 500 }}>Transforming technical source documentation into queryable semantic vector indices.</p>
+        </header>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '60px', alignItems: 'start' }}>
           {/* Upload Form */}
           <div className="animate-elite">
-            <div style={{ color: 'var(--color-accent)', fontWeight: 800, fontSize: '0.65rem', marginBottom: '12px', letterSpacing: '0.1em' }}>RESOURCE_INGESTION</div>
-            <h1 className="heading-elite" style={{ fontSize: '2.5rem', marginBottom: '40px' }}>Initialize Manual.</h1>
-
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Appliance Model Identity</label>
