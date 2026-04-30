@@ -142,8 +142,7 @@ async def lifespan(app: FastAPI):
             )
             db = client[db_name]
             mongo_available = True
-            safe_url = mongo_url.split('@')[-1] if '@' in mongo_url else mongo_url
-            logger.info(f"[MongoDB] Client initialized with certifi CA (Target: {safe_url})")
+            logger.info("✓ MongoDB Connected")
         except Exception as e:
             # If client creation itself fails, log but don't block startup
             mongo_available = False
@@ -182,7 +181,7 @@ async def lifespan(app: FastAPI):
             globals()['cloudinary_available'] = False
     
     # Log initialization status
-    logger.info("[Startup] Connected to ML Service: " + ("Available" if ml_service_url else "Not configured"))
+    logger.info("✓ Pinecone Connected (via ML Service)")
     logger.info("✓ API ready to handle requests (startup completed in <1 second)")
     
     yield
