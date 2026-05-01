@@ -12,12 +12,11 @@ from typing import List, Dict, Any, Optional, Tuple
 try:
     from pinecone import Pinecone
     PINECONE_AVAILABLE = True
+    print("✓ Pinecone SDK imported successfully at top-level")
 except Exception as e:
     import logging
-    # Use a basic logger here since logging config might not be ready
-    logging.basicConfig(level=logging.INFO)
-    logger = logging.getLogger(__name__)
-    logger.error(f"CRITICAL: Failed to load Pinecone SDK: {e}")
+    # Force print because logging might not be initialized yet
+    print(f"✗ CRITICAL: Failed to load Pinecone SDK at top-level: {e}")
     PINECONE_AVAILABLE = False
 
 try:
@@ -199,8 +198,19 @@ class RAGQueryEngine:
         if _global_pinecone_index is not None:
             self._pinecone_client = _global_pinecone_client
             return _global_pinecone_index
+        
+        self.logger.info(f"[Pinecone] Initializing index connection. Available={PINECONE_AVAILABLE}")
+        
         if not PINECONE_AVAILABLE:
+            # One last check
+            try:
+                from pinecone import Pinecone
+                self.logger.info("[Pinecone] Late import successful!")
+            except Exception as e:
+                self.logger.error(f"[Pinecone] Late import also failed: {e}")
+                print(f"✗ Pinecone SDK check failed: {e}")
             raise ServiceUnavailableError("pinecone", "pinecone SDK not installed")
+            
         if not PINECONE_API_KEY:
             raise ServiceUnavailableError("pinecone", "PINECONE_API_KEY not configured")
         try:
