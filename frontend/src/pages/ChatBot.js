@@ -150,32 +150,70 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
                   messages.map((msg, i) => (
                     <motion.div
                       key={i}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}
+                      initial={{ opacity: 0, x: msg.role === 'user' ? 20 : -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      style={{ 
+                        display: 'flex', 
+                        flexDirection: 'row',
+                        justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                        gap: '12px',
+                        width: '100%'
+                      }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                         <span className="mono" style={{ 
-                           fontSize: '0.65rem', 
-                           fontWeight: 800, 
-                           color: msg.role === 'assistant' ? '#10B981' : 'var(--color-text-muted)' 
-                         }}>
-                           {msg.role === 'assistant' ? 'ASSISTANT_AI' : 'SYSTEM_OPERATOR'}
-                         </span>
-                         <div style={{ flex: 1, height: '1px', background: 'var(--color-bg-surface)', opacity: 0.5 }} />
-                      </div>
+                      {msg.role === 'assistant' && (
+                        <div style={{ 
+                          width: '32px', height: '32px', borderRadius: '50%', 
+                          background: 'rgba(16, 185, 129, 0.1)', 
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          border: '1px solid rgba(16, 185, 129, 0.2)',
+                          marginTop: '4px'
+                        }}>
+                          <Bot size={16} color="#10B981" />
+                        </div>
+                      )}
+
                       <div style={{ 
-                        fontSize: '0.95rem', 
-                        lineHeight: 1.6, 
-                        color: msg.role === 'user' ? 'var(--color-text-primary)' : 'var(--color-text-dim)',
-                        background: msg.role === 'assistant' ? 'rgba(16, 185, 129, 0.03)' : 'transparent',
-                        padding: msg.role === 'assistant' ? '24px' : '0',
-                        borderRadius: '12px', 
-                        border: msg.role === 'assistant' ? '1px solid rgba(16, 185, 129, 0.1)' : 'none',
-                        boxShadow: msg.role === 'assistant' ? '0 4px 20px rgba(0,0,0,0.2)' : 'none'
+                        maxWidth: '80%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start'
                       }}>
-                        <MarkdownText text={msg.content} />
+                        <div className="mono" style={{ 
+                          fontSize: '0.6rem', 
+                          fontWeight: 800, 
+                          color: 'var(--color-text-muted)',
+                          marginBottom: '4px',
+                          padding: '0 4px'
+                        }}>
+                          {msg.role === 'assistant' ? 'APPLIANCE_IQ_BOT' : 'OPERATOR'}
+                        </div>
+                        
+                        <div style={{ 
+                          fontSize: '0.95rem', 
+                          lineHeight: 1.5, 
+                          color: msg.role === 'user' ? '#FFFFFF' : 'var(--color-text-primary)',
+                          background: msg.role === 'user' ? '#3B82F6' : 'var(--color-bg-elevated)',
+                          padding: '16px 20px',
+                          borderRadius: msg.role === 'user' ? '18px 18px 2px 18px' : '18px 18px 18px 2px',
+                          border: msg.role === 'user' ? 'none' : 'var(--border-thin)',
+                          boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+                          position: 'relative'
+                        }}>
+                          <MarkdownText text={msg.content} />
+                        </div>
                       </div>
+
+                      {msg.role === 'user' && (
+                        <div style={{ 
+                          width: '32px', height: '32px', borderRadius: '50%', 
+                          background: 'rgba(59, 130, 246, 0.1)', 
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          border: '1px solid rgba(59, 130, 246, 0.2)',
+                          marginTop: '4px'
+                        }}>
+                          <User size={16} color="#3B82F6" />
+                        </div>
+                      )}
                     </motion.div>
                   ))
                 )}
