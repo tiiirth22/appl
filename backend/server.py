@@ -1129,4 +1129,4 @@ if __name__ == "__main__":
     print(f"Docs: http://localhost:8000/docs")
     print(f"Health: http://localhost:8000/api/health")
     print("="*50 + "\n")
-    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=False)
