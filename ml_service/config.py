@@ -69,9 +69,24 @@ BATCH_WINDOW_MS = int(os.getenv("BATCH_WINDOW_MS", "10"))  # milliseconds
 # ─── Caching Configuration ───────────────────────────────────────────
 EMBEDDING_CACHE_SIZE = int(os.getenv("EMBEDDING_CACHE_SIZE", "1024"))
 
+# ─── Redis Configuration ─────────────────────────────────────────────
+REDIS_URL = os.getenv("REDIS_URL", None)  # If None, fallback to in-memory
+REDIS_ENABLED = REDIS_URL is not None
+
+# ─── AWS Configuration ───────────────────────────────────────────────
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID", "")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY", "")
+AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
+AWS_S3_BUCKET = os.getenv("AWS_S3_BUCKET", "appliance-manuals-prod")
+AWS_SQS_QUEUE_URL = os.getenv("AWS_SQS_QUEUE_URL", "")
+
+# ─── Storage Configuration ───────────────────────────────────────────
+STORAGE_BACKEND = os.getenv("STORAGE_BACKEND", "local")  # "local", "s3", "cloudinary"
+TEMP_DIR = Path(os.getenv("TEMP_DIR", "/tmp/applianceiq"))
+
 # ─── Service Metadata ────────────────────────────────────────────────
 SERVICE_NAME = "ApplianceIQ Unified ML Service"
-SERVICE_VERSION = "2.0.0"
+SERVICE_VERSION = "2.1.0"
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
