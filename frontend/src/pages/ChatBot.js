@@ -92,22 +92,38 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
 
         const chunk = decoder.decode(value, { stream: true });
         let cleanChunk = chunk;
+        let metadataObj = null;
 
         if (chunk.includes('__METADATA__:')) {
-          cleanChunk = chunk.split('\n').slice(1).join('\n');
+          const parts = chunk.split('\n');
+          const metaLine = parts[0].replace('__METADATA__:', '');
+          try {
+            metadataObj = JSON.parse(metaLine);
+          } catch (e) {
+            console.warn('Metadata parse failed');
+          }
+          cleanChunk = parts.slice(1).join('\n');
         }
 
-        if (!cleanChunk) continue;
+        if (!cleanChunk && !metadataObj) continue;
 
         if (!assistantMsgStarted) {
           assistantMsgStarted = true;
-          setMessages(prev => [...prev, { role: 'assistant', content: cleanChunk }]);
+          setMessages(prev => [...prev, { 
+            role: 'assistant', 
+            content: cleanChunk,
+            video_url: metadataObj?.video_url 
+          }]);
         } else {
           setMessages(prev => {
             const last = prev[prev.length - 1];
             if (last && last.role === 'assistant') {
               const updated = [...prev];
-              updated[updated.length - 1] = { ...last, content: last.content + cleanChunk };
+              updated[updated.length - 1] = { 
+                ...last, 
+                content: last.content + cleanChunk,
+                video_url: metadataObj?.video_url || last.video_url
+              };
               return updated;
             }
             return prev;
@@ -203,6 +219,33 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
                           position: 'relative'
                         }}>
                           <MarkdownText text={msg.content} />
+                          
+                          {msg.video_url && (
+                            <div style={{ marginTop: '16px', borderTop: '1px solid rgba(16, 185, 129, 0.1)', paddingTop: '12px' }}>
+                              <a 
+                                href={msg.video_url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="btn-elite"
+                                style={{ 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  gap: '8px', 
+                                  padding: '8px 12px', 
+                                  background: 'rgba(239, 68, 68, 0.1)',
+                                  color: '#EF4444',
+                                  fontSize: '0.8rem',
+                                  textDecoration: 'none',
+                                  borderRadius: '6px',
+                                  border: '1px solid rgba(239, 68, 68, 0.2)',
+                                  width: 'fit-content'
+                                }}
+                              >
+                                <ExternalLink size={14} />
+                                Watch Video Tutorial
+                              </a>
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -217,6 +260,8 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
                           <User size={16} color="#3B82F6" />
                         </div>
                       )}
+                    </motion.div>
+                  ))
                 )}
               </AnimatePresence>
               
