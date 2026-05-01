@@ -53,6 +53,8 @@ class ProcessManualRequest(BaseModel):
     manual_name: str
     version: str
     file_type: str  # "pdf" or "image"
+    callback_url: Optional[str] = None
+
 
 
 class QueryRequest(BaseModel):

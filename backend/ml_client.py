@@ -144,6 +144,7 @@ class MLServiceClient:
         version: str,
         file_url: str,
         file_type: str,
+        callback_url: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Send file to ML Service for processing.
@@ -154,6 +155,7 @@ class MLServiceClient:
             version: Model version
             file_url: URL to file (Cloudinary URL)
             file_type: "pdf" or "image"
+            callback_url: Optional URL to notify on completion
             
         Returns:
             Processing result
@@ -176,6 +178,7 @@ class MLServiceClient:
             "version": version,
             "file_url": file_url,
             "file_type": file_type,
+            "callback_url": callback_url
         }
         logger.info(f"[MLClient] process_manual payload: {data}")
         return await self._make_request("POST", url, data)

@@ -98,6 +98,7 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
       const response = await fetch(`${API}/chat`, {
         method: 'POST',
         mode: 'cors',
+        credentials: 'include', // CRITICAL for session cookies
         headers: { 
           'Content-Type': 'application/json',
           'Accept': 'text/plain'
@@ -214,7 +215,7 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
         }).catch(() => {}); // Silent fail for logger
       } catch (e) {}
 
-      setMessages(prev => [...prev, { role: 'assistant', content: `SYSTEM_ERROR: ${error.message}. Please try again.` }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: `SYSTEM_ERROR: ${error.message} (Target: ${API}). Please verify your Vercel Environment Variables.` }]);
     } finally {
       setLoading(false);
     }

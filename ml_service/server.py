@@ -162,14 +162,22 @@ async def _ingestion_worker():
             
             # 2.1 Update Status in Backend
             try:
-                from config import INTERNAL_BACKEND_URL
-                import httpx
-                async with httpx.AsyncClient() as client:
-                    await client.put(
-                        f"{INTERNAL_BACKEND_URL}/api/manuals/{task_data['manual_id']}/status",
-                        json={"status": "ready"}
-                    )
-                logger.info(f"Status updated to READY for {task_data['manual_id']}")
+                callback_url = task_data.get("callback_url")
+                if callback_url:
+                    import httpx
+                    async with httpx.AsyncClient() as client:
+                        await client.put(callback_url, json={"status": "ready"})
+                    logger.info(f"Status updated to READY via callback: {callback_url}")
+                else:
+                    # Fallback to config-based URL if no callback provided
+                    from config import INTERNAL_BACKEND_URL
+                    import httpx
+                    async with httpx.AsyncClient() as client:
+                        await client.put(
+                            f"{INTERNAL_BACKEND_URL}/api/manuals/{task_data['manual_id']}/status",
+                            json={"status": "ready"}
+                        )
+                    logger.info(f"Status updated to READY for {task_data['manual_id']}")
             except Exception as se:
                 logger.error(f"Failed to update status to READY: {se}")
 
@@ -186,13 +194,19 @@ async def _ingestion_worker():
             # Try to update status to FAILED
             if task_data and 'manual_id' in task_data:
                 try:
-                    from config import INTERNAL_BACKEND_URL
-                    import httpx
-                    async with httpx.AsyncClient() as client:
-                        await client.put(
-                            f"{INTERNAL_BACKEND_URL}/api/manuals/{task_data['manual_id']}/status",
-                            json={"status": "failed"}
-                        )
+                    callback_url = task_data.get("callback_url")
+                    if callback_url:
+                        import httpx
+                        async with httpx.AsyncClient() as client:
+                            await client.put(callback_url, json={"status": "failed"})
+                    else:
+                        from config import INTERNAL_BACKEND_URL
+                        import httpx
+                        async with httpx.AsyncClient() as client:
+                            await client.put(
+                                f"{INTERNAL_BACKEND_URL}/api/manuals/{task_data['manual_id']}/status",
+                                json={"status": "failed"}
+                            )
                     logger.info(f"Status updated to FAILED for {task_data['manual_id']}")
                 except Exception as se:
                     logger.error(f"Failed to update status to FAILED: {se}")

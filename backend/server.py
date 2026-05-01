@@ -477,12 +477,16 @@ async def upload_manual(
         
         # Call ML Service to process file
         try:
+            # Get backend URL for callback
+            backend_url = os.environ.get('REACT_APP_BACKEND_URL', 'http://localhost:8000').rstrip('/')
+            
             ml_payload = {
                 "manual_id": manual_id,
                 "manual_name": model_name,
                 "version": version,
                 "file_url": cloudinary_file_url,
-                "file_type": file_ext
+                "file_type": file_ext,
+                "callback_url": f"{backend_url}/api/manuals/{manual_id}/status"
             }
             logger.info(f"[Upload] Sending to Ingestion Service: {ml_payload}")
             
@@ -491,7 +495,8 @@ async def upload_manual(
                 manual_name=model_name,
                 version=version,
                 file_url=cloudinary_file_url,
-                file_type=file_ext
+                file_type=file_ext,
+                callback_url=ml_payload["callback_url"]
             )
             logger.info(f"[Upload] ✓ Ingestion Service processing initiated for manual {manual_id}")
         except MLServiceError as e:
@@ -1144,8 +1149,30 @@ async def log_requests(request: Request, call_next):
     origin = request.headers.get('origin')
     method = request.method
     path = request.url.path
+    
     logger.info(f"Incoming: {method} {path} | Origin: {origin}")
+    
+    # Handle preflight OPTIONS requests manually
+    if method == "OPTIONS":
+        return Response(
+            status_code=204,
+            headers={
+                "Access-Control-Allow-Origin": origin or "*",
+                "Access-Control-Allow-Methods": "POST, GET, OPTIONS, DELETE, PUT, PATCH",
+                "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, Cookie, Accept, Origin",
+                "Access-Control-Allow-Credentials": "true",
+            }
+        )
+
     response = await call_next(request)
+    
+    # Inject CORS headers into the response manually to be 100% sure
+    if origin:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS, DELETE, PUT, PATCH"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, Cookie, Accept, Origin"
+    
     return response
 
 @app.exception_handler(405)
