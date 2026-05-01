@@ -18,7 +18,10 @@ export default function Signup(props) {
       if (props.onLogin) props.onLogin(userData, session_token);
       window.location.href = '/dashboard';
     } catch (error) {
-      alert('Signup failed');
+      console.error('Signup error:', error);
+      const detail = error.response?.data?.detail;
+      const errorMsg = typeof detail === 'string' ? detail : (Array.isArray(detail) ? detail[0].msg : 'Network error or database unavailable');
+      alert('Signup failed: ' + errorMsg);
     } finally {
       setLoading(false);
     }

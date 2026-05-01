@@ -1102,22 +1102,41 @@ else:
         "https://easygoing-elegance-production-2fff.up.railway.app/"
     ]
 
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    logger.info(f"Incoming: {request.method} {request.url.path} | Origin: {request.headers.get('origin')} | UA: {request.headers.get('user-agent')[:50]}")
-    response = await call_next(request)
-    logger.info(f"Outgoing: {response.status_code} | Path: {request.url.path}")
-    return response
-
+# Add CORS middleware with regex for all subdomains
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app|https://.*\.railway\.app|http://localhost:3000|http://127.0.0.1:3000",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
     max_age=3600,
 )
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    # Log the origin to see what's being requested
+    origin = request.headers.get('origin')
+    method = request.method
+    path = request.url.path
+    
+    logger.info(f"Incoming: {method} {path} | Origin: {origin}")
+    
+    # Handle OPTIONS manually if middleware fails for any reason
+    if method == "OPTIONS":
+        return Response(
+            status_code=200,
+            headers={
+                "Access-Control-Allow-Origin": origin or "*",
+                "Access-Control-Allow-Methods": "POST, GET, OPTIONS, DELETE, PUT",
+                "Access-Control-Allow-Headers": "*",
+                "Access-Control-Allow-Credentials": "true",
+            }
+        )
+        
+    response = await call_next(request)
+    logger.info(f"Outgoing: {response.status_code} | Path: {path}")
+    return response
 
 @app.exception_handler(405)
 async def method_not_allowed_handler(request: Request, exc):
