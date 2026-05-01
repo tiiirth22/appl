@@ -58,7 +58,7 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
 
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      scrollRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
 
@@ -84,8 +84,7 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let assistantMsgAdded = false;
-      let accumulatedAnswer = '';
+      let assistantMsgStarted = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -94,34 +93,30 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
         const chunk = decoder.decode(value, { stream: true });
         let cleanChunk = chunk;
 
-        if (chunk.startsWith('__METADATA__:')) {
-          const lines = chunk.split('\n');
-          // The metadata is on the first line, answer starts after the first \n
-          cleanChunk = lines.slice(1).join('\n');
+        if (chunk.includes('__METADATA__:')) {
+          cleanChunk = chunk.split('\n').slice(1).join('\n');
         }
 
-        accumulatedAnswer += cleanChunk;
+        if (!cleanChunk) continue;
 
-        setMessages(prev => {
-          const newMessages = [...prev];
-          const lastMsg = newMessages[newMessages.length - 1];
-
-          if (!assistantMsgAdded) {
-            assistantMsgAdded = true;
-            return [...newMessages, { role: 'assistant', content: accumulatedAnswer }];
-          }
-          
-          if (lastMsg && lastMsg.role === 'assistant') {
-            lastMsg.content = accumulatedAnswer;
-            return newMessages;
-          }
-          
-          return newMessages;
-        });
+        if (!assistantMsgStarted) {
+          assistantMsgStarted = true;
+          setMessages(prev => [...prev, { role: 'assistant', content: cleanChunk }]);
+        } else {
+          setMessages(prev => {
+            const last = prev[prev.length - 1];
+            if (last && last.role === 'assistant') {
+              const updated = [...prev];
+              updated[updated.length - 1] = { ...last, content: last.content + cleanChunk };
+              return updated;
+            }
+            return prev;
+          });
+        }
       }
     } catch (error) {
       console.error('Chat Error:', error);
-      setMessages(prev => [...prev, { role: 'assistant', content: 'SYSTEM_ERROR: Neural link interrupted. Check your network or diagnostic index status.' }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: 'SYSTEM_ERROR: Connection failed.' }]);
     } finally {
       setLoading(false);
     }
@@ -225,12 +220,14 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
                     </motion.div>
                   ))
                 )}
+                <div style={{ height: '80px' }} /> {/* Spacer to prevent overlap with footer */}
                 {loading && (
                   <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                     <Loader2 className="spinner" size={14} color="var(--color-text-muted)" />
                     <span className="mono" style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>PROCESS_INFERENCE...</span>
                   </div>
                 )}
+                <div ref={scrollRef} /> {/* Dedicated scroll anchor */}
               </AnimatePresence>
             </div>
           </main>
