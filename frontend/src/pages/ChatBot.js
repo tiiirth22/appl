@@ -77,8 +77,10 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
     }
   }, [urlId]);
 
-  const API_BASE_URL = process.env.REACT_APP_API_URL || process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
-  const API = API_BASE_URL.replace(/\/$/, '') + '/api';
+  const API_BASE_URL = (process.env.REACT_APP_API_URL || process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000').replace(/\/$/, '');
+  // Smart detection: only add /api if it's not already there
+  const API = API_BASE_URL.endsWith('/api') ? API_BASE_URL : `${API_BASE_URL}/api`;
+
 
   useEffect(() => {
     if (bottomRef.current) {
@@ -215,7 +217,7 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
         }).catch(() => {}); // Silent fail for logger
       } catch (e) {}
 
-      setMessages(prev => [...prev, { role: 'assistant', content: `SYSTEM_ERROR: ${error.message} (Target: ${API}). Please verify your Vercel Environment Variables.` }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: `SYSTEM_ERROR: ${error.message} (Target: ${API}/chat). Please verify your Vercel Environment Variables.` }]);
     } finally {
       setLoading(false);
     }

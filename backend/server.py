@@ -1045,7 +1045,7 @@ async def get_feedback(current_user: dict = Depends(get_db_business_user)):
 @api_router.post("/debug/log")
 async def remote_log(data: dict):
     """Collector for mobile/frontend debug logs."""
-    logger.error(f"📱 [REMOTE_LOG] {json.dumps(data)}")
+    logger.error(f"📱 [REMOTE_LOG] {_json.dumps(data)}")
     return {"status": "logged"}
 
 # ============= DEBUG & DIAGNOSTIC ENDPOINTS =============
@@ -1184,6 +1184,19 @@ async def method_not_allowed_handler(request: Request, exc):
             "detail": f"Method {request.method} not allowed for this endpoint. Check if you are sending POST to a GET-only route or if there is a trailing slash issue.",
             "method": request.method,
             "path": request.url.path
+        }
+    )
+
+@app.exception_handler(404)
+async def custom_404_handler(request: Request, exc):
+    logger.error(f"❌ 404 NOT FOUND: {request.method} {request.url.path} | Origin: {request.headers.get('origin')}")
+    return JSONResponse(
+        status_code=404,
+        content={
+            "detail": "Path not found",
+            "method": request.method,
+            "path": request.url.path,
+            "suggestion": "Check if you are missing /api/ prefix or have double /api/api/"
         }
     )
 
