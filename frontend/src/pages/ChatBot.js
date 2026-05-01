@@ -77,9 +77,24 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
     }
   }, [urlId]);
 
+  const [connectionStatus, setConnectionStatus] = useState('checking'); // checking, online, offline
   const API_BASE_URL = (process.env.REACT_APP_API_URL || process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000').replace(/\/$/, '');
-  // Smart detection: only add /api if it's not already there
   const API = API_BASE_URL.endsWith('/api') ? API_BASE_URL : `${API_BASE_URL}/api`;
+
+  useEffect(() => {
+    const checkConnection = async () => {
+      try {
+        const res = await fetch(`${API}/welcome`, { mode: 'cors' });
+        if (res.ok) setConnectionStatus('online');
+        else setConnectionStatus('offline');
+      } catch (e) {
+        setConnectionStatus('offline');
+      }
+    };
+    checkConnection();
+    const interval = setInterval(checkConnection, 30000);
+    return () => clearInterval(interval);
+  }, [API]);
 
 
   useEffect(() => {
