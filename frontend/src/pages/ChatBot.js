@@ -103,12 +103,20 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
         accumulatedAnswer += cleanChunk;
 
         setMessages(prev => {
+          const newMessages = [...prev];
+          const lastMsg = newMessages[newMessages.length - 1];
+
           if (!assistantMsgAdded) {
             assistantMsgAdded = true;
-            return [...prev, { role: 'assistant', content: accumulatedAnswer }];
+            return [...newMessages, { role: 'assistant', content: accumulatedAnswer }];
           }
-          const last = prev[prev.length - 1];
-          return [...prev.slice(0, -1), { ...last, content: accumulatedAnswer }];
+          
+          if (lastMsg && lastMsg.role === 'assistant') {
+            lastMsg.content = accumulatedAnswer;
+            return newMessages;
+          }
+          
+          return newMessages;
         });
       }
     } catch (error) {
