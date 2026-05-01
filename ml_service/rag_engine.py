@@ -12,7 +12,12 @@ from typing import List, Dict, Any, Optional, Tuple
 try:
     from pinecone import Pinecone
     PINECONE_AVAILABLE = True
-except ImportError:
+except Exception as e:
+    import logging
+    # Use a basic logger here since logging config might not be ready
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+    logger.error(f"CRITICAL: Failed to load Pinecone SDK: {e}")
     PINECONE_AVAILABLE = False
 
 try:
