@@ -175,6 +175,7 @@ async def check_rate_limit(request: Request) -> str:
 @app.exception_handler(MLServiceException)
 async def ml_exc_handler(request: Request, exc: MLServiceException):
     rid = request.headers.get("X-Request-ID", str(uuid.uuid4()))
+    logger.error(f"ML Service Error [{exc.error_type}]: {exc.message}")
     status = {ErrorType.TIMEOUT_ERROR: 504, ErrorType.SERVICE_UNAVAILABLE: 503,
               ErrorType.INTERNAL_ERROR: 500}.get(exc.error_type, 400)
     return JSONResponse(status_code=status, content=jsonable_encoder(exc.to_response(rid)))
