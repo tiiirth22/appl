@@ -386,5 +386,5 @@ if __name__ == "__main__":
     uvicorn.run(
         "server:app", host="0.0.0.0",
         port=int(os.getenv("PORT", 8001)),
-        reload=DEBUG, log_level=LOG_LEVEL.lower(),
+        reload=False, log_level=LOG_LEVEL.lower(),
     )
