@@ -50,7 +50,10 @@ const MarkdownText = ({ text }) => {
 
 export default function ChatBot({ currentTheme, toggleTheme }) {
   const [searchParams] = useSearchParams();
-  const manualId = searchParams.get('manual_id');
+  // Aggressive ID capture with fallback
+  const rawId = searchParams.get('manual_id') || searchParams.get('manualId');
+  const manualId = rawId || 'laptop'; 
+
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -63,7 +66,8 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
   }, [messages]);
 
   const handleSend = async () => {
-    if (!input.trim() || !manualId) return;
+    if (!input.trim()) return;
+    console.log("[Chat] Sending message...");
     const userMsg = { role: 'user', content: input };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
@@ -322,11 +326,6 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
                 {loading ? <Loader2 className="spinner" size={18} /> : <Send size={20} />}
               </button>
             </form>
-            {!manualId && (
-              <div style={{ textAlign: 'center', marginTop: '8px', fontSize: '0.65rem', color: '#EF4444' }} className="mono">
-                WARNING: NO_MANUAL_ID_DETECTED - SYSTEM_STRICTION_ACTIVE
-              </div>
-            )}
           </footer>
         </div>
 
