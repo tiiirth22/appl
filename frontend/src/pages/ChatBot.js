@@ -260,7 +260,7 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
               <div style={{ width: '6px', height: '6px', background: '#10B981', borderRadius: '50%', boxShadow: '0 0 8px #10B981' }} />
               <span className="mono" style={{ fontSize: '0.7rem', fontWeight: 800 }}>DIAGNOSTIC_LINK_ACTIVE</span>
               <span style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)', borderLeft: '1px solid #333', paddingLeft: '12px' }}>
-                NODE: <span style={{ color: 'var(--color-text-primary)' }}>{manualId.toUpperCase()}</span>
+                NODE: <span style={{ color: 'var(--color-text-primary)' }}>{(manualId || 'UNLINKED').toUpperCase()}</span>
               </span>
             </div>
           </header>
