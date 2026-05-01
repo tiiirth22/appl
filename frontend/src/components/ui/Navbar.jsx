@@ -37,17 +37,17 @@ export default function Navbar({
       display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px',
       position: 'sticky', top: 0, zIndex: 1000
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: window.innerWidth < 768 ? '12px' : '32px' }}>
         <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{ width: '28px', height: '28px', background: 'var(--color-text-primary)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-bg-base)' }}>
             <Cpu size={16} />
           </div>
-          <span className="heading-elite" style={{ fontSize: '1rem', letterSpacing: '-0.02em' }}>
-            ApplianceIQ <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>{brandSuffix}</span>
+          <span className="heading-elite" style={{ fontSize: '0.9rem', letterSpacing: '-0.02em' }}>
+            ApplianceIQ {window.innerWidth >= 768 && <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>{brandSuffix}</span>}
           </span>
         </Link>
 
-        {user && (
+        {user && window.innerWidth >= 1024 && (
           <div style={{ display: 'flex', gap: '4px' }}>
             <NavItem to="/dashboard" icon={LayoutDashboard} label="Dashboard" id="dashboard" />
             <NavItem to="/analytics" icon={BarChart3} label="Analytics" id="analytics" />
@@ -57,7 +57,7 @@ export default function Navbar({
         )}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: window.innerWidth < 768 ? '8px' : '16px' }}>
         <button 
           onClick={toggleTheme} 
           style={{ background: 'transparent', border: 'var(--border-thin)', width: '32px', height: '32px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', cursor: 'pointer' }}
@@ -67,10 +67,12 @@ export default function Navbar({
 
         {user ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderLeft: 'var(--border-thin)', paddingLeft: '16px' }}>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>{user.name}</div>
-              <div style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{user.role}</div>
-            </div>
+            {window.innerWidth >= 768 && (
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>{user.name}</div>
+                <div style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{user.role}</div>
+              </div>
+            )}
             <button 
               onClick={onLogout} 
               style={{ background: 'transparent', border: 'var(--border-thin)', width: '32px', height: '32px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#EF4444', cursor: 'pointer' }}
@@ -79,9 +81,9 @@ export default function Navbar({
             </button>
           </div>
         ) : (
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <Link to="/login" className="btn-elite-ghost" style={{ padding: '6px 12px', fontSize: '0.75rem' }}>Login</Link>
-            <Link to="/signup" className="btn-elite" style={{ padding: '6px 12px', fontSize: '0.75rem' }}>Get Started</Link>
+          <div style={{ display: 'flex', gap: '4px' }}>
+            <Link to="/login" className="btn-elite-ghost" style={{ padding: '6px 10px', fontSize: '0.7rem' }}>Login</Link>
+            <Link to="/signup" className="btn-elite" style={{ padding: '6px 10px', fontSize: '0.7rem' }}>Start</Link>
           </div>
         )}
       </div>

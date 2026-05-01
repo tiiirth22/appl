@@ -54,6 +54,16 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null);
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isMobile = windowWidth < 1024;
+
 
   // --- NEW: Sticky ID Logic ---
   const urlId = searchParams.get('manual_id') || searchParams.get('manualId');
@@ -86,7 +96,11 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
     try {
       const response = await fetch(`${API}/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        mode: 'cors',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'text/plain'
+        },
         body: JSON.stringify({
           manual_id: manualId,
           question: input,
@@ -97,7 +111,7 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
         })
       });
 
-      if (!response.ok) throw new Error('Network response was not ok');
+      if (!response.ok) throw new Error(`Status: ${response.status}`);
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -203,9 +217,9 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
       <div style={{ 
         flex: 1, 
         display: 'grid', 
-        gridTemplateColumns: '1fr 320px', 
+        gridTemplateColumns: isMobile ? '1fr' : '1fr 320px', 
         overflow: 'hidden',
-        minHeight: 0 // Critical fix for Firefox/Chrome flex-grid scrolling
+        minHeight: 0
       }}>
         {/* ── Main Terminal Area ── */}
         <div style={{ 
@@ -343,44 +357,46 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
         </div>
 
         {/* ── Metadata Sidebar ── */}
-        <aside style={{ background: 'var(--color-bg-elevated)', padding: '32px', display: 'flex', flexDirection: 'column', gap: '32px' }}>
-           <div>
-              <h3 style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '20px' }}>Active Context</h3>
-              <div className="elite-panel" style={{ padding: '16px', background: 'var(--color-bg-base)' }}>
-                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                    <Database size={16} color="var(--color-text-muted)" />
-                    <div className="mono" style={{ fontSize: '0.7rem', fontWeight: 700 }}>IDX_{manualId?.substring(0,8) || 'NULL'}</div>
-                 </div>
-                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <Shield size={16} color="#10B981" />
-                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#10B981' }}>GROUNDED_RAG</span>
-                 </div>
-              </div>
-           </div>
-
-           <div>
-              <h3 style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '20px' }}>Neural Infrastructure</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                 {[
-                   { l: 'MODEL', v: 'Llama 3.1-70B' },
-                   { l: 'EMBEDDING', v: 'Text-v3-Small' },
-                   { l: 'K-VALUE', v: '4' },
-                   { l: 'TOP_P', v: '0.9' }
-                 ].map((item, i) => (
-                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                      <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--color-text-muted)' }}>{item.l}</span>
-                      <span className="mono" style={{ fontSize: '0.65rem', fontWeight: 700 }}>{item.v}</span>
+        {!isMobile && (
+          <aside style={{ background: 'var(--color-bg-elevated)', padding: '32px', display: 'flex', flexDirection: 'column', gap: '32px' }}>
+             <div>
+                <h3 style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '20px' }}>Active Context</h3>
+                <div className="elite-panel" style={{ padding: '16px', background: 'var(--color-bg-base)' }}>
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                      <Database size={16} color="var(--color-text-muted)" />
+                      <div className="mono" style={{ fontSize: '0.7rem', fontWeight: 700 }}>IDX_{manualId?.substring(0,8) || 'NULL'}</div>
                    </div>
-                 ))}
-              </div>
-           </div>
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <Shield size={16} color="#10B981" />
+                      <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#10B981' }}>GROUNDED_RAG</span>
+                   </div>
+                </div>
+             </div>
 
-           <div style={{ marginTop: 'auto' }}>
-              <button className="btn-elite-ghost" style={{ width: '100%', justifyContent: 'center', fontSize: '0.75rem' }}>
-                <Settings size={14} /> System Config
-              </button>
-           </div>
-        </aside>
+             <div>
+                <h3 style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '20px' }}>Neural Infrastructure</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                   {[
+                     { l: 'MODEL', v: 'Llama 3.1-70B' },
+                     { l: 'EMBEDDING', v: 'Text-v3-Small' },
+                     { l: 'K-VALUE', v: '4' },
+                     { l: 'TOP_P', v: '0.9' }
+                   ].map((item, i) => (
+                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                        <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--color-text-muted)' }}>{item.l}</span>
+                        <span className="mono" style={{ fontSize: '0.65rem', fontWeight: 700 }}>{item.v}</span>
+                     </div>
+                   ))}
+                </div>
+             </div>
+
+             <div style={{ marginTop: 'auto' }}>
+                <button className="btn-elite-ghost" style={{ width: '100%', justifyContent: 'center', fontSize: '0.75rem' }}>
+                  <Settings size={14} /> System Config
+                </button>
+             </div>
+          </aside>
+        )}
       </div>
     </div>
   );
