@@ -12,6 +12,42 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { API_BASE_URL as API } from '../config';
 import Navbar from '../components/ui/Navbar';
 
+const MarkdownText = ({ text }) => {
+  if (!text) return null;
+  
+  // Basic markdown-ish formatting
+  const lines = text.split('\n');
+  return (
+    <div className="markdown-content">
+      {lines.map((line, idx) => {
+        let content = line;
+        
+        // Handle Bold
+        if (content.includes('**')) {
+          const parts = content.split('**');
+          content = parts.map((part, i) => i % 2 === 1 ? <strong key={i} style={{ color: 'var(--color-text-primary)' }}>{part}</strong> : part);
+        }
+
+        // Handle Lists
+        if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
+          return (
+            <div key={idx} style={{ display: 'flex', gap: '8px', marginBottom: '4px', paddingLeft: '8px' }}>
+              <div style={{ color: 'var(--color-text-muted)', marginTop: '2px' }}>ΓÇó</div>
+              <div style={{ flex: 1 }}>{content}</div>
+            </div>
+          );
+        }
+
+        return (
+          <p key={idx} style={{ marginBottom: line.trim() === '' ? '12px' : '8px', minHeight: line.trim() === '' ? '8px' : 'auto' }}>
+            {content}
+          </p>
+        );
+      })}
+    </div>
+  );
+};
+
 export default function ChatBot({ currentTheme, toggleTheme }) {
   const [searchParams] = useSearchParams();
   const manualId = searchParams.get('manual_id');
@@ -119,16 +155,26 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
                       style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                         <span className="mono" style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--color-text-muted)' }}>{msg.role.toUpperCase()}</span>
-                         <div style={{ flex: 1, height: '1px', background: 'var(--color-bg-surface)' }} />
+                         <span className="mono" style={{ 
+                           fontSize: '0.65rem', 
+                           fontWeight: 800, 
+                           color: msg.role === 'assistant' ? '#10B981' : 'var(--color-text-muted)' 
+                         }}>
+                           {msg.role === 'assistant' ? 'ASSISTANT_AI' : 'SYSTEM_OPERATOR'}
+                         </span>
+                         <div style={{ flex: 1, height: '1px', background: 'var(--color-bg-surface)', opacity: 0.5 }} />
                       </div>
                       <div style={{ 
-                        fontSize: '1rem', lineHeight: 1.6, color: msg.role === 'user' ? 'var(--color-text-primary)' : 'var(--color-text-dim)',
-                        background: msg.role === 'assistant' ? 'var(--color-bg-elevated)' : 'transparent',
+                        fontSize: '0.95rem', 
+                        lineHeight: 1.6, 
+                        color: msg.role === 'user' ? 'var(--color-text-primary)' : 'var(--color-text-dim)',
+                        background: msg.role === 'assistant' ? 'rgba(16, 185, 129, 0.03)' : 'transparent',
                         padding: msg.role === 'assistant' ? '24px' : '0',
-                        borderRadius: '12px', border: msg.role === 'assistant' ? 'var(--border-thin)' : 'none'
+                        borderRadius: '12px', 
+                        border: msg.role === 'assistant' ? '1px solid rgba(16, 185, 129, 0.1)' : 'none',
+                        boxShadow: msg.role === 'assistant' ? '0 4px 20px rgba(0,0,0,0.2)' : 'none'
                       }}>
-                        {msg.content}
+                        <MarkdownText text={msg.content} />
                       </div>
                     </motion.div>
                   ))
