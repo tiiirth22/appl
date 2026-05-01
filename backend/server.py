@@ -231,7 +231,7 @@ logger = logging.getLogger(__name__)
 # ============= AUTH ENDPOINTS =============
 @api_router.post("/auth/signup")
 @api_router.post("/auth/signup/")
-async def auth_signup(signup_data: UserSignUp):
+async def auth_signup(signup_data: UserSignUp, response: Response):
     """Sign up a new user."""
     if not mongo_available or db is None:
         raise HTTPException(
@@ -239,11 +239,21 @@ async def auth_signup(signup_data: UserSignUp):
             detail="MongoDB not configured. Set MONGO_URL in backend/.env and restart server."
         )
     result = await signup_user(db, signup_data)
+    
+    # Set session cookie for cross-domain support (SameSite=None; Secure)
+    response.set_cookie(
+        key="session_token",
+        value=result["session_token"],
+        httponly=True,
+        secure=True,
+        samesite="none",
+        max_age=7 * 24 * 3600  # 7 days
+    )
     return result
 
 @api_router.post("/auth/login")
 @api_router.post("/auth/login/")
-async def auth_login(login_data: UserLogin):
+async def auth_login(login_data: UserLogin, response: Response):
     """Log in a user."""
     if not mongo_available or db is None:
         raise HTTPException(
@@ -251,6 +261,16 @@ async def auth_login(login_data: UserLogin):
             detail="MongoDB not configured. Set MONGO_URL in backend/.env and restart server."
         )
     result = await login_user(db, login_data)
+    
+    # Set session cookie for cross-domain support (SameSite=None; Secure)
+    response.set_cookie(
+        key="session_token",
+        value=result["session_token"],
+        httponly=True,
+        secure=True,
+        samesite="none",
+        max_age=7 * 24 * 3600  # 7 days
+    )
     return result
 
 @api_router.get("/auth/me")
