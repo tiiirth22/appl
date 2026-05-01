@@ -39,10 +39,11 @@ except ImportError:
 try:
     from pinecone import Pinecone, ServerlessSpec
     PINECONE_AVAILABLE = True
-    print("✓ Pinecone SDK imported successfully in processor")
 except Exception as e:
     import logging
-    print(f"✗ CRITICAL: Failed to load Pinecone SDK in processor: {e}")
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+    logger.error(f"CRITICAL: Failed to load Pinecone SDK in processor: {e}")
     PINECONE_AVAILABLE = False
 
 from config import (
@@ -313,7 +314,6 @@ class AsyncDocumentProcessor:
             return _global_pinecone_index
 
         if not PINECONE_AVAILABLE:
-            print(f"✗ Pinecone SDK check failed in processor. available={PINECONE_AVAILABLE}")
             raise ServiceUnavailableError("pinecone", "pinecone SDK not installed")
 
         if not PINECONE_API_KEY:
