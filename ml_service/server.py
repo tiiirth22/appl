@@ -23,10 +23,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.encoders import jsonable_encoder
 import uvicorn
 
+import redis
 from config import (
     SERVICE_NAME, SERVICE_VERSION, DEBUG, LOG_LEVEL,
     REQUEST_SIZE_LIMIT, RATE_LIMIT_REQUESTS, RATE_LIMIT_WINDOW_SEC,
+    REDIS_URL, REDIS_ENABLED, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY,
+    AWS_REGION, AWS_SQS_QUEUE_URL
 )
+
 from logger_config import setup_logging, get_processing_logger
 from model_manager import model_manager
 from batcher import EmbeddingBatcher
@@ -50,48 +54,100 @@ except Exception as e:
     import sys
     print(f"CRITICAL: Logging init failed: {e}", file=sys.stderr)
     logger = logging.getLogger(__name__)
-
 # ─── Rate Limiter ─────────────────────────────────────────────────────
-class SimpleRateLimiter:
+class HybridRateLimiter:
+    """Distributed rate limiter with local fallback."""
     def __init__(self, requests: int, window_sec: int):
         self.requests = requests
         self.window_sec = window_sec
-        self.request_times = {}
-        self.last_cleanup = 0.0
+        self._redis: Optional[redis.Redis] = None
+        self._local_counts = {}
+        
+        if REDIS_ENABLED:
+            try:
+                self._redis = redis.from_url(REDIS_URL, socket_timeout=1)
+                self._redis.ping()
+                logger.info("Distributed Redis rate limiting enabled")
+            except Exception as e:
+                logger.warning(f"Redis rate limiter unavailable, falling back to local: {e}")
 
     async def check(self, key: str) -> bool:
         now = time.time()
-        if key not in self.request_times:
-            self.request_times[key] = []
-        cutoff = now - self.window_sec
-        self.request_times[key] = [t for t in self.request_times[key] if t > cutoff]
-        if len(self.request_times[key]) >= self.requests:
+        
+        # 1. Try Redis (Sliding Window)
+        if self._redis:
+            try:
+                redis_key = f"rl:{key}"
+                pipe = self._redis.pipeline()
+                pipe.zadd(redis_key, {str(now): now})
+                pipe.zremrangebyscore(redis_key, 0, now - self.window_sec)
+                pipe.zcard(redis_key)
+                pipe.expire(redis_key, self.window_sec + 5)
+                results = pipe.execute()
+                return results[2] <= self.requests
+            except Exception as e:
+                logger.error(f"Redis rate limit error: {e}")
+
+        # 2. Local Fallback (Simple Window)
+        if key not in self._local_counts:
+            self._local_counts[key] = []
+        self._local_counts[key] = [t for t in self._local_counts[key] if t > now - self.window_sec]
+        if len(self._local_counts[key]) >= self.requests:
             return False
-        self.request_times[key].append(now)
-        if len(self.request_times) > 1000 and (now - self.last_cleanup) > self.window_sec:
-            self.last_cleanup = now
-            for k in [k for k, v in self.request_times.items() if not v]:
-                del self.request_times[k]
+        self._local_counts[key].append(now)
         return True
 
-rate_limiter = SimpleRateLimiter(RATE_LIMIT_REQUESTS, RATE_LIMIT_WINDOW_SEC)
+rate_limiter = HybridRateLimiter(RATE_LIMIT_REQUESTS, RATE_LIMIT_WINDOW_SEC)
 
 # ─── Global batcher ──────────────────────────────────────────────────
 batcher = EmbeddingBatcher(model_manager)
 
 # ─── Ingestion background queue ──────────────────────────────────────
-# Queue is initialized in lifespan() to guarantee an event loop exists.
 _ingestion_queue: asyncio.Queue = None  # type: ignore
 _ingestion_active = 0
+_worker_running = True
 
 async def _ingestion_worker():
-    """Background worker that processes ingestion tasks sequentially,
-    ensuring they never block chat requests."""
-    global _ingestion_active
-    while True:
-        task_data = await _ingestion_queue.get()
-        _ingestion_active += 1
+    """Enterprise-grade background worker (supports SQS or Local Queue)."""
+    global _ingestion_active, _worker_running
+    import json
+    
+    sqs = None
+    if AWS_SQS_QUEUE_URL and AWS_ACCESS_KEY_ID:
         try:
+            import boto3
+            sqs = boto3.client('sqs', region_name=AWS_REGION)
+            logger.info(f"Connected to AWS SQS: {AWS_SQS_QUEUE_URL}")
+        except Exception as e:
+            logger.error(f"Failed to init SQS worker: {e}")
+
+    while _worker_running:
+        task_data = None
+        receipt_handle = None
+        
+        try:
+            # 1. Fetch from SQS or Local
+            if sqs:
+                response = await asyncio.to_thread(sqs.receive_message,
+                    QueueUrl=AWS_SQS_QUEUE_URL,
+                    MaxNumberOfMessages=1,
+                    WaitTimeSeconds=10
+                )
+                if 'Messages' in response:
+                    msg = response['Messages'][0]
+                    task_data = json.loads(msg['Body'])
+                    receipt_handle = msg['ReceiptHandle']
+            else:
+                try:
+                    task_data = await asyncio.wait_for(_ingestion_queue.get(), timeout=5)
+                except asyncio.TimeoutError:
+                    continue
+
+            if not task_data:
+                continue
+
+            # 2. Process
+            _ingestion_active += 1
             processor = AsyncDocumentProcessor(
                 manual_id=task_data["manual_id"],
                 request_id=task_data.get("request_id"),
@@ -103,12 +159,23 @@ async def _ingestion_worker():
                 version=task_data["version"],
                 file_type=task_data["file_type"],
             )
-            logger.info(f"Ingestion completed: {task_data['manual_id']}")
+            
+            # 3. Cleanup
+            if sqs and receipt_handle:
+                sqs.delete_message(QueueUrl=AWS_SQS_QUEUE_URL, ReceiptHandle=receipt_handle)
+            elif _ingestion_queue:
+                _ingestion_queue.task_done()
+                
+            logger.info(f"Ingestion successful: {task_data['manual_id']}")
+            
         except Exception as e:
-            logger.error(f"Ingestion failed for {task_data['manual_id']}: {e}", exc_info=True)
+            logger.error(f"Worker iteration failed: {e}", exc_info=True)
+            if _ingestion_queue and not sqs:
+                _ingestion_queue.task_done()
+            await asyncio.sleep(5) # Cooldown on failure
         finally:
-            _ingestion_active -= 1
-            _ingestion_queue.task_done()
+            if task_data:
+                _ingestion_active = max(0, _ingestion_active - 1)
 
 
 # ─── Lifespan ─────────────────────────────────────────────────────────
@@ -151,8 +218,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000", "http://127.0.0.1:3000",
         "https://appliance-iq.vercel.app", "https://www.appliance-iq.vercel.app",
-        "https://applianceiq-production.up.railway.app",
-        "https://upbeat-contentment-production-ed5c.up.railway.app",
+        os.getenv("PRODUCTION_DOMAIN", "*"),
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -198,11 +264,22 @@ async def general_exc_handler(request: Request, exc: Exception):
 @app.middleware("http")
 async def latency_middleware(request: Request, call_next):
     start = time.time()
+    request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
+    
     response = await call_next(request)
+    
     elapsed = (time.time() - start) * 1000
-    endpoint = f"{request.method} {request.url.path}"
-    metrics.latency.record(endpoint, elapsed)
+    logger.info("Request processed", extra={
+        "method": request.method,
+        "path": request.url.path,
+        "status_code": response.status_code,
+        "latency_ms": round(elapsed, 2),
+        "request_id": request_id,
+        "client_ip": request.client.host if request.client else "unknown"
+    })
+    
     response.headers["X-Response-Time-Ms"] = f"{elapsed:.1f}"
+    response.headers["X-Request-ID"] = request_id
     return response
 
 
@@ -230,22 +307,36 @@ async def health():
 
 @app.get("/health/detailed")
 async def health_detailed(request_id: str = Depends(get_request_id)):
-    h = {"status": "healthy", "components": {}}
+    h = {"status": "healthy", "components": {}, "request_id": request_id}
+    
+    # 1. AI Models
     h["components"]["embedding_model"] = model_manager.status
-    h["components"]["model_backend"] = model_manager.backend
     if model_manager.status != "ready":
         h["status"] = "degraded"
 
-    from config import GEMINI_API_KEY, PINECONE_API_KEY
-    h["components"]["gemini"] = "configured" if GEMINI_API_KEY else "missing"
-    h["components"]["pinecone_key"] = "configured" if PINECONE_API_KEY else "missing"
+    # 2. Redis
+    if REDIS_ENABLED:
+        try:
+            r = redis.from_url(REDIS_URL, socket_timeout=1)
+            r.ping()
+            h["components"]["redis"] = "connected"
+        except Exception as e:
+            h["components"]["redis"] = f"error: {e}"
+            h["status"] = "degraded"
+    else:
+        h["components"]["redis"] = "disabled"
 
-    h["components"]["ingestion_queue"] = {
-        "pending": _ingestion_queue.qsize() if _ingestion_queue else 0,
-        "active": _ingestion_active,
+    # 3. AWS Services
+    h["components"]["sqs"] = "configured" if AWS_SQS_QUEUE_URL else "local_only"
+    h["components"]["s3"] = "configured" if AWS_S3_BUCKET else "local_only"
+
+    # 4. Queue Stats
+    h["components"]["ingestion"] = {
+        "active_jobs": _ingestion_active,
+        "backend": "sqs" if AWS_SQS_QUEUE_URL else "local",
+        "queue_size": _ingestion_queue.qsize() if _ingestion_queue else 0
     }
-    h["components"]["cache"] = embedding_cache.metrics
-    h["components"]["batcher"] = batcher.metrics
+    
     return h
 
 
@@ -309,20 +400,32 @@ async def analyze_frame(request: AnalyzeFrameRequest, request_id: str = Depends(
 @app.post("/process_manual")
 async def process_manual(request: ProcessManualRequest, request_id: str = Depends(get_request_id),
                          client_ip: str = Depends(check_rate_limit)):
-    """Queue manual for background processing — returns immediately."""
+    """Queue manual for processing — support SQS or Local."""
+    import json
+    task = {
+        "file_url": request.file_url, "manual_id": request.manual_id,
+        "manual_name": request.manual_name, "version": request.version,
+        "file_type": request.file_type, "request_id": request_id,
+    }
+    
+    # 1. Try SQS
+    if AWS_SQS_QUEUE_URL and AWS_ACCESS_KEY_ID:
+        try:
+            import boto3
+            sqs = boto3.client('sqs', region_name=AWS_REGION)
+            sqs.send_message(QueueUrl=AWS_SQS_QUEUE_URL, MessageBody=json.dumps(task))
+            return {"manual_id": request.manual_id, "status": "queued", "backend": "sqs"}
+        except Exception as e:
+            logger.error(f"SQS queue failed: {e}")
+            
+    # 2. Fallback to Local Queue
     if _ingestion_queue is None:
-        raise HTTPException(status_code=503, detail="Service is starting up. Try again shortly.")
+        raise HTTPException(status_code=503, detail="Ingestion service starting up...")
     try:
-        _ingestion_queue.put_nowait({
-            "file_url": request.file_url, "manual_id": request.manual_id,
-            "manual_name": request.manual_name, "version": request.version,
-            "file_type": request.file_type, "request_id": request_id,
-        })
-        logger.info(f"Ingestion queued: {request.manual_id}")
-        return {"manual_id": request.manual_id, "status": "pending", "chunks_count": 0,
-                "message": "Manual processing queued in background"}
+        _ingestion_queue.put_nowait(task)
+        return {"manual_id": request.manual_id, "status": "pending", "backend": "local"}
     except asyncio.QueueFull:
-        raise HTTPException(status_code=503, detail="Ingestion queue full. Try again later.")
+        raise HTTPException(status_code=503, detail="Ingestion queue full")
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -386,6 +489,6 @@ async def debug_pinecone(request_id: str = Depends(get_request_id)):
 if __name__ == "__main__":
     uvicorn.run(
         "server:app", host="0.0.0.0",
-        port=int(os.getenv("PORT", 8001)),
+        port=int(os.getenv("PORT", 8080)),
         reload=False, log_level=LOG_LEVEL.lower(),
     )
