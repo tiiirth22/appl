@@ -88,48 +88,81 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let assistantMsgStarted = false;
+      let buffer = '';
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
         const chunk = decoder.decode(value, { stream: true });
-        let cleanChunk = chunk;
-        let metadataObj = null;
+        buffer += chunk;
 
-        if (chunk.includes('__METADATA__:')) {
-          const parts = chunk.split('\n');
-          const metaLine = parts[0].replace('__METADATA__:', '');
-          try {
-            metadataObj = JSON.parse(metaLine);
-          } catch (e) {
-            console.warn('Metadata parse failed');
-          }
-          cleanChunk = parts.slice(1).join('\n');
+        // Process lines in the buffer
+        let lines = buffer.split('\n');
+        
+        // If the last line is incomplete (no newline), keep it in buffer
+        if (!chunk.endsWith('\n')) {
+          buffer = lines.pop();
+        } else {
+          buffer = '';
         }
 
-        if (!cleanChunk && !metadataObj) continue;
+        for (const line of lines) {
+          if (!line.trim() && !assistantMsgStarted) continue;
 
+          let cleanLine = line;
+          let metadataObj = null;
+
+          if (line.startsWith('__METADATA__:')) {
+            const jsonStr = line.replace('__METADATA__:', '');
+            try {
+              metadataObj = JSON.parse(jsonStr);
+              cleanLine = ''; // Don't show metadata in chat
+            } catch (e) {
+              console.warn('Metadata parse failed, treating as text');
+            }
+          }
+
+          if (!cleanLine && !metadataObj) continue;
+
+          if (!assistantMsgStarted) {
+            assistantMsgStarted = true;
+            setMessages(prev => [...prev, { 
+              role: 'assistant', 
+              content: cleanLine,
+              video_url: metadataObj?.video_url,
+              steps: metadataObj?.steps 
+            }]);
+          } else {
+            setMessages(prev => {
+              const last = prev[prev.length - 1];
+              if (last && last.role === 'assistant') {
+                const updated = [...prev];
+                updated[updated.length - 1] = { 
+                  ...last, 
+                  content: last.content + (cleanLine ? (last.content ? '\n' : '') + cleanLine : ''),
+                  video_url: metadataObj?.video_url || last.video_url,
+                  steps: metadataObj?.steps || last.steps
+                };
+                return updated;
+              }
+              return prev;
+            });
+          }
+        }
+      }
+      
+      // Process remaining buffer if any
+      if (buffer.trim()) {
+        const line = buffer;
         if (!assistantMsgStarted) {
-          assistantMsgStarted = true;
-          setMessages(prev => [...prev, { 
-            role: 'assistant', 
-            content: cleanChunk,
-            video_url: metadataObj?.video_url 
-          }]);
+          setMessages(prev => [...prev, { role: 'assistant', content: line }]);
         } else {
           setMessages(prev => {
             const last = prev[prev.length - 1];
-            if (last && last.role === 'assistant') {
-              const updated = [...prev];
-              updated[updated.length - 1] = { 
-                ...last, 
-                content: last.content + cleanChunk,
-                video_url: metadataObj?.video_url || last.video_url
-              };
-              return updated;
-            }
-            return prev;
+            const updated = [...prev];
+            updated[updated.length - 1] = { ...last, content: last.content + '\n' + line };
+            return updated;
           });
         }
       }
