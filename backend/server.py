@@ -307,6 +307,27 @@ async def logout(
     return {"message": "Logged out successfully"}
 
 # ============= MANUAL ENDPOINTS =============
+@api_router.put("/manuals/{manual_id}/status")
+async def update_manual_status(manual_id: str, status_data: dict):
+    """Internal endpoint for ML Service to update manual status."""
+    if not mongo_available or db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    status = status_data.get("status")
+    if status not in ["processing", "ready", "failed"]:
+        raise HTTPException(status_code=400, detail="Invalid status")
+        
+    result = await db.manuals.update_one(
+        {"id": manual_id},
+        {"$set": {"status": status, "updated_at": datetime.now(timezone.utc)}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Manual not found")
+        
+    logger.info(f"Manual {manual_id} status updated to {status}")
+    return {"message": f"Status updated to {status}"}
+
 @api_router.delete("/manuals/{manual_id}")
 @api_router.delete("/manuals/{manual_id}/")
 async def delete_manual(manual_id: str, current_user: dict = Depends(get_db_business_user)):
@@ -1016,6 +1037,12 @@ async def get_feedback(current_user: dict = Depends(get_db_business_user)):
     
     return {"feedback": feedback_list, "count": len(feedback_list)}
 
+@api_router.post("/debug/log")
+async def remote_log(data: dict):
+    """Collector for mobile/frontend debug logs."""
+    logger.error(f"📱 [REMOTE_LOG] {json.dumps(data)}")
+    return {"status": "logged"}
+
 # ============= DEBUG & DIAGNOSTIC ENDPOINTS =============
 @api_router.get("/debug/qr-test/{manual_id}")
 async def debug_qr_test(manual_id: str):
@@ -1098,63 +1125,27 @@ async def health_check():
 app.include_router(api_router)
 
 # Add CORS middleware
-cors_origins_str = os.environ.get('CORS_ORIGINS', '')
-if cors_origins_str:
-    allowed_origins = [o.strip() for o in cors_origins_str.split(',')]
-else:
-    # If credentials are allowed, we CANNOT use "*" for Origins
-    # Add common origins including production as fallbacks
-    allowed_origins = [
-        "http://localhost:3000", 
-        "http://127.0.0.1:3000",
-        "https://appl-pi.vercel.app",
-        "https://appl-pi.vercel.app/",
-        "https://appliance-iq.vercel.app",
-        "https://appliance-iq.vercel.app/",
-        "https://www.appliance-iq.vercel.app",
-        "https://www.appliance-iq.vercel.app/",
-        "https://appl-production.up.railway.app",
-        "https://appl-production.up.railway.app/",
-        "https://easygoing-elegance-production-2fff.up.railway.app",
-        "https://easygoing-elegance-production-2fff.up.railway.app/"
-    ]
-
-# Add CORS middleware with regex for all subdomains
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"https://.*\.vercel\.app|https://.*\.railway\.app|http://localhost:3000|http://127.0.0.1:3000",
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://appl-pi.vercel.app",
+        "https://appliance-iq.vercel.app",
+        "https://www.appliance-iq.vercel.app"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"],
-    max_age=3600,
 )
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    # Log the origin to see what's being requested
     origin = request.headers.get('origin')
     method = request.method
     path = request.url.path
-    
     logger.info(f"Incoming: {method} {path} | Origin: {origin}")
-    
-    # Handle OPTIONS manually with explicit header whitelisting
-    if method == "OPTIONS":
-        return Response(
-            status_code=204,
-            headers={
-                "Access-Control-Allow-Origin": origin or "https://appl-pi.vercel.app",
-                "Access-Control-Allow-Methods": "POST, GET, OPTIONS, DELETE, PUT, PATCH",
-                "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, Cookie, Accept, Origin",
-                "Access-Control-Allow-Credentials": "true",
-                "Access-Control-Max-Age": "3600",
-                "Vary": "Origin"
-            }
-        )
-        
     response = await call_next(request)
-    logger.info(f"Outgoing: {response.status_code} | Path: {path}")
     return response
 
 @app.exception_handler(405)

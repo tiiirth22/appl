@@ -89,6 +89,8 @@ SERVICE_NAME = "ApplianceIQ Unified ML Service"
 SERVICE_VERSION = "2.1.0"
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+BACKEND_URL = os.getenv("REACT_APP_BACKEND_URL", "http://localhost:8000").rstrip("/")
+INTERNAL_BACKEND_URL = os.getenv("INTERNAL_BACKEND_URL", BACKEND_URL).rstrip("/")
 
 # ─── Health Check ────────────────────────────────────────────────────
 HEALTH_CHECK_INTERVAL = 60

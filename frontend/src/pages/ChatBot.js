@@ -77,7 +77,8 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
     }
   }, [urlId]);
 
-  const API = (process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000').replace(/\/$/, '') + '/api';
+  const API_BASE_URL = process.env.REACT_APP_API_URL || process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+  const API = API_BASE_URL.replace(/\/$/, '') + '/api';
 
   useEffect(() => {
     if (bottomRef.current) {
@@ -196,7 +197,24 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
       }
     } catch (error) {
       console.error('Chat Error:', error);
-      setMessages(prev => [...prev, { role: 'assistant', content: 'SYSTEM_ERROR: Connection failed.' }]);
+      
+      // --- NEW: Remote Debug Reporting ---
+      try {
+        fetch(`${API}/debug/log`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            error: error.message,
+            stack: error.stack,
+            platform: navigator.platform,
+            userAgent: navigator.userAgent,
+            api_url: API,
+            manual_id: manualId
+          })
+        }).catch(() => {}); // Silent fail for logger
+      } catch (e) {}
+
+      setMessages(prev => [...prev, { role: 'assistant', content: `SYSTEM_ERROR: ${error.message}. Please try again.` }]);
     } finally {
       setLoading(false);
     }
