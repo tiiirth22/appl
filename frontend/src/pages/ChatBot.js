@@ -281,22 +281,52 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
             </div>
           </main>
 
-          <footer style={{ padding: '24px 40px', borderTop: 'var(--border-thin)', background: 'var(--color-bg-elevated)', flexShrink: 0 }}>
-            <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', gap: '12px' }}>
+          <footer style={{ padding: '16px 20px', borderTop: 'var(--border-thin)', background: 'var(--color-bg-elevated)', flexShrink: 0 }}>
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                console.log("[Mobile] Form submitted");
+                handleSend();
+              }}
+              style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', gap: '8px' }}
+            >
               <input
                 type="text"
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="TYPE_DIAGNOSTIC_QUERY_HERE..."
+                onChange={(e) => {
+                  setInput(e.target.value);
+                }}
+                placeholder="TYPE_QUERY_HERE..."
                 className="input-elite"
-                style={{ flex: 1, padding: '16px 24px', borderRadius: '12px', fontSize: '1rem' }}
-                onKeyDown={(e) => { if(e.key === 'Enter') handleSend(); }}
+                style={{ 
+                  flex: 1, 
+                  padding: '12px 16px', 
+                  borderRadius: '12px', 
+                  fontSize: '16px' // Prevents iOS auto-zoom on focus
+                }}
                 disabled={loading}
+                autoComplete="off"
               />
-              <button onClick={handleSend} className="btn-elite" style={{ padding: '0 24px', borderRadius: '12px' }} disabled={loading}>
-                <Send size={20} />
+              <button 
+                type="submit"
+                className="btn-elite" 
+                style={{ 
+                  padding: '0 16px', 
+                  borderRadius: '12px',
+                  minWidth: '50px',
+                  justifyContent: 'center'
+                }} 
+                disabled={loading || !input.trim()}
+                onClick={() => console.log("[Mobile] Send button clicked")}
+              >
+                {loading ? <Loader2 className="spinner" size={18} /> : <Send size={20} />}
               </button>
-            </div>
+            </form>
+            {!manualId && (
+              <div style={{ textAlign: 'center', marginTop: '8px', fontSize: '0.65rem', color: '#EF4444' }} className="mono">
+                WARNING: NO_MANUAL_ID_DETECTED - SYSTEM_STRICTION_ACTIVE
+              </div>
+            )}
           </footer>
         </div>
 
