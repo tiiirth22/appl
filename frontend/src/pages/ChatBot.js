@@ -53,6 +53,7 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
   // Aggressive ID capture with fallback
   const rawId = searchParams.get('manual_id') || searchParams.get('manualId');
   const manualId = rawId || 'laptop'; 
+  const API = (process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000').replace(/\/$/, '') + '/api';
 
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -74,6 +75,13 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
     setLoading(true);
 
     try {
+      console.log("[Chat] Calling API:", `${API}/chat`);
+      // Temporary diagnostic alert for mobile
+      if (window.innerWidth < 768) {
+        // Only show if it's likely a mobile device to avoid annoying desktop users
+        // alert("DEBUG: Calling " + API + "/chat"); 
+      }
+
       const response = await fetch(`${API}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
