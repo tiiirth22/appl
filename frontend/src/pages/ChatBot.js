@@ -50,15 +50,24 @@ const MarkdownText = ({ text }) => {
 
 export default function ChatBot({ currentTheme, toggleTheme }) {
   const [searchParams] = useSearchParams();
-  // Aggressive ID capture with fallback
-  const rawId = searchParams.get('manual_id') || searchParams.get('manualId');
-  const manualId = rawId || 'laptop'; 
-  const API = (process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000').replace(/\/$/, '') + '/api';
-
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null);
+
+  // --- NEW: Sticky ID Logic ---
+  const urlId = searchParams.get('manual_id') || searchParams.get('manualId');
+  const [manualId, setManualId] = useState(urlId || localStorage.getItem('last_manual_id') || 'laptop');
+
+  useEffect(() => {
+    if (urlId) {
+      console.log("[Chat] New manual detected, sticking to storage:", urlId);
+      localStorage.setItem('last_manual_id', urlId);
+      setManualId(urlId);
+    }
+  }, [urlId]);
+
+  const API = (process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000').replace(/\/$/, '') + '/api';
 
   useEffect(() => {
     if (bottomRef.current) {
@@ -210,6 +219,9 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{ width: '6px', height: '6px', background: '#10B981', borderRadius: '50%', boxShadow: '0 0 8px #10B981' }} />
               <span className="mono" style={{ fontSize: '0.7rem', fontWeight: 800 }}>DIAGNOSTIC_LINK_ACTIVE</span>
+              <span style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)', borderLeft: '1px solid #333', paddingLeft: '12px' }}>
+                NODE: <span style={{ color: 'var(--color-text-primary)' }}>{manualId.toUpperCase()}</span>
+              </span>
             </div>
           </header>
 
