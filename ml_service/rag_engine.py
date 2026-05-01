@@ -79,6 +79,9 @@ OFF_TOPIC_PATTERNS = [
     ('recipe','cook','food','restaurant'),
     ('math','equation','calculate','algebra','calculus'),
     ('history','war','ancient'),
+    ('stock','crypto','bitcoin','invest'),
+]
+
 # ─── Configurable Thresholds ──────────────────────────────────────────
 CONFIDENCE_THRESHOLD_STRICT = 0.45  # Below this, we reject entirely
 CONFIDENCE_THRESHOLD_PARTIAL = 0.65 # Below this, we warn the user
