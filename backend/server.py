@@ -253,25 +253,34 @@ async def auth_signup(signup_data: UserSignUp, response: Response):
 
 @api_router.post("/auth/login")
 @api_router.post("/auth/login/")
-async def auth_login(login_data: UserLogin, response: Response):
-    """Log in a user."""
-    if not mongo_available or db is None:
-        raise HTTPException(
-            status_code=503, 
-            detail="MongoDB not configured. Set MONGO_URL in backend/.env and restart server."
-        )
-    result = await login_user(db, login_data)
+async def auth_login(login_data: UserLogin, response: Response, request: Request):
+    """Log in a user with production-ready diagnostic logging."""
+    logger.info(f"[Auth] Login attempt for: {login_data.email} | Origin: {request.headers.get('origin')}")
     
-    # Set session cookie for cross-domain support (SameSite=None; Secure)
-    response.set_cookie(
-        key="session_token",
-        value=result["session_token"],
-        httponly=True,
-        secure=True,
-        samesite="none",
-        max_age=7 * 24 * 3600  # 7 days
-    )
-    return result
+    if not mongo_available or db is None:
+        logger.error("[Auth] Login failed: MongoDB not connected")
+        raise HTTPException(status_code=503, detail="Database not available")
+        
+    try:
+        result = await login_user(db, login_data)
+        
+        # Set session cookie for cross-domain support
+        response.set_cookie(
+            key="session_token",
+            value=result["session_token"],
+            httponly=True,
+            secure=True,
+            samesite="none",
+            max_age=7 * 24 * 3600
+        )
+        logger.info(f"[Auth] Login successful for: {login_data.email}")
+        return result
+    except HTTPException as he:
+        logger.warning(f"[Auth] Login rejected: {he.detail}")
+        raise
+    except Exception as e:
+        logger.error(f"[Auth] Login crash: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error during login")
 
 @api_router.get("/auth/me")
 async def get_me(current_user: dict = Depends(get_db_current_user)):
