@@ -4,7 +4,7 @@ import {
   Users, Database, Activity, Shield, 
   Loader2, Search, Trash2, ChevronRight, 
   Lock, Settings, BarChart3, Globe, Zap,
-  Terminal, HardDrive, Cpu
+  Terminal, HardDrive, Cpu, MessageSquare, QrCode
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Navbar from '../components/ui/Navbar';
@@ -71,7 +71,7 @@ export default function AdminDashboard({ user, onLogout, currentTheme, toggleThe
           <AdminStat label="Uptime" value="99.9%" icon={Zap} color="#F59E0B" />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '32px', alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '32px', alignItems: 'start', marginBottom: '32px' }}>
           {/* ── User Directory (1.5fr) ── */}
           <div className="elite-panel" style={{ padding: '0', overflow: 'hidden' }}>
              <div style={{ padding: '16px 24px', borderBottom: 'var(--border-thin)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.01)' }}>
@@ -124,7 +124,7 @@ export default function AdminDashboard({ user, onLogout, currentTheme, toggleThe
                         <span style={{ color: '#10B981' }}>{log.node}</span>
                      </div>
                    ))}
-                </div>
+                 </div>
              </div>
 
              <div className="elite-panel" style={{ background: 'var(--color-bg-base)' }}>
@@ -140,6 +140,42 @@ export default function AdminDashboard({ user, onLogout, currentTheme, toggleThe
                 </div>
              </div>
           </div>
+        </div>
+
+        {/* ── Global Manual Registry ── */}
+        <div className="elite-panel" style={{ padding: '0', overflow: 'hidden' }}>
+           <div style={{ padding: '16px 24px', borderBottom: 'var(--border-thin)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.01)' }}>
+              <h3 style={{ fontSize: '0.85rem', fontWeight: 800 }}>GLOBAL_RESOURCE_REGISTRY</h3>
+              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{manuals.length} total neural indices</div>
+           </div>
+           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+             <thead>
+               <tr style={{ borderBottom: 'var(--border-thin)', background: 'rgba(255,255,255,0.01)' }}>
+                 <th style={{ padding: '12px 24px', fontSize: '0.65rem', fontWeight: 800, color: 'var(--color-text-muted)', textAlign: 'left' }}>RESOURCE</th>
+                 <th style={{ padding: '12px 24px', fontSize: '0.65rem', fontWeight: 800, color: 'var(--color-text-muted)', textAlign: 'left' }}>STATUS</th>
+                 <th style={{ padding: '12px 24px', fontSize: '0.65rem', fontWeight: 800, color: 'var(--color-text-muted)', textAlign: 'right' }}>ACTIONS</th>
+               </tr>
+             </thead>
+             <tbody>
+               {manuals.map((m, i) => (
+                 <tr key={i} style={{ borderBottom: i < manuals.length - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none' }}>
+                   <td style={{ padding: '12px 24px' }}>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 700 }}>{m.model_name}</div>
+                      <div className="mono" style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>{m.id}</div>
+                   </td>
+                   <td style={{ padding: '12px 24px' }}>
+                      <span style={{ fontSize: '0.65rem', fontWeight: 900, color: '#10B981', border: '1px solid #10B98133', padding: '2px 8px', borderRadius: '4px' }}>{m.status.toUpperCase()}</span>
+                   </td>
+                   <td style={{ padding: '12px 24px', textAlign: 'right' }}>
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                        <button onClick={() => window.location.href = `/chat?manual_id=${m.id}`} className="btn-elite-ghost" style={{ padding: '6px', borderRadius: '6px' }}><MessageSquare size={12} /></button>
+                        <button className="btn-elite-ghost" style={{ padding: '6px', borderRadius: '6px' }}><Settings size={12} /></button>
+                      </div>
+                   </td>
+                 </tr>
+               ))}
+             </tbody>
+           </table>
         </div>
       </main>
     </div>
