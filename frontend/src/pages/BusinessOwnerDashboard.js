@@ -191,7 +191,7 @@ export default function BusinessOwnerDashboard({ user, onLogout, currentTheme, t
             <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} className="elite-panel" style={{ width: '400px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
               <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '8px' }}>Diagnostic Access Bridge</h2>
               <p style={{ color: 'var(--color-text-dim)', fontSize: '0.85rem', marginBottom: '32px' }}>ID: <span className="mono">{selectedQR.id}</span></p>
-              <div style={{ background: 'white', padding: '16px', borderRadius: '12px', display: 'inline-block', marginBottom: '32px' }}><img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${window.location.origin}/device/${selectedQR.id}`} alt="QR" /></div>
+              <div style={{ background: 'white', padding: '16px', borderRadius: '12px', display: 'inline-block', marginBottom: '32px' }}><img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(window.location.origin + '/chat?manual_id=' + selectedQR.id)}`} alt="QR" /></div>
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button className="btn-elite" style={{ flex: 1 }}>Print Label</button>
                 <button onClick={() => setSelectedQR(null)} className="btn-elite-ghost" style={{ flex: 1 }}>Close</button>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { useSearchParams, useNavigate, Link } from 'react-router-dom';
+import { useSearchParams, useNavigate, useParams, Link } from 'react-router-dom';
 import { 
   Send, Bot, User, Loader2, QrCode, 
   ArrowLeft, Cpu, Activity, Zap, Shield, 
@@ -50,6 +50,7 @@ const MarkdownText = ({ text }) => {
 
 export default function ChatBot({ currentTheme, toggleTheme }) {
   const [searchParams] = useSearchParams();
+  const { qrId } = useParams();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -66,7 +67,7 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
 
 
   // --- NEW: Sticky ID Logic ---
-  const urlId = searchParams.get('manual_id') || searchParams.get('manualId');
+  const urlId = searchParams.get('manual_id') || searchParams.get('manualId') || qrId;
   const [manualId, setManualId] = useState(urlId || localStorage.getItem('last_manual_id') || null);
 
   useEffect(() => {
@@ -108,7 +109,8 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
         credentials: 'include', // CRITICAL for session cookies
         headers: { 
           'Content-Type': 'application/json',
-          'Accept': 'text/plain'
+          'Accept': 'text/plain',
+          'ngrok-skip-browser-warning': 'true'
         },
         body: JSON.stringify({
           manual_id: manualId,
@@ -210,7 +212,10 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
       try {
         fetch(`${API}/debug/log`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
+          },
           body: JSON.stringify({
             error: error.message,
             stack: error.stack,
