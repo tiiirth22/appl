@@ -79,8 +79,15 @@ OFF_TOPIC_PATTERNS = [
     ('recipe','cook','food','restaurant'),
     ('math','equation','calculate','algebra','calculus'),
     ('history','war','ancient'),
-    ('stock','crypto','bitcoin','invest'),
+# ─── Configurable Thresholds ──────────────────────────────────────────
+CONFIDENCE_THRESHOLD_STRICT = 0.45  # Below this, we reject entirely
+CONFIDENCE_THRESHOLD_PARTIAL = 0.65 # Below this, we warn the user
+VAGUE_QUERY_PATTERNS = [
+    r'^help\??$', r'^not working\??$', r'^issue\??$', r'^error\??$',
+    r'^[?!.\s]+$', r'^.{1,3}$', r'^[asdfghjkl;]+$'
 ]
+FALLBACK_SUPPORT_MSG = "I could not find reliable information related to your query in the uploaded manual. Please contact customer support at +91 8733078931 for further assistance."
+NULL_RESPONSE_TOKEN = "[[OUT_OF_CONTEXT]]"
 
 
 class RAGQueryEngine:
@@ -95,29 +102,35 @@ class RAGQueryEngine:
         self._groq_client = None
         self._groq_client_secondary = None
 
+    def _validate_query_quality(self, question: str) -> Tuple[bool, Optional[str]]:
+        """Detect vague, nonsensical or extremely low-quality queries."""
+        q = question.lower().strip()
+        
+        # 1. Check for random characters or very short queries
+        if len(q) < 4 and not q.isdigit():
+            return False, "Your query is too short. Please provide more details about the issue."
+            
+        # 2. Check for vague patterns
+        for pattern in VAGUE_QUERY_PATTERNS:
+            if re.match(pattern, q):
+                return False, "I need more information to help you. Could you describe exactly what's happening with the device?"
+                
+        return True, None
+
     def _is_question_in_scope(self, question: str, manual_name: Optional[str] = None) -> Tuple[bool, Optional[str]]:
         q = question.lower().strip()
-        if len(q) <= 15:
-            return True, None
+        
+        # Quality check first
+        is_quality, quality_msg = self._validate_query_quality(question)
+        if not is_quality:
+            return False, quality_msg
 
         has_kw = any(kw in q for kw in APPLIANCE_KEYWORDS)
         if not has_kw:
             for pg in OFF_TOPIC_PATTERNS:
                 if any(p in q for p in pg):
-                    device = manual_name or "your appliance"
-                    return False, f"I'm ApplianceIQ, specialized in helping with {device}. I can't answer general knowledge questions. Please ask something about your device — like error codes, repairs, or maintenance!"
+                    return False, f"I'm specialized in appliance support. I can't answer general questions about {pg[0]}."
 
-        if manual_name:
-            model_pattern = re.compile(r'\b([A-Z]{1,4}[-_ ]?\d{3,}[A-Z0-9]{0,5}|[A-Z]{2,10}[-_ ]\d{2,}[A-Z0-9]*)\b')
-            mentioned = model_pattern.findall(question.upper())
-            mu = manual_name.upper()
-            for m in mentioned:
-                if m not in mu and mu not in m:
-                    return False, (
-                        f"It looks like you're asking about **{m}**, but I'm currently loaded with the "
-                        f"**{manual_name}** manual. Please ask questions specific to your {manual_name}, "
-                        f"or upload the {m} manual to get accurate answers for that device."
-                    )
         return True, None
 
     async def answer_question(self, manual_id: str, question: str,
@@ -142,6 +155,16 @@ class RAGQueryEngine:
             question_embedding = await self._embed_text(question)
             sources, mode, top_score = await self._retrieve_chunks(manual_id, question_embedding, top_k)
 
+            # 1. Similarity Check (Hard Rejection)
+            if top_score < CONFIDENCE_THRESHOLD_STRICT:
+                self.logger.warning(f"Low confidence rejection: {top_score:.2f} < {CONFIDENCE_THRESHOLD_STRICT}")
+                return {
+                    "query_id": query_id, "answer": FALLBACK_SUPPORT_MSG, "sources": [],
+                    "confidence": float(top_score), "rejection_reason": "low_confidence",
+                    "is_reliable": False, "processing_time_ms": (time.time() - start_time) * 1000,
+                    "history": history or [], "from_manual": False, "fallback": True
+                }
+
             video_url = self._construct_youtube_url(question, manual_name=manual_name)
 
             async def get_secondary_safely():
@@ -155,13 +178,27 @@ class RAGQueryEngine:
                 self._generate_answer(question, sources, mode=mode, manual_name=manual_name, history=history),
                 get_secondary_safely(),
             )
+            
+            # 2. LLM Relevance Check (Hallucination Guard)
+            if NULL_RESPONSE_TOKEN in answer:
+                self.logger.warning("LLM triggered context-missing fallback")
+                return {
+                    "query_id": query_id, "answer": FALLBACK_SUPPORT_MSG, "sources": [],
+                    "confidence": float(top_score), "rejection_reason": "context_insufficient",
+                    "is_reliable": False, "processing_time_ms": (time.time() - start_time) * 1000,
+                    "history": history or [], "from_manual": False, "fallback": True
+                }
 
             processing_time_ms = (time.time() - start_time) * 1000
-            self.logger.info(f"Query completed in {processing_time_ms:.2f}ms")
-
+            
             return {
-                "query_id": query_id, "answer": answer, "sources": sources,
-                "confidence": float(top_score), "processing_time_ms": processing_time_ms,
+                "query_id": query_id, 
+                "answer": answer, 
+                "sources": sources if top_score > CONFIDENCE_THRESHOLD_PARTIAL else [],
+                "confidence": float(top_score), 
+                "is_reliable": top_score > CONFIDENCE_THRESHOLD_PARTIAL,
+                "rejection_reason": None if top_score > CONFIDENCE_THRESHOLD_PARTIAL else "partial_match",
+                "processing_time_ms": processing_time_ms,
                 "video_url": video_url,
                 "steps": secondary_info.get("steps", []),
                 "severity": secondary_info.get("severity", "none"),
@@ -296,34 +333,26 @@ class RAGQueryEngine:
             device_info = f"Current device: {manual_name}" if manual_name else "Current device: (Unknown)"
 
             if mode == "strong":
-                instruction = "You are a professional senior technician. Use the provided manual context to give a detailed, step-by-step repair guide. explain the ACTUAL steps from the manual clearly."
+                instruction = f"Use ONLY the provided manual context. If the answer is not in the context, return ONLY the token: {NULL_RESPONSE_TOKEN}. Do NOT guess."
             elif mode == "partial":
-                instruction = "Use the manual context as your primary guide. Supplement with expert general knowledge only if the manual is brief."
+                instruction = f"Try to answer from context. If highly uncertain, return: {NULL_RESPONSE_TOKEN}."
             else:
-                instruction = "No manual sections found. Provide an expert troubleshooting guide based on general appliance repair best practices. Include: 'Note: This answer is based on general knowledge, not your specific manual.'"
-
-            is_vague = len(question.strip()) <= 15 and history and len(history) >= 2
-            followup = "\nNOTE: Keep the context of the previous conversation in mind." if is_vague else ""
+                return FALLBACK_SUPPORT_MSG
 
             prompt = f"""### TASK
-You are ApplianceIQ, an expert technician. Help the user fix their device using the provided manual context.
+You are a strict technical support AI. Use the context to answer. If unsure, say you don't know.
 
-### DEVICE INFO
-{device_info}
+### CONTEXT
+{context}
 
 ### INSTRUCTIONS
 - {instruction}
-- Provide clear, numbered steps.
-- Highlight important warnings or tools needed.
-- {followup}
+- Be precise and professional.
 
-### MANUAL CONTEXT
-{context if mode != 'fallback' else 'No specific manual data available.'}
-
-### USER QUERY
+### QUERY
 {question}
 
-### YOUR ACTIONABLE RESPONSE:"""
+### RESPONSE:"""
 
             messages = [{"role": "system", "content": "You are a helpful assistant answering questions about appliance manuals. Be concise and accurate."}]
             if history:
