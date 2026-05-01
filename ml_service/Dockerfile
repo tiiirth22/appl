@@ -24,11 +24,11 @@ RUN pip install --no-cache-dir torch==2.2.0 --index-url https://download.pytorch
 
 # Install conversion dependencies
 RUN pip install --no-cache-dir \
-    sentence-transformers==3.0.1 \
-    transformers>=4.38.0 \
-    onnx>=1.15.0 \
-    onnxruntime>=1.17.0 \
-    numpy>=1.24.0,<2.0.0
+    "sentence-transformers==3.0.1" \
+    "transformers>=4.38.0" \
+    "onnx>=1.15.0" \
+    "onnxruntime>=1.17.0" \
+    "numpy>=1.24.0,<2.0.0"
 
 # Convert model to ONNX + INT8 quantization
 COPY convert_model.py .
