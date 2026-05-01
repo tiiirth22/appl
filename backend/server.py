@@ -1122,15 +1122,14 @@ async def log_requests(request: Request, call_next):
     
     logger.info(f"Incoming: {method} {path} | Origin: {origin}")
     
-    # Handle OPTIONS manually with precise header echoing
+    # Handle OPTIONS manually with explicit header whitelisting
     if method == "OPTIONS":
-        requested_headers = request.headers.get("Access-Control-Request-Headers", "*")
         return Response(
-            status_code=204,  # No Content is standard for OPTIONS
+            status_code=204,
             headers={
                 "Access-Control-Allow-Origin": origin or "https://appl-pi.vercel.app",
                 "Access-Control-Allow-Methods": "POST, GET, OPTIONS, DELETE, PUT, PATCH",
-                "Access-Control-Allow-Headers": requested_headers,
+                "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, Cookie, Accept, Origin",
                 "Access-Control-Allow-Credentials": "true",
                 "Access-Control-Max-Age": "3600",
                 "Vary": "Origin"
