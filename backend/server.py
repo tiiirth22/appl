@@ -1081,6 +1081,8 @@ else:
     allowed_origins = [
         "http://localhost:3000", 
         "http://127.0.0.1:3000",
+        "https://appl-pi.vercel.app",
+        "https://appl-pi.vercel.app/",
         "https://appliance-iq.vercel.app",
         "https://appliance-iq.vercel.app/",
         "https://www.appliance-iq.vercel.app",
