@@ -5,7 +5,7 @@ import {
   Cpu, Activity, Zap, Shield, ChevronRight, Loader2, 
   Clock, CheckCircle2, AlertCircle, LayoutGrid, List,
   Settings, User as UserIcon, LogOut, Info, ExternalLink,
-  ChevronDown, Filter, MoreHorizontal, Terminal, HardDrive
+  ChevronDown, Filter, MoreHorizontal, Terminal, HardDrive, MessageSquare
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Navbar from '../components/ui/Navbar';
@@ -139,8 +139,9 @@ export default function BusinessOwnerDashboard({ user, onLogout, currentTheme, t
                           <td style={{ padding: '16px 24px', fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{new Date(m.created_at).toLocaleDateString()}</td>
                           <td style={{ padding: '16px 24px', textAlign: 'right' }}>
                             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                               <button onClick={() => setSelectedQR(m)} className="btn-elite-ghost" style={{ padding: '6px', borderRadius: '6px' }}><QrCode size={14} /></button>
-                               <button onClick={() => handleDelete(m.id)} className="btn-elite-ghost" style={{ padding: '6px', borderRadius: '6px', color: '#EF4444' }}><Trash2 size={14} /></button>
+                               <button onClick={() => window.location.href = `/chat?manual_id=${m.id}`} title="Test Chat" className="btn-elite-ghost" style={{ padding: '6px', borderRadius: '6px', color: 'var(--color-text-primary)' }}><MessageSquare size={14} /></button>
+                               <button onClick={() => setSelectedQR(m)} title="View QR" className="btn-elite-ghost" style={{ padding: '6px', borderRadius: '6px' }}><QrCode size={14} /></button>
+                               <button onClick={() => handleDelete(m.id)} title="Delete" className="btn-elite-ghost" style={{ padding: '6px', borderRadius: '6px', color: '#EF4444' }}><Trash2 size={14} /></button>
                             </div>
                           </td>
                         </tr>
