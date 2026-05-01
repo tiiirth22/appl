@@ -206,7 +206,7 @@ async def root():
     """Welcome to ApplianceIQ API - Redirects to Swagger UI."""
     return RedirectResponse(url="/docs")
 
-api_router = APIRouter(prefix="/api")
+api_router = APIRouter()
 
 @api_router.get("/welcome")
 async def welcome():
@@ -1128,8 +1128,8 @@ async def health_check():
         }
     }
 
-# Include router
-app.include_router(api_router)
+# Include router with explicit prefix
+app.include_router(api_router, prefix="/api")
 
 # Add CORS middleware
 app.add_middleware(

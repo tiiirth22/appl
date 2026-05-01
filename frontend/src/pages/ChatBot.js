@@ -112,7 +112,7 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API}/chat`, {
+      const response = await fetch(`${API}/chat/`, {
         method: 'POST',
         mode: 'cors',
         credentials: 'include', // CRITICAL for session cookies
