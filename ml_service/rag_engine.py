@@ -296,25 +296,34 @@ class RAGQueryEngine:
             device_info = f"Current device: {manual_name}" if manual_name else "Current device: (Unknown)"
 
             if mode == "strong":
-                instruction = "You are answering ONLY from the provided manual context. Be precise and technical."
+                instruction = "You are a professional senior technician. Use the provided manual context to give a detailed, step-by-step repair guide. explain the ACTUAL steps from the manual clearly."
             elif mode == "partial":
-                instruction = "Use the manual context as primary source. Supplement with general knowledge only where incomplete."
+                instruction = "Use the manual context as your primary guide. Supplement with expert general knowledge only if the manual is brief."
             else:
-                instruction = f"No manual sections found. Answer from general appliance knowledge. Add: 'Note: This answer is based on general appliance knowledge, not your specific manual.'"
+                instruction = "No manual sections found. Provide an expert troubleshooting guide based on general appliance repair best practices. Include: 'Note: This answer is based on general knowledge, not your specific manual.'"
 
             is_vague = len(question.strip()) <= 15 and history and len(history) >= 2
-            followup = "\nNOTE: Follow-up detected. Use conversation history." if is_vague else ""
+            followup = "\nNOTE: Keep the context of the previous conversation in mind." if is_vague else ""
 
-            prompt = f"""You are ApplianceIQ, an expert home appliance repair assistant.
+            prompt = f"""### TASK
+You are ApplianceIQ, an expert technician. Help the user fix their device using the provided manual context.
+
+### DEVICE INFO
 {device_info}
-{instruction}{followup}
 
-ALWAYS give a direct, actionable answer. Keep it concise and practical.
+### INSTRUCTIONS
+- {instruction}
+- Provide clear, numbered steps.
+- Highlight important warnings or tools needed.
+- {followup}
 
-Context: {context if mode != 'fallback' else 'No relevant manual context found.'}
-User query: {question}
+### MANUAL CONTEXT
+{context if mode != 'fallback' else 'No specific manual data available.'}
 
-ANSWER:"""
+### USER QUERY
+{question}
+
+### YOUR ACTIONABLE RESPONSE:"""
 
             messages = [{"role": "system", "content": "You are a helpful assistant answering questions about appliance manuals. Be concise and accurate."}]
             if history:
@@ -358,11 +367,7 @@ Query: {question}"""
                 timeout=timeout,
             )
             content = response.choices[0].message.content.strip()
-            if content.startswith("```json"):
-                content = content.split("```json")[1].split("```")[0].strip()
-            elif content.startswith("```"):
-                content = content.split("```")[1].split("```")[0].strip()
-            info = json.loads(content)
+            info = self._extract_json(content)
             return info if isinstance(info, dict) else {}
         except Exception as e:
             self.logger.error(f"Secondary info error: {e}")
