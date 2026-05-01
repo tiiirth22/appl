@@ -60,6 +60,7 @@ from errors import (
     ServiceUnavailableError, MLServiceException, ErrorType,
 )
 from logger_config import get_processing_logger
+from storage import storage_manager
 
 logger = get_processing_logger(__name__)
 
@@ -89,25 +90,26 @@ class AsyncDocumentProcessor:
         file_type: str,
     ) -> Dict[str, Any]:
         """Full pipeline: download → extract → chunk → embed → index"""
+        local_path = None
         try:
             self.logger.info(f"Starting processing: {manual_name} v{version} (file_type={file_type})")
 
             if file_type.lower() not in self.SUPPORTED_FORMATS:
                 raise UnsupportedFormatError(file_type, list(self.SUPPORTED_FORMATS))
 
-            # Stage 1: Download
-            self.logger.info("Stage 1/5: Downloading file")
-            file_content = await self._download_file(file_url)
-
-            file_size_mb = len(file_content) / (1024 * 1024)
-            max_size_mb = MAX_FILE_SIZE_BYTES / (1024 * 1024)
-            if len(file_content) > MAX_FILE_SIZE_BYTES:
-                raise FileSizeError(file_size_mb, max_size_mb)
-            self.logger.info(f"Downloaded {file_size_mb:.2f}MB")
+            # Stage 1: Download to Disk
+            self.logger.info("Stage 1/5: Downloading file to temp storage")
+            local_path = await storage_manager.get_file(file_url, f"{manual_id}_{version}.{file_type}")
+            
+            # Security: Validate file before processing
+            self._validate_file(local_path, file_type)
+            
+            file_size_mb = local_path.stat().st_size / (1024 * 1024)
+            self.logger.info(f"Downloaded and validated {file_size_mb:.2f}MB")
 
             # Stage 2: Extract text
-            self.logger.info("Stage 2/5: Extracting text")
-            pages_text = await self._extract_text(file_content, file_type)
+            self.logger.info("Stage 2/5: Extracting text from disk")
+            pages_text = await self._extract_text(local_path, file_type)
 
             total_chars = sum(len(text) for text, _ in pages_text)
             if not pages_text or total_chars < 50:
@@ -123,36 +125,50 @@ class AsyncDocumentProcessor:
             chunks = self._chunk_text(pages_text)
             self.logger.info(f"Created {len(chunks)} chunks")
 
-            # Stage 4: Embed (uses shared ONNX model + cache)
+            # Stage 4: Embed
             self.logger.info("Stage 4/5: Generating embeddings")
             embeddings = await self._generate_embeddings(chunks)
-            self.logger.info(f"Generated {len(embeddings)} embeddings")
 
-            # Stage 5: Index to Pinecone
+            # Stage 5: Index
             self.logger.info("Stage 5/5: Indexing to Pinecone")
             indexed_count = await self._index_to_pinecone(
                 manual_id, manual_name, chunks, embeddings
             )
             self.logger.info(f"Indexed {indexed_count} vectors")
-            self.logger.info("Processing completed successfully")
 
             return {
                 "manual_id": manual_id,
                 "chunks_count": len(chunks),
-                "embedding_model": EMBEDDING_MODEL,
                 "status": "completed",
             }
 
-        except MLServiceException as e:
-            self.logger.error(f"Processing failed: {e.message}")
+        except MLServiceException:
             raise
         except Exception as e:
             self.logger.error(f"Unexpected error: {str(e)}", exc_info=True)
             raise MLServiceException(
                 ErrorType.INTERNAL_ERROR,
-                f"Unexpected error during processing: {str(e)}",
+                f"Processing error: {str(e)}",
                 retryable=True,
             )
+        finally:
+            if local_path:
+                storage_manager.cleanup(local_path)
+
+    def _validate_file(self, file_path: Path, file_type: str):
+        """Security: Validate file size and magic bytes."""
+        size = file_path.stat().st_size
+        if size > MAX_FILE_SIZE_BYTES:
+            raise FileSizeError(size / (1024*1024), MAX_FILE_SIZE_BYTES / (1024*1024))
+            
+        with open(file_path, "rb") as f:
+            header = f.read(8)
+            if file_type.lower() == "pdf":
+                if not header.startswith(b"%PDF"):
+                    raise UnsupportedFormatError("invalid_pdf_header", ["%PDF"])
+            elif file_type.lower() in ["jpg", "jpeg", "png"]:
+                if not any(header.startswith(m) for m in [b"\xff\xd8", b"\x89PNG"]):
+                    raise UnsupportedFormatError("invalid_image_header", ["JPEG", "PNG"])
 
     # ─── Stages ───────────────────────────────────────────────────────
 
@@ -174,53 +190,53 @@ class AsyncDocumentProcessor:
             raise FileDownloadError(str(e), retryable=True)
 
     async def _extract_text(
-        self, file_content: bytes, file_type: str, timeout: int = OCR_TIMEOUT
+        self, file_path: Path, file_type: str, timeout: int = OCR_TIMEOUT
     ) -> List[Tuple[str, int]]:
         try:
             if file_type.lower() == "pdf":
                 return await asyncio.wait_for(
-                    asyncio.to_thread(self._extract_text_pdf, file_content),
+                    asyncio.to_thread(self._extract_text_pdf, file_path),
                     timeout=timeout,
                 )
             else:
                 text = await asyncio.wait_for(
-                    asyncio.to_thread(self._extract_text_image, file_content),
+                    asyncio.to_thread(self._extract_text_image, file_path),
                     timeout=timeout,
                 )
                 return [(text, 1)]
         except asyncio.TimeoutError:
             raise TimeoutErrorException("extract_text", timeout)
 
-    def _extract_text_pdf(self, file_content: bytes) -> List[Tuple[str, int]]:
+    def _extract_text_pdf(self, file_path: Path) -> List[Tuple[str, int]]:
         if not PDF_AVAILABLE:
             raise ServiceUnavailableError("pdfminer", "pdfminer.six not installed")
 
         try:
-            pdf_file = io.BytesIO(file_content)
-            resource_manager = PDFResourceManager()
-            laparams = LAParams()
             pages_text = []
+            with open(file_path, "rb") as pdf_file:
+                resource_manager = PDFResourceManager()
+                laparams = LAParams()
 
-            for page_num, page in enumerate(PDFPage.get_pages(pdf_file), start=1):
-                fake_file_handle = io.StringIO()
-                with TextConverter(resource_manager, fake_file_handle, laparams=laparams) as converter:
-                    interpreter = PDFPageInterpreter(resource_manager, converter)
-                    interpreter.process_page(page)
-                    text = fake_file_handle.getvalue()
-                    if text.strip():
-                        pages_text.append((text, page_num))
-                fake_file_handle.close()
+                for page_num, page in enumerate(PDFPage.get_pages(pdf_file), start=1):
+                    fake_file_handle = io.StringIO()
+                    with TextConverter(resource_manager, fake_file_handle, laparams=laparams) as converter:
+                        interpreter = PDFPageInterpreter(resource_manager, converter)
+                        interpreter.process_page(page)
+                        text = fake_file_handle.getvalue()
+                        if text.strip():
+                            pages_text.append((text, page_num))
+                    fake_file_handle.close()
 
             return pages_text
         except Exception as e:
             raise OCRError(f"PDF extraction failed: {str(e)}", retryable=True)
 
-    def _extract_text_image(self, file_content: bytes) -> str:
+    def _extract_text_image(self, file_path: Path) -> str:
         if not PIL_AVAILABLE or not TESSERACT_AVAILABLE:
             raise ServiceUnavailableError("pytesseract", "PIL or pytesseract not installed")
 
         try:
-            image = Image.open(io.BytesIO(file_content))
+            image = Image.open(file_path)
             if TESSERACT_PATH:
                 pytesseract.pytesseract.pytesseract_cmd = TESSERACT_PATH
             text = pytesseract.image_to_string(image)
