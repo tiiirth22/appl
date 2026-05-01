@@ -67,7 +67,7 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
 
   // --- NEW: Sticky ID Logic ---
   const urlId = searchParams.get('manual_id') || searchParams.get('manualId');
-  const [manualId, setManualId] = useState(urlId || localStorage.getItem('last_manual_id') || 'laptop');
+  const [manualId, setManualId] = useState(urlId || localStorage.getItem('last_manual_id') || null);
 
   useEffect(() => {
     if (urlId) {
@@ -77,24 +77,7 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
     }
   }, [urlId]);
 
-  const [connectionStatus, setConnectionStatus] = useState('checking'); // checking, online, offline
-  const API_BASE_URL = (process.env.REACT_APP_API_URL || process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000').replace(/\/$/, '');
-  const API = API_BASE_URL.endsWith('/api') ? API_BASE_URL : `${API_BASE_URL}/api`;
-
-  useEffect(() => {
-    const checkConnection = async () => {
-      try {
-        const res = await fetch(`${API}/welcome`, { mode: 'cors' });
-        if (res.ok) setConnectionStatus('online');
-        else setConnectionStatus('offline');
-      } catch (e) {
-        setConnectionStatus('offline');
-      }
-    };
-    checkConnection();
-    const interval = setInterval(checkConnection, 30000);
-    return () => clearInterval(interval);
-  }, [API]);
+  const [connectionStatus, setConnectionStatus] = useState('online');
 
 
   useEffect(() => {
@@ -105,7 +88,14 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
 
   const handleSend = async () => {
     if (!input.trim()) return;
-    console.log("[Chat] Sending message...");
+    
+    if (!manualId) {
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: 'No appliance manual is linked to this chat. Please scan a QR code to start.' 
+      }]);
+      return;
+    }
     const userMsg = { role: 'user', content: input };
     setMessages(prev => [...prev, userMsg]);
     setInput('');

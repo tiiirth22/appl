@@ -784,8 +784,6 @@ async def chat(request: ChatRequest, current_user: Optional[dict] = Depends(get_
         confidence = ml_response.get("confidence", 0.0)
         
         async def stream_response():
-            # Send an immediate heartbeat to keep mobile connections alive
-            yield ": heartbeat\n\n"
             # 1. Send metadata line first (including new video and steps fields)
             metadata = _json.dumps({
                 "sources": sources, 
