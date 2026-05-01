@@ -1122,15 +1122,18 @@ async def log_requests(request: Request, call_next):
     
     logger.info(f"Incoming: {method} {path} | Origin: {origin}")
     
-    # Handle OPTIONS manually if middleware fails for any reason
+    # Handle OPTIONS manually with precise header echoing
     if method == "OPTIONS":
+        requested_headers = request.headers.get("Access-Control-Request-Headers", "*")
         return Response(
-            status_code=200,
+            status_code=204,  # No Content is standard for OPTIONS
             headers={
-                "Access-Control-Allow-Origin": origin or "*",
-                "Access-Control-Allow-Methods": "POST, GET, OPTIONS, DELETE, PUT",
-                "Access-Control-Allow-Headers": "*",
+                "Access-Control-Allow-Origin": origin or "https://appl-pi.vercel.app",
+                "Access-Control-Allow-Methods": "POST, GET, OPTIONS, DELETE, PUT, PATCH",
+                "Access-Control-Allow-Headers": requested_headers,
                 "Access-Control-Allow-Credentials": "true",
+                "Access-Control-Max-Age": "3600",
+                "Vary": "Origin"
             }
         )
         
