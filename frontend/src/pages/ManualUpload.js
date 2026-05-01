@@ -14,6 +14,8 @@ export default function ManualUpload({ currentTheme, toggleTheme }) {
   const navigate = useNavigate();
   const [file, setFile] = useState(null);
   const [modelName, setModelName] = useState('');
+  const [version, setVersion] = useState('1.0');
+  const [region, setRegion] = useState('global');
   const [uploading, setUploading] = useState(false);
   const [status, setStatus] = useState('idle'); // idle, uploading, parsing, success, error
   const [log, setLog] = useState([]);
@@ -39,6 +41,8 @@ export default function ManualUpload({ currentTheme, toggleTheme }) {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('model_name', modelName);
+    formData.append('version', version);
+    formData.append('region', region);
 
     try {
       addLog('PROC: DATA_STREAM_ESTABLISHED | SYNCHRONIZING_PAYLOAD');
@@ -95,13 +99,37 @@ export default function ManualUpload({ currentTheme, toggleTheme }) {
           {/* ── Ingestion Form ── */}
           <div className="elite-panel" style={{ padding: '48px' }}>
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <label className="mono" style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)' }}>RESOURCE_IDENTITY</label>
+                  <input 
+                    type="text" placeholder="e.g. Dyson V11" className="input-elite" 
+                    style={{ width: '100%', padding: '16px', fontSize: '1rem' }}
+                    value={modelName} onChange={(e) => setModelName(e.target.value)} required
+                  />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <label className="mono" style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)' }}>REVISION_TAG</label>
+                  <input 
+                    type="text" placeholder="1.0.0" className="input-elite" 
+                    style={{ width: '100%', padding: '16px', fontSize: '1rem' }}
+                    value={version} onChange={(e) => setVersion(e.target.value)} required
+                  />
+                </div>
+              </div>
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <label className="mono" style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)' }}>RESOURCE_IDENTITY</label>
-                <input 
-                  type="text" placeholder="e.g. Dyson V11 Core Engine" className="input-elite" 
-                  style={{ width: '100%', padding: '16px', fontSize: '1rem' }}
-                  value={modelName} onChange={(e) => setModelName(e.target.value)} required
-                />
+                <label className="mono" style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)' }}>REGIONAL_PROTOCOL</label>
+                <select 
+                  className="input-elite" 
+                  style={{ width: '100%', padding: '16px', fontSize: '1rem', appearance: 'none', background: 'var(--color-bg-surface)' }}
+                  value={region} onChange={(e) => setRegion(e.target.value)}
+                >
+                  <option value="global">GLOBAL_STANDARD</option>
+                  <option value="us">NORTH_AMERICA</option>
+                  <option value="eu">EUROPEAN_UNION</option>
+                  <option value="asia">ASIA_PACIFIC</option>
+                </select>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
