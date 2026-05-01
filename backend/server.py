@@ -930,7 +930,8 @@ async def redirect_to_chat(qr_id: str):
         raise HTTPException(status_code=404, detail="QR code not found")
     
     manual_id = qr_code["manual_id"]
-    return RedirectResponse(url=f"/chat?manual_id={manual_id}")
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://appl-pi.vercel.app')
+    return RedirectResponse(url=f"{frontend_url}/chat?manual_id={manual_id}")
 
 # ============= ANALYTICS ENDPOINTS =============
 @api_router.get("/analytics/queries")

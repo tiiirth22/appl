@@ -54,11 +54,11 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const scrollRef = useRef(null);
+  const bottomRef = useRef(null);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
 
@@ -159,7 +159,7 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
             </div>
           </header>
 
-          <main ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '40px' }}>
+          <main className="chat-container" style={{ flex: 1, overflowY: 'auto', padding: '40px', scrollBehavior: 'smooth' }}>
             <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '40px' }}>
               <AnimatePresence>
                 {messages.length === 0 ? (
@@ -279,7 +279,7 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
                 </motion.div>
               )}
               <div style={{ height: '20px' }} />
-              <div ref={scrollRef} />
+              <div ref={bottomRef} />
             </div>
           </main>
 
