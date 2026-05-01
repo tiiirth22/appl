@@ -1096,17 +1096,17 @@ else:
         "https://appliance-iq.vercel.app/",
         "https://www.appliance-iq.vercel.app",
         "https://www.appliance-iq.vercel.app/",
-        "https://applianceiq-production.up.railway.app",
-        "https://applianceiq-production.up.railway.app/",
-        "https://upbeat-contentment-production-ed5c.up.railway.app",
-        "https://upbeat-contentment-production-ed5c.up.railway.app/"
+        "https://appl-production.up.railway.app",
+        "https://appl-production.up.railway.app/",
+        "https://easygoing-elegance-production-2fff.up.railway.app",
+        "https://easygoing-elegance-production-2fff.up.railway.app/"
     ]
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    logger.info(f"Incoming request: {request.method} {request.url.path}")
+    logger.info(f"Incoming: {request.method} {request.url.path} | Origin: {request.headers.get('origin')} | UA: {request.headers.get('user-agent')[:50]}")
     response = await call_next(request)
-    logger.info(f"Response status: {response.status_code}")
+    logger.info(f"Outgoing: {response.status_code} | Path: {request.url.path}")
     return response
 
 app.add_middleware(
