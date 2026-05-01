@@ -70,6 +70,7 @@ APPLIANCE_KEYWORDS = [
     'appliance','refrigerator','fridge','washer','washing machine',
     'dryer','dishwasher','microwave','oven','stove','freezer',
     'air conditioner','ac','heater','vacuum','blender',
+    'security','lock','privacy','password','login','safety','kensington','port','connector',
 ]
 
 OFF_TOPIC_PATTERNS = [
@@ -83,8 +84,8 @@ OFF_TOPIC_PATTERNS = [
 ]
 
 # ─── Configurable Thresholds ──────────────────────────────────────────
-CONFIDENCE_THRESHOLD_STRICT = 0.45  # Below this, we reject entirely
-CONFIDENCE_THRESHOLD_PARTIAL = 0.65 # Below this, we warn the user
+CONFIDENCE_THRESHOLD_STRICT = 0.40  # Below this, we reject entirely
+CONFIDENCE_THRESHOLD_PARTIAL = 0.60 # Below this, we warn the user
 VAGUE_QUERY_PATTERNS = [
     r'^help\??$', r'^not working\??$', r'^issue\??$', r'^error\??$',
     r'^[?!.\s]+$', r'^.{1,3}$', r'^[asdfghjkl;]+$'
