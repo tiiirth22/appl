@@ -156,8 +156,41 @@ class RAGQueryEngine:
 
         try:
             self.logger.info(f"Processing query: {question[:100]}...")
-            question_embedding = await self._embed_text(question)
-            sources, mode, top_score = await self._retrieve_chunks(manual_id, question_embedding, top_k)
+            
+            # --- NEW: Multi-Query Expansion ---
+            # We generate 2 semantic variations to increase recall for technical terms
+            variations = [question]
+            try:
+                expansion_prompt = f"Given the technical query: '{question}', provide 2 alternative search terms that might appear in a laptop manual (e.g., technical names, synonyms). Output ONLY the terms separated by |"
+                expansion_resp = await asyncio.wait_for(
+                    self._call_llm_internal(expansion_prompt, model="llama-3.1-8b-instant", max_tokens=30),
+                    timeout=3.0
+                )
+                if expansion_resp and "|" in expansion_resp:
+                    variations.extend([v.strip() for v in expansion_resp.split("|") if v.strip()])
+                    self.logger.info(f"Expanded queries: {variations}")
+            except Exception as e:
+                self.logger.warning(f"Query expansion failed: {e}")
+
+            # Collect chunks from all variations
+            all_chunks = []
+            all_scores = []
+            
+            for q_var in variations:
+                q_emb = await self._embed_text(q_var)
+                chunks, mode, score = await self._retrieve_chunks(manual_id, q_emb, top_k=5)
+                all_chunks.extend(chunks)
+                all_scores.append(score)
+
+            # Deduplicate by text content and keep highest score for each
+            unique_chunks = {}
+            for c in all_chunks:
+                if c["text"] not in unique_chunks or c["score"] > unique_chunks[c["text"]]["score"]:
+                    unique_chunks[c["text"]] = c
+            
+            sources = sorted(unique_chunks.values(), key=lambda x: x["score"], reverse=True)[:top_k]
+            top_score = max(all_scores) if all_scores else 0.0
+            mode = "strong" if top_score > 0.6 else "partial"
 
             # 1. Similarity Check (Hard Rejection)
             if top_score < CONFIDENCE_THRESHOLD_STRICT:
@@ -326,6 +359,21 @@ class RAGQueryEngine:
             return _global_groq_client_secondary
         except Exception:
             return None
+
+    async def _call_llm_internal(self, prompt: str, model: str = "llama-3.1-8b-instant", max_tokens: int = 100) -> str:
+        """Utility for internal small LLM tasks like query expansion."""
+        try:
+            client = await self._get_groq_client()
+            response = await asyncio.to_thread(lambda: client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.1,
+                max_tokens=max_tokens
+            ))
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            self.logger.error(f"Internal LLM call failed: {e}")
+            return ""
 
     async def _generate_answer(self, question: str, sources: List[Dict], mode: str = "fallback",
                                manual_name: Optional[str] = None,
