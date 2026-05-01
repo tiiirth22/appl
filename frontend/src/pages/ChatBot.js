@@ -34,13 +34,49 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API}/chat`, {
-        manual_id: manualId,
-        question: input,
-        history: messages.slice(-4)
+      const response = await fetch(`${API}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          manual_id: manualId,
+          question: input,
+          history: messages.slice(-4)
+        })
       });
-      setMessages(prev => [...prev, { role: 'assistant', content: response.data.answer }]);
+
+      if (!response.ok) throw new Error('Network response was not ok');
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let assistantMsgAdded = false;
+      let accumulatedAnswer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        let cleanChunk = chunk;
+
+        if (chunk.startsWith('__METADATA__:')) {
+          const lines = chunk.split('\n');
+          // The metadata is on the first line, answer starts after the first \n
+          cleanChunk = lines.slice(1).join('\n');
+        }
+
+        accumulatedAnswer += cleanChunk;
+
+        setMessages(prev => {
+          if (!assistantMsgAdded) {
+            assistantMsgAdded = true;
+            return [...prev, { role: 'assistant', content: accumulatedAnswer }];
+          }
+          const last = prev[prev.length - 1];
+          return [...prev.slice(0, -1), { ...last, content: accumulatedAnswer }];
+        });
+      }
     } catch (error) {
+      console.error('Chat Error:', error);
       setMessages(prev => [...prev, { role: 'assistant', content: 'SYSTEM_ERROR: Neural link interrupted. Check your network or diagnostic index status.' }]);
     } finally {
       setLoading(false);
