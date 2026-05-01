@@ -39,7 +39,11 @@ except ImportError:
 try:
     from pinecone import Pinecone, ServerlessSpec
     PINECONE_AVAILABLE = True
-except ImportError:
+except Exception as e:
+    import logging
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+    logger.error(f"CRITICAL: Failed to load Pinecone SDK in processor: {e}")
     PINECONE_AVAILABLE = False
 
 from config import (
