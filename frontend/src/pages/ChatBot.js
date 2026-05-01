@@ -217,18 +217,21 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
                           <User size={16} color="#3B82F6" />
                         </div>
                       )}
-                    </motion.div>
-                  ))
                 )}
-                <div style={{ height: '80px' }} /> {/* Spacer to prevent overlap with footer */}
-                {loading && (
-                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                    <Loader2 className="spinner" size={14} color="var(--color-text-muted)" />
-                    <span className="mono" style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>PROCESS_INFERENCE...</span>
-                  </div>
-                )}
-                <div ref={scrollRef} /> {/* Dedicated scroll anchor */}
               </AnimatePresence>
+              
+              {loading && (
+                <motion.div 
+                  initial={{ opacity: 0 }} 
+                  animate={{ opacity: 1 }}
+                  style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '10px 0' }}
+                >
+                  <Loader2 className="spinner" size={14} color="var(--color-text-muted)" />
+                  <span className="mono" style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>NEURAL_LINK_INFERENCE...</span>
+                </motion.div>
+              )}
+              <div style={{ height: '20px' }} />
+              <div ref={scrollRef} />
             </div>
           </main>
 
