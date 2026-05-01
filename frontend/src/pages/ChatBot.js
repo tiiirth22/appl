@@ -76,7 +76,10 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
         body: JSON.stringify({
           manual_id: manualId,
           question: input,
-          history: messages.slice(-4)
+          history: messages.slice(-4).map(m => ({ 
+            role: m.role, 
+            content: m.content 
+          }))
         })
       });
 
