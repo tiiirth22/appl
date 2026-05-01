@@ -109,8 +109,7 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
         credentials: 'include', // CRITICAL for session cookies
         headers: { 
           'Content-Type': 'application/json',
-          'Accept': 'text/plain',
-          'ngrok-skip-browser-warning': 'true'
+          'Accept': 'text/plain'
         },
         body: JSON.stringify({
           manual_id: manualId,
@@ -212,10 +211,7 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
       try {
         fetch(`${API}/debug/log`, {
           method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'ngrok-skip-browser-warning': 'true'
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             error: error.message,
             stack: error.stack,
