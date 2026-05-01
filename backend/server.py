@@ -929,7 +929,21 @@ async def redirect_to_chat(qr_id: str):
     if not qr_code:
         raise HTTPException(status_code=404, detail="QR code not found")
     
-    manual_id = qr_code["manual_id"]
+    # Robust ID extraction (checks both snake_case and camelCase)
+    manual_id = qr_code.get("manual_id") or qr_code.get("manualId")
+    
+    # Fallback: If QR record is missing the ID, look it up in the manuals collection
+    if not manual_id:
+        logger.warning(f"QR record {qr_id} missing manual_id. Attempting reverse lookup...")
+        manual = await db.manuals.find_one({"qr_code_id": qr_id})
+        if manual:
+            manual_id = manual.get("id")
+            
+    if not manual_id:
+        logger.error(f"Failed to resolve manual_id for QR: {qr_id}")
+        # Final fallback: redirect to chat anyway, but we might show the 'No manual' warning
+        manual_id = "unknown"
+
     frontend_url = os.environ.get('FRONTEND_URL', 'https://appl-pi.vercel.app').rstrip('/')
     target_url = f"{frontend_url}/chat?manual_id={manual_id}"
     logger.info(f"Redirecting QR scan to: {target_url}")
