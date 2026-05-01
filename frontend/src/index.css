@@ -117,10 +117,30 @@ body {
 }
 
 /* Custom Scrollbar for Pro feel */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #27272A; border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover { background: #3F3F46; }
+/* High-Visibility Custom Scrollbar */
+::-webkit-scrollbar { 
+  width: 10px; 
+}
+::-webkit-scrollbar-track { 
+  background: var(--color-bg-base); 
+}
+::-webkit-scrollbar-thumb { 
+  background: #3F3F46; 
+  border-radius: 5px;
+  border: 2px solid var(--color-bg-base);
+}
+::-webkit-scrollbar-thumb:hover { 
+  background: #52525B; 
+}
+
+/* Specific Chat Scrollbar for emphasis */
+.chat-container::-webkit-scrollbar {
+  width: 12px;
+}
+.chat-container::-webkit-scrollbar-thumb {
+  background: #27272A;
+  border: 3px solid var(--color-bg-base);
+}
 
 /* Animations */
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }

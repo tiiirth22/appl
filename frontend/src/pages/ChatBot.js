@@ -142,161 +142,126 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
   };
 
   return (
-    <div style={{ backgroundColor: 'var(--color-bg-base)', height: '100vh', display: 'flex', flexDirection: 'column', color: 'var(--color-text-primary)', overflow: 'hidden' }}>
+    <div style={{ 
+      backgroundColor: 'var(--color-bg-base)', 
+      height: '100vh', 
+      maxHeight: '100vh',
+      display: 'flex', 
+      flexDirection: 'column', 
+      color: 'var(--color-text-primary)', 
+      overflow: 'hidden' 
+    }}>
       <Navbar activePage="chat" currentTheme={currentTheme} toggleTheme={toggleTheme} />
       
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 320px', overflow: 'hidden' }}>
+      <div style={{ 
+        flex: 1, 
+        display: 'grid', 
+        gridTemplateColumns: '1fr 320px', 
+        overflow: 'hidden',
+        minHeight: 0 // Critical fix for Firefox/Chrome flex-grid scrolling
+      }}>
         {/* ── Main Terminal Area ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', borderRight: 'var(--border-thin)', background: 'var(--color-bg-base)' }}>
-          <header style={{ padding: '12px 24px', borderBottom: 'var(--border-thin)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-bg-elevated)' }}>
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          borderRight: 'var(--border-thin)', 
+          background: 'var(--color-bg-base)',
+          minHeight: 0 
+        }}>
+          <header style={{ padding: '12px 24px', borderBottom: 'var(--border-thin)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-bg-elevated)', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{ width: '6px', height: '6px', background: '#10B981', borderRadius: '50%', boxShadow: '0 0 8px #10B981' }} />
               <span className="mono" style={{ fontSize: '0.7rem', fontWeight: 800 }}>DIAGNOSTIC_LINK_ACTIVE</span>
             </div>
-            <div style={{ display: 'flex', gap: '16px' }}>
-               <span className="mono" style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>LATENCY: 142ms</span>
-               <span className="mono" style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>TOKENS: 4.2k/8k</span>
-            </div>
           </header>
 
-          <main className="chat-container" style={{ flex: 1, overflowY: 'auto', padding: '40px', scrollBehavior: 'smooth' }}>
-            <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '40px' }}>
+          <main className="chat-container" style={{ 
+            flex: 1, 
+            overflowY: 'auto', 
+            padding: '20px 40px', 
+            scrollBehavior: 'smooth',
+            display: 'block', // Ensure block display for proper overflow
+            WebkitOverflowScrolling: 'touch'
+          }}>
+            <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '30px', paddingBottom: '40px' }}>
               <AnimatePresence>
                 {messages.length === 0 ? (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ padding: '80px 0', textAlign: 'center' }}>
-                     <div style={{ color: 'var(--color-text-muted)', marginBottom: '24px', opacity: 0.3 }}><Terminal size={48} /></div>
-                     <h2 className="heading-elite" style={{ fontSize: '1.5rem', marginBottom: '8px' }}>Terminal Standby.</h2>
-                     <p style={{ color: 'var(--color-text-dim)', fontSize: '0.9rem' }}>Awaiting diagnostic query for index <span className="mono">{manualId || 'GLOBAL'}</span></p>
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ padding: '100px 0', textAlign: 'center' }}>
+                     <div style={{ color: 'var(--color-text-muted)', marginBottom: '24px', opacity: 0.3 }}><Terminal size={64} /></div>
+                     <h2 className="heading-elite" style={{ fontSize: '2rem', marginBottom: '12px' }}>Terminal_Standby.</h2>
+                     <p style={{ color: 'var(--color-text-dim)', fontSize: '1rem' }}>Awaiting diagnostic query for index <span className="mono" style={{ color: 'var(--color-text-primary)' }}>{manualId || 'GLOBAL_SYSTEM'}</span></p>
                   </motion.div>
                 ) : (
                   messages.map((msg, i) => (
                     <motion.div
                       key={i}
-                      initial={{ opacity: 0, x: msg.role === 'user' ? 20 : -20 }}
-                      animate={{ opacity: 1, x: 0 }}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
                       style={{ 
                         display: 'flex', 
-                        flexDirection: 'row',
-                        justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                        gap: '12px',
+                        flexDirection: msg.role === 'user' ? 'row-reverse' : 'row',
+                        gap: '16px',
                         width: '100%'
                       }}
                     >
-                      {msg.role === 'assistant' && (
-                        <div style={{ 
-                          width: '32px', height: '32px', borderRadius: '50%', 
-                          background: 'rgba(16, 185, 129, 0.1)', 
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          border: '1px solid rgba(16, 185, 129, 0.2)',
-                          marginTop: '4px'
-                        }}>
-                          <Bot size={16} color="#10B981" />
-                        </div>
-                      )}
+                      <div style={{ 
+                        width: '36px', height: '36px', borderRadius: '10px', 
+                        background: msg.role === 'assistant' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(59, 130, 246, 0.1)', 
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        border: msg.role === 'assistant' ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(59, 130, 246, 0.2)',
+                        flexShrink: 0
+                      }}>
+                        {msg.role === 'assistant' ? <Bot size={18} color="#10B981" /> : <User size={18} color="#3B82F6" />}
+                      </div>
 
                       <div style={{ 
-                        maxWidth: '80%',
+                        maxWidth: '85%',
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start'
                       }}>
-                        <div className="mono" style={{ 
-                          fontSize: '0.6rem', 
-                          fontWeight: 800, 
-                          color: 'var(--color-text-muted)',
-                          marginBottom: '4px',
-                          padding: '0 4px'
-                        }}>
-                          {msg.role === 'assistant' ? 'APPLIANCE_IQ_BOT' : 'OPERATOR'}
-                        </div>
-                        
                         <div style={{ 
                           fontSize: '0.95rem', 
-                          lineHeight: 1.5, 
+                          lineHeight: 1.6, 
                           color: msg.role === 'user' ? '#FFFFFF' : 'var(--color-text-primary)',
-                          background: msg.role === 'user' ? '#3B82F6' : 'var(--color-bg-elevated)',
-                          padding: '16px 20px',
-                          borderRadius: msg.role === 'user' ? '18px 18px 2px 18px' : '18px 18px 18px 2px',
+                          background: msg.role === 'user' ? 'linear-gradient(135deg, #3B82F6, #2563EB)' : 'var(--color-bg-elevated)',
+                          padding: '16px 24px',
+                          borderRadius: '20px',
                           border: msg.role === 'user' ? 'none' : 'var(--border-thin)',
-                          boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-                          position: 'relative'
+                          boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
                         }}>
                           <MarkdownText text={msg.content} />
-                          
-                          {msg.video_url && (
-                            <div style={{ marginTop: '16px', borderTop: '1px solid rgba(16, 185, 129, 0.1)', paddingTop: '12px' }}>
-                              <a 
-                                href={msg.video_url} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="btn-elite"
-                                style={{ 
-                                  display: 'flex', 
-                                  alignItems: 'center', 
-                                  gap: '8px', 
-                                  padding: '8px 12px', 
-                                  background: 'rgba(239, 68, 68, 0.1)',
-                                  color: '#EF4444',
-                                  fontSize: '0.8rem',
-                                  textDecoration: 'none',
-                                  borderRadius: '6px',
-                                  border: '1px solid rgba(239, 68, 68, 0.2)',
-                                  width: 'fit-content'
-                                }}
-                              >
-                                <ExternalLink size={14} />
-                                Watch Video Tutorial
-                              </a>
-                            </div>
-                          )}
                         </div>
                       </div>
-
-                      {msg.role === 'user' && (
-                        <div style={{ 
-                          width: '32px', height: '32px', borderRadius: '50%', 
-                          background: 'rgba(59, 130, 246, 0.1)', 
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          border: '1px solid rgba(59, 130, 246, 0.2)',
-                          marginTop: '4px'
-                        }}>
-                          <User size={16} color="#3B82F6" />
-                        </div>
-                      )}
                     </motion.div>
                   ))
                 )}
               </AnimatePresence>
               
               {loading && (
-                <motion.div 
-                  initial={{ opacity: 0 }} 
-                  animate={{ opacity: 1 }}
-                  style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '10px 0' }}
-                >
-                  <Loader2 className="spinner" size={14} color="var(--color-text-muted)" />
-                  <span className="mono" style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>NEURAL_LINK_INFERENCE...</span>
-                </motion.div>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <Loader2 className="spinner" size={16} color="var(--color-text-muted)" />
+                  <span className="mono" style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', letterSpacing: '0.1em' }}>INFERENCE_IN_PROGRESS...</span>
+                </div>
               )}
-              <div style={{ height: '20px' }} />
-              <div ref={bottomRef} />
+              <div ref={bottomRef} style={{ height: '1px' }} />
             </div>
           </main>
 
-          <footer style={{ padding: '32px 40px', borderTop: 'var(--border-thin)', background: 'var(--color-bg-elevated)' }}>
+          <footer style={{ padding: '24px 40px', borderTop: 'var(--border-thin)', background: 'var(--color-bg-elevated)', flexShrink: 0 }}>
             <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', gap: '12px' }}>
               <input
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Submit diagnostic query..."
+                placeholder="TYPE_DIAGNOSTIC_QUERY_HERE..."
                 className="input-elite"
-                style={{ flex: 1, padding: '12px 20px', borderRadius: '8px' }}
+                style={{ flex: 1, padding: '16px 24px', borderRadius: '12px', fontSize: '1rem' }}
                 onKeyDown={(e) => { if(e.key === 'Enter') handleSend(); }}
                 disabled={loading}
               />
-              <button onClick={handleSend} className="btn-elite" style={{ padding: '12px', borderRadius: '8px' }} disabled={loading}>
-                <Send size={18} />
+              <button onClick={handleSend} className="btn-elite" style={{ padding: '0 24px', borderRadius: '12px' }} disabled={loading}>
+                <Send size={20} />
               </button>
             </div>
           </footer>
