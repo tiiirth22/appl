@@ -377,9 +377,11 @@ class RAGQueryEngine:
             device_info = f"Current device: {manual_name}" if manual_name else "Current device: (Unknown)"
 
             if mode == "strong" or mode == "partial":
-                instruction = f"Answer the query comprehensively. Prioritize information from the provided manual context and explicitly cite references from the manual. If the manual context is insufficient, you must answer the generalized query using your general knowledge, but clearly state what is from the manual and what is general advice."
+                instruction = f"Answer the query comprehensively. Prioritize information from the provided manual context and explicitly cite references from the manual. If the manual context is insufficient but the query is about the {manual_name or 'current device'}, you must answer the generalized query using your general knowledge, clearly stating what is from the manual and what is general advice."
             else:
-                instruction = f"Answer the generalized query using your general knowledge as an expert technical support AI. Clearly state that the specific appliance manual did not contain information about this query."
+                instruction = f"Answer the generalized query using your general knowledge ONLY IF it relates to the {manual_name or 'current device'}. Clearly state that the specific appliance manual did not contain information about this query."
+
+            instruction += f"\n- CRITICAL RULE: If the user's query is asking about a completely different appliance or device (e.g., asking about a washing machine when the current device is a laptop), you MUST politely decline and state that you are specialized in the {manual_name or 'current device'} and cannot help with other appliances."
 
             prompt = f"""### TASK
 You are an expert technical support AI. Answer the user's query using the context provided. Provide references to the manual where applicable. If the context does not fully answer the query, provide a generalized answer using your expert knowledge but clarify which parts are from the manual versus general knowledge.
