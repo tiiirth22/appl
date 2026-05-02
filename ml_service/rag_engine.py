@@ -192,15 +192,15 @@ class RAGQueryEngine:
             top_score = max(all_scores) if all_scores else 0.0
             mode = "strong" if top_score > 0.6 else "partial"
 
-            # 1. Similarity Check (Hard Rejection)
-            if top_score < CONFIDENCE_THRESHOLD_STRICT:
-                self.logger.warning(f"Low confidence rejection: {top_score:.2f} < {CONFIDENCE_THRESHOLD_STRICT}")
-                return {
-                    "query_id": query_id, "answer": FALLBACK_SUPPORT_MSG, "sources": [],
-                    "confidence": float(top_score), "rejection_reason": "low_confidence",
-                    "is_reliable": False, "processing_time_ms": (time.time() - start_time) * 1000,
-                    "history": history or [], "from_manual": False, "fallback": True
-                }
+            # 1. Similarity Check (Hard Rejection) Removed to allow generalized queries
+            # if top_score < CONFIDENCE_THRESHOLD_STRICT:
+            #     self.logger.warning(f"Low confidence rejection: {top_score:.2f} < {CONFIDENCE_THRESHOLD_STRICT}")
+            #     return {
+            #         "query_id": query_id, "answer": FALLBACK_SUPPORT_MSG, "sources": [],
+            #         "confidence": float(top_score), "rejection_reason": "low_confidence",
+            #         "is_reliable": False, "processing_time_ms": (time.time() - start_time) * 1000,
+            #         "history": history or [], "from_manual": False, "fallback": True
+            #     }
 
             video_url = self._construct_youtube_url(question, manual_name=manual_name)
 
@@ -216,15 +216,7 @@ class RAGQueryEngine:
                 get_secondary_safely(),
             )
             
-            # 2. LLM Relevance Check (Hallucination Guard)
-            if NULL_RESPONSE_TOKEN in answer:
-                self.logger.warning("LLM triggered context-missing fallback")
-                return {
-                    "query_id": query_id, "answer": FALLBACK_SUPPORT_MSG, "sources": [],
-                    "confidence": float(top_score), "rejection_reason": "context_insufficient",
-                    "is_reliable": False, "processing_time_ms": (time.time() - start_time) * 1000,
-                    "history": history or [], "from_manual": False, "fallback": True
-                }
+            # 2. LLM Relevance Check (Hallucination Guard) Removed to allow generalized query responses
 
             processing_time_ms = (time.time() - start_time) * 1000
             
@@ -384,15 +376,13 @@ class RAGQueryEngine:
             context = "\n\n".join([f"Source {i+1}:\n{s['text']}" for i, s in enumerate(sources[:3])])
             device_info = f"Current device: {manual_name}" if manual_name else "Current device: (Unknown)"
 
-            if mode == "strong":
-                instruction = f"Use ONLY the provided manual context. If the answer is not in the context, return ONLY the token: {NULL_RESPONSE_TOKEN}. Do NOT guess."
-            elif mode == "partial":
-                instruction = f"Try to answer from context. If highly uncertain, return: {NULL_RESPONSE_TOKEN}."
+            if mode == "strong" or mode == "partial":
+                instruction = f"Answer the query comprehensively. Prioritize information from the provided manual context and explicitly cite references from the manual. If the manual context is insufficient, you must answer the generalized query using your general knowledge, but clearly state what is from the manual and what is general advice."
             else:
-                return FALLBACK_SUPPORT_MSG
+                instruction = f"Answer the generalized query using your general knowledge as an expert technical support AI. Clearly state that the specific appliance manual did not contain information about this query."
 
             prompt = f"""### TASK
-You are a strict technical support AI. Use the context to answer. If unsure, say you don't know.
+You are an expert technical support AI. Answer the user's query using the context provided. Provide references to the manual where applicable. If the context does not fully answer the query, provide a generalized answer using your expert knowledge but clarify which parts are from the manual versus general knowledge.
 
 ### CONTEXT
 {context}

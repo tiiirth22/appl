@@ -322,6 +322,34 @@ export default function ChatBot({ currentTheme, toggleTheme }) {
                           boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
                         }}>
                           <MarkdownText text={msg.content} />
+                          {msg.role === 'assistant' && msg.video_url && (
+                            <div style={{ marginTop: '16px' }}>
+                              <a 
+                                href={msg.video_url} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                style={{ 
+                                  display: 'inline-flex', 
+                                  alignItems: 'center', 
+                                  gap: '8px', 
+                                  padding: '10px 16px', 
+                                  background: 'rgba(239, 68, 68, 0.1)', 
+                                  color: '#EF4444', 
+                                  borderRadius: '8px', 
+                                  textDecoration: 'none', 
+                                  fontSize: '0.85rem', 
+                                  fontWeight: 600,
+                                  border: '1px solid rgba(239, 68, 68, 0.2)',
+                                  transition: 'all 0.2s ease'
+                                }}
+                                onMouseOver={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'}
+                                onMouseOut={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}
+                              >
+                                <ExternalLink size={16} />
+                                Watch YouTube Repair Tutorial
+                              </a>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </motion.div>
