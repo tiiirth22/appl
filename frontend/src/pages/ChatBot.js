@@ -21,18 +21,24 @@ const MarkdownText = ({ text }) => {
     <div className="markdown-content">
       {lines.map((line, idx) => {
         let content = line;
+        let isList = false;
+
+        if (content.trim().startsWith('- ') || content.trim().startsWith('* ')) {
+          isList = true;
+          content = content.trim().substring(2);
+        }
         
         // Handle Bold
-        if (content.includes('**')) {
+        if (typeof content === 'string' && content.includes('**')) {
           const parts = content.split('**');
           content = parts.map((part, i) => i % 2 === 1 ? <strong key={i} style={{ color: 'var(--color-text-primary)' }}>{part}</strong> : part);
         }
 
         // Handle Lists
-        if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
+        if (isList) {
           return (
             <div key={idx} style={{ display: 'flex', gap: '8px', marginBottom: '4px', paddingLeft: '8px' }}>
-              <div style={{ color: 'var(--color-text-muted)', marginTop: '2px' }}>ΓÇó</div>
+              <div style={{ color: 'var(--color-text-muted)', marginTop: '2px' }}>•</div>
               <div style={{ flex: 1 }}>{content}</div>
             </div>
           );
